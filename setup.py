@@ -31,8 +31,7 @@ setup(
     version='0.4.4',
     author='Microsoft Corporation',
     packages=['msrest'],
-    url=("https://github.com/Azure/autorest/tree/master/"
-         "src/client/Python/msrest"),
+    url=("https://github.com/Azure/msrest-for-python"),
     license='MIT License',
     description='AutoRest swagger generator Python client runtime.',
     long_description=open('readme.rst').read(),
