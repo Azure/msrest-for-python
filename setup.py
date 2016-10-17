@@ -53,5 +53,8 @@ setup(
         "isodate>=0.5.4",
         "certifi>=2015.9.6.2",
         "chardet>=2.3.0",
-        "enum34>=1.0.4;python_version < '3.4'"],
+    ],
+    extras_require={
+        ":python_version<'3.4'": ['enum34>=1.0.4'],
+    }
 )
