@@ -757,6 +757,8 @@ class Deserializer(object):
                     working_data = working_data.get(working_key, data)
                     key = '.'.join(dict_keys[1:])
 
+                if key not in working_data:
+                    continue
                 raw_value = working_data.get(key)
                 value = self.deserialize_data(raw_value, attr_type)
                 d_attrs[attr] = value
