@@ -90,5 +90,6 @@ class Paged(collections.Iterable):
         if self.next_link is None:
             raise GeneratorExit("End of paging")
         self._response = self._get_next(self.next_link)
+        self.next_link = None
         self._derserializer(self, self._response)
         return self.current_page
