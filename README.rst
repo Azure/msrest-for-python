@@ -5,7 +5,7 @@ AutoRest: Python Client Runtime
     :target: https://travis-ci.org/Azure/msrest-for-python
 
 .. image:: https://codecov.io/gh/azure/msrest-for-python/branch/master/graph/badge.svg
-  :target: https://codecov.io/gh/azure/msrest-for-python
+    :target: https://codecov.io/gh/azure/msrest-for-python
 
 Installation
 ------------
