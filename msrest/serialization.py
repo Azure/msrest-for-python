@@ -245,6 +245,7 @@ class Serializer(object):
 
             for attr, map in attributes.items():
                 attr_name = attr
+                debug_name = "{}.{}".format(class_name, attr_name)
                 try:
                     keys = self.flattten.split(map['key'])
                     keys = [k.replace('\\.', '.') for k in keys]
@@ -252,7 +253,7 @@ class Serializer(object):
                     orig_attr = getattr(target_obj, attr)
                     validation = target_obj._validation.get(attr_name, {})
                     orig_attr = self.validate(
-                        orig_attr, attr_name, **validation)
+                        orig_attr, debug_name, **validation)
                     new_attr = self.serialize_data(
                         orig_attr, attr_type, **kwargs)
 
@@ -271,8 +272,8 @@ class Serializer(object):
                     continue
 
         except (AttributeError, KeyError, TypeError) as err:
-            msg = "Attribute {} in object {} cannot be serialized.".format(
-                attr_name, class_name)
+            msg = "Attribute {} in object {} cannot be serialized.\n{}".format(
+                attr_name, class_name, str(target_obj))
             raise_with_traceback(SerializationError, msg, err)
         else:
             return serialized
