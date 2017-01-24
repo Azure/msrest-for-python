@@ -49,7 +49,6 @@ setup(
         'Topic :: Software Development'],
     install_requires=[
         "requests>=2.7.0",
-        "keyring>=5.6",  # Remove once msrestazure's dependency is widespread.
         "requests_oauthlib>=0.5.0",
         "isodate>=0.5.4",
         "certifi>=2015.9.6.2",
