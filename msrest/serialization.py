@@ -138,6 +138,28 @@ class Model(object):
         except AttributeError:
             raise TypeError("Object cannot be classified futher.")
 
+def _flatten_subtype(data_obj, key, localtypes):
+    if not '_subtype_map' in data_obj.__dict__:
+        return {}
+    result = dict(data_obj._subtype_map[key])
+    for valuetype in data_obj._subtype_map[key].values():
+        result.update(_flatten_subtype(localtypes[valuetype], key, localtypes))
+    return result
+
+
+def _infer_type(data, data_obj, localtypes):
+    """Infer the type for polymorphic situation.
+
+    Remove the polymorphic key from the initial data.
+    """
+    if '_subtype_map' in data_obj.__dict__:
+        for subtype_key, subtype_mapping in data_obj._subtype_map.items():
+            if subtype_key in data:
+                subtype_value = data.pop(subtype_key)
+                flatten_mapping_type = _flatten_subtype(data_obj, subtype_key, localtypes)
+                return localtypes.get(flatten_mapping_type[subtype_value])
+    return data_obj
+
 
 def _convert_to_datatype(data, data_type, localtypes):
     if data is None:
@@ -157,6 +179,7 @@ def _convert_to_datatype(data, data_type, localtypes):
         elif issubclass(data_obj, Enum):
             return data
         elif not isinstance(data, data_obj):
+            data_obj = _infer_type(data, data_obj, localtypes)
             result = {
                 key: _convert_to_datatype(
                     data[key],

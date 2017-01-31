@@ -564,8 +564,8 @@ class TestRuntimeSerialized(unittest.TestCase):
                 "animals":{"key":"Animals", "type":"[Animal]"},
                 }
 
-            def __init__(self):
-                self.animals = None
+            def __init__(self, animals=None):
+                self.animals = animals
 
         class Animal(Model):
 
@@ -577,8 +577,8 @@ class TestRuntimeSerialized(unittest.TestCase):
                 'dType': {"cat":"Cat", "dog":"Dog"}
                 }
 
-            def __init__(self):
-                self.name = None
+            def __init__(self, name=None):
+                self.name = name
 
         class Dog(Animal):
 
@@ -587,9 +587,9 @@ class TestRuntimeSerialized(unittest.TestCase):
                 "likes_dog_food":{"key":"likesDogFood","type":"bool"}
                 }
 
-            def __init__(self):
-                self.likes_dog_food = None
-                super(Dog, self).__init__()
+            def __init__(self, name=None, likes_dog_food=None):
+                self.likes_dog_food = likes_dog_food
+                super(Dog, self).__init__(name)
 
         class Cat(Animal):
 
@@ -603,10 +603,10 @@ class TestRuntimeSerialized(unittest.TestCase):
                 "dType":{"siamese":"Siamese"}
                 }
 
-            def __init__(self):
-                self.likes_mice = None
-                self.dislikes = None
-                super(Cat, self).__init__()
+            def __init__(self, name=None, likes_mice=None, dislikes = None):
+                self.likes_mice = likes_mice
+                self.dislikes = dislikes
+                super(Cat, self).__init__(name)
 
         class Siamese(Cat):
 
@@ -617,9 +617,9 @@ class TestRuntimeSerialized(unittest.TestCase):
                 "color":{"key":"Color", "type":"str"}
                 }
 
-            def __init__(self):
-                self.color = None
-                super(Siamese, self).__init__()
+            def __init__(self, name=None, likes_mice=None, dislikes = None, color=None):
+                self.color = color
+                super(Siamese, self).__init__(name, likes_mice, dislikes)
 
         message = {
             "Animals": [ 
@@ -668,6 +668,40 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         serialized = self.s._serialize(zoo)
         self.assertEqual(serialized, message)
+
+        old_dependencies = self.s.dependencies
+        self.s.dependencies = {
+            'Zoo': Zoo,
+            'Animal': Animal,
+            'Dog': Dog,
+            'Cat': Cat,
+            'Siamese': Siamese
+        }
+
+        serialized = self.s.body({
+            "animals": [{
+                "dType": "dog",
+                "likes_dog_food": True, 
+                "name": "Fido" 
+            },{ 
+                "dType": "cat", 
+                "likes_mice": False, 
+                "dislikes": { 
+                    "dType": "dog", 
+                    "likes_dog_food": True, 
+                    "name": "Angry" 
+                }, 
+                "name": "Felix" 
+            },{ 
+                "dType": "siamese", 
+                "color": "grey", 
+                "likes_mice": True, 
+                "name": "Finch" 
+            }]
+        }, "Zoo")
+        self.assertEqual(serialized, message)
+
+        self.s.dependencies = old_dependencies
 
 
 class TestRuntimeDeserialized(unittest.TestCase):
