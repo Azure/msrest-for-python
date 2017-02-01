@@ -114,52 +114,26 @@ class Model(object):
         return {}
 
     @classmethod
+    def _flatten_subtype(cls, key, objects):
+        if not '_subtype_map' in cls.__dict__:
+            return {}
+        result = dict(cls._subtype_map[key])
+        for valuetype in cls._subtype_map[key].values():
+            result.update(objects[valuetype]._flatten_subtype(key, objects))
+        return result
+
+    @classmethod
     def _classify(cls, response, objects):
         """Check the class _subtype_map for any child classes.
-        We want to ignore any inheirited _subtype_maps.
+        We want to ignore any inherited _subtype_maps.
+        Remove the polymorphic key from the initial data.
         """
-        try:
-            map = cls.__dict__.get('_subtype_map', {})
-
-            for _type, _classes in map.items():
-                classification = response.get(_type)
-                try:
-                    return objects[_classes[classification]]
-                except KeyError:
-                    pass
-
-                for c in _classes:
-                    try:
-                        _cls = objects[_classes[c]]
-                        return _cls._classify(response, objects)
-                    except (KeyError, TypeError):
-                        continue
-            raise TypeError("Object cannot be classified futher.")
-        except AttributeError:
-            raise TypeError("Object cannot be classified futher.")
-
-def _flatten_subtype(data_obj, key, localtypes):
-    if not '_subtype_map' in data_obj.__dict__:
-        return {}
-    result = dict(data_obj._subtype_map[key])
-    for valuetype in data_obj._subtype_map[key].values():
-        result.update(_flatten_subtype(localtypes[valuetype], key, localtypes))
-    return result
-
-
-def _infer_type(data, data_obj, localtypes):
-    """Infer the type for polymorphic situation.
-
-    Remove the polymorphic key from the initial data.
-    """
-    if '_subtype_map' in data_obj.__dict__:
-        for subtype_key, subtype_mapping in data_obj._subtype_map.items():
-            if subtype_key in data:
-                subtype_value = data.pop(subtype_key)
-                flatten_mapping_type = _flatten_subtype(data_obj, subtype_key, localtypes)
-                return localtypes.get(flatten_mapping_type[subtype_value])
-    return data_obj
-
+        for subtype_key in cls.__dict__.get('_subtype_map', {}).keys():
+            if subtype_key in response:
+                subtype_value = response.pop(subtype_key)
+                flatten_mapping_type = cls._flatten_subtype(subtype_key, objects)
+                return objects[flatten_mapping_type[subtype_value]]
+        return cls
 
 def _convert_to_datatype(data, data_type, localtypes):
     if data is None:
@@ -179,7 +153,7 @@ def _convert_to_datatype(data, data_type, localtypes):
         elif issubclass(data_obj, Enum):
             return data
         elif not isinstance(data, data_obj):
-            data_obj = _infer_type(data, data_obj, localtypes)
+            data_obj = data_obj._classify(data, localtypes)
             result = {
                 key: _convert_to_datatype(
                     data[key],
@@ -809,8 +783,8 @@ class Deserializer(object):
 
         try:
             target = target._classify(data, self.dependencies)
-        except (TypeError, AttributeError):
-            pass  # Target has no subclasses, so can't classify further.
+        except AttributeError:
+            pass  # Target is not a Model, no classify
         return target, target.__class__.__name__
 
     def _unpack_content(self, raw_data):
