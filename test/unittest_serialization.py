@@ -562,7 +562,7 @@ class TestRuntimeSerialized(unittest.TestCase):
 
             _attribute_map = {
                 "animals":{"key":"Animals", "type":"[Animal]"},
-                }
+            }
 
             def __init__(self, animals=None):
                 self.animals = animals
@@ -570,12 +570,13 @@ class TestRuntimeSerialized(unittest.TestCase):
         class Animal(Model):
 
             _attribute_map = {
-                "name":{"key":"Name", "type":"str"}
-                }
+                "name":{"key":"Name", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
+            }
 
             _subtype_map = {
-                'dType': {"cat":"Cat", "dog":"Dog"}
-                }
+                'd_type': {"cat":"Cat", "dog":"Dog"}
+            }
 
             def __init__(self, name=None):
                 self.name = name
@@ -584,29 +585,33 @@ class TestRuntimeSerialized(unittest.TestCase):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
-                "likes_dog_food":{"key":"likesDogFood","type":"bool"}
+                "likes_dog_food":{"key":"likesDogFood","type":"bool"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
             def __init__(self, name=None, likes_dog_food=None):
                 self.likes_dog_food = likes_dog_food
                 super(Dog, self).__init__(name)
+                self.d_type = 'dog'
 
         class Cat(Animal):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
-                "dislikes":{"key":"dislikes","type":"Animal"}
+                "dislikes":{"key":"dislikes","type":"Animal"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
             _subtype_map = {
-                "dType":{"siamese":"Siamese"}
+                "d_type":{"siamese":"Siamese"}
                 }
 
             def __init__(self, name=None, likes_mice=None, dislikes = None):
                 self.likes_mice = likes_mice
                 self.dislikes = dislikes
                 super(Cat, self).__init__(name)
+                self.d_type = 'cat'
 
         class Siamese(Cat):
 
@@ -614,12 +619,14 @@ class TestRuntimeSerialized(unittest.TestCase):
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
                 "dislikes":{"key":"dislikes","type":"Animal"},
-                "color":{"key":"Color", "type":"str"}
+                "color":{"key":"Color", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
             def __init__(self, name=None, likes_mice=None, dislikes = None, color=None):
                 self.color = color
                 super(Siamese, self).__init__(name, likes_mice, dislikes)
+                self.d_type = 'siamese'
 
         message = {
             "Animals": [ 
@@ -1134,38 +1141,56 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
             _attribute_map = {
                 "animals":{"key":"Animals", "type":"[Animal]"},
-                }
+            }
+
+            def __init__(self, animals=None):
+                self.animals = animals
 
         class Animal(Model):
 
             _attribute_map = {
-                "name":{"key":"Name", "type":"str"}
-                }
-
-            _test_attr = 123
+                "name":{"key":"Name", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
+            }
 
             _subtype_map = {
-                'dType': {"cat":"Cat", "dog":"Dog"}
-                }
+                'd_type': {"cat":"Cat", "dog":"Dog"}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
 
         class Dog(Animal):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
-                "likes_dog_food":{"key":"likesDogFood","type":"bool"}
+                "likes_dog_food":{"key":"likesDogFood","type":"bool"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
+
+            def __init__(self, name=None, likes_dog_food=None):
+                self.likes_dog_food = likes_dog_food
+                super(Dog, self).__init__(name)
+                self.d_type = 'dog'
 
         class Cat(Animal):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
-                "dislikes":{"key":"dislikes","type":"Animal"}
+                "dislikes":{"key":"dislikes","type":"Animal"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
             _subtype_map = {
-                "dType":{"siamese":"Siamese"}
+                "d_type":{"siamese":"Siamese"}
                 }
+
+            def __init__(self, name=None, likes_mice=None, dislikes = None):
+                self.likes_mice = likes_mice
+                self.dislikes = dislikes
+                super(Cat, self).__init__(name)
+                self.d_type = 'cat'
 
         class Siamese(Cat):
 
@@ -1173,8 +1198,14 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
                 "dislikes":{"key":"dislikes","type":"Animal"},
-                "color":{"key":"Color", "type":"str"}
+                "color":{"key":"Color", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
+
+            def __init__(self, name=None, likes_mice=None, dislikes = None, color=None):
+                self.color = color
+                super(Siamese, self).__init__(name, likes_mice, dislikes)
+                self.d_type = 'siamese'
 
         message = {
             "Animals": [ 

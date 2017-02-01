@@ -129,8 +129,9 @@ class Model(object):
         Remove the polymorphic key from the initial data.
         """
         for subtype_key in cls.__dict__.get('_subtype_map', {}).keys():
-            if subtype_key in response:
-                subtype_value = response.pop(subtype_key)
+            response_key = cls._attribute_map[subtype_key]['key']
+            if response_key in response:
+                subtype_value = response.pop(response_key)
                 flatten_mapping_type = cls._flatten_subtype(subtype_key, objects)
                 return objects[flatten_mapping_type[subtype_value]]
         return cls
@@ -238,7 +239,8 @@ class Serializer(object):
 
         try:
             attributes = target_obj._attribute_map
-            self._classify_data(target_obj, class_name, serialized)
+            # should be useless since we add the attribute in the subclasses
+            # self._classify_data(target_obj, class_name, serialized)
 
             for attr, map in attributes.items():
                 attr_name = attr
@@ -283,6 +285,7 @@ class Serializer(object):
             for _type, _classes in target_obj._get_subtype_map().items():
                 for ref, name in _classes.items():
                     if name == class_name:
+                        # FIXME! do NOT use _type, isnce it's the Python one. Look at attribute map
                         serialized[_type] = ref
         except AttributeError:
             pass  # TargetObj has no _subtype_map so we don't need to classify.
