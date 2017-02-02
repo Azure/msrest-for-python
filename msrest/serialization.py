@@ -129,12 +129,20 @@ class Model(object):
         Remove the polymorphic key from the initial data.
         """
         for subtype_key in cls.__dict__.get('_subtype_map', {}).keys():
-            response_key = cls._attribute_map[subtype_key]['key']
+            response_key = _decode_attribute_map_key(cls._attribute_map[subtype_key]['key'])
             if response_key in response:
                 subtype_value = response.pop(response_key)
                 flatten_mapping_type = cls._flatten_subtype(subtype_key, objects)
                 return objects[flatten_mapping_type[subtype_value]]
         return cls
+
+def _decode_attribute_map_key(key):
+    """This decode a key in an _attribute_map to the actual key we want to look at
+       inside the received data.
+
+       :param str key: A key string from the generated code
+    """
+    return key.replace('\\.', '.')
 
 def _convert_to_datatype(data, data_type, localtypes):
     if data is None:
@@ -247,7 +255,7 @@ class Serializer(object):
                 debug_name = "{}.{}".format(class_name, attr_name)
                 try:
                     keys = self.flatten.split(map['key'])
-                    keys = [k.replace('\\.', '.') for k in keys]
+                    keys = [_decode_attribute_map_key(k) for k in keys]
                     attr_type = map['type']
                     orig_attr = getattr(target_obj, attr)
                     validation = target_obj._validation.get(attr_name, {})
@@ -752,9 +760,9 @@ class Deserializer(object):
                 while '.' in key:
                     dict_keys = self.flatten.split(key)
                     if len(dict_keys) == 1:
-                        key = dict_keys[0].replace('\\.', '.')
+                        key = _decode_attribute_map_key(dict_keys[0])
                         break
-                    working_key = dict_keys[0].replace('\\.', '.')
+                    working_key = _decode_attribute_map_key(dict_keys[0])
                     working_data = working_data.get(working_key, data)
                     key = '.'.join(dict_keys[1:])
 

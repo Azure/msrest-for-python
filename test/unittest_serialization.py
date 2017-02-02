@@ -1253,5 +1253,49 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEqual(animals[2].color, message['Animals'][2]["Color"])
         self.assertTrue(animals[2].likes_mice)
 
+    def test_polymorphic_deserialization_with_escape(self):
+
+        class Animal(Model):
+
+            _attribute_map = {
+                "name":{"key":"Name", "type":"str"},
+                "d_type":{"key":"odata\\.type", "type":"str"}
+            }
+
+            _subtype_map = {
+                'd_type': {"dog":"Dog"}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
+
+        class Dog(Animal):
+
+            _attribute_map = {
+                "name":{"key":"Name", "type":"str"},
+                "likes_dog_food":{"key":"likesDogFood","type":"bool"},
+                "d_type":{"key":"odata\\.type", "type":"str"}
+                }
+
+            def __init__(self, name=None, likes_dog_food=None):
+                self.likes_dog_food = likes_dog_food
+                super(Dog, self).__init__(name)
+                self.d_type = 'dog'
+
+        message = { 
+            "odata.type": "dog", 
+            "likesDogFood": True, 
+            "Name": "Fido" 
+            }
+
+        self.d.dependencies = {
+            'Animal':Animal, 'Dog':Dog}
+
+        animal = self.d('Animal', message)
+
+        self.assertIsInstance(animal, Dog)
+        self.assertTrue(animal.likes_dog_food)
+
+
 if __name__ == '__main__':
     unittest.main()
