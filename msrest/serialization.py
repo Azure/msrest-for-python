@@ -247,9 +247,6 @@ class Serializer(object):
 
         try:
             attributes = target_obj._attribute_map
-            # should be useless since we add the attribute in the subclasses
-            # self._classify_data(target_obj, class_name, serialized)
-
             for attr, map in attributes.items():
                 attr_name = attr
                 debug_name = "{}.{}".format(class_name, attr_name)
@@ -284,19 +281,6 @@ class Serializer(object):
             raise_with_traceback(SerializationError, msg, err)
         else:
             return serialized
-
-    def _classify_data(self, target_obj, class_name, serialized):
-        """Check whether this object is a child and therefor needs to be
-        classified in the message.
-        """
-        try:
-            for _type, _classes in target_obj._get_subtype_map().items():
-                for ref, name in _classes.items():
-                    if name == class_name:
-                        # FIXME! do NOT use _type, isnce it's the Python one. Look at attribute map
-                        serialized[_type] = ref
-        except AttributeError:
-            pass  # TargetObj has no _subtype_map so we don't need to classify.
 
     def body(self, data, data_type, **kwargs):
         """Serialize data intended for a request body.
