@@ -193,7 +193,7 @@ class Serializer(object):
         "unique": lambda x, y: len(x) != len(set(x)),
         "multiple": lambda x, y: x % y != 0
         }
-    flattten = re.compile(r"(?<!\\)\.")
+    flatten = re.compile(r"(?<!\\)\.")
 
     def __init__(self, classes=None):
         self.serialize_type = {
@@ -246,7 +246,7 @@ class Serializer(object):
                 attr_name = attr
                 debug_name = "{}.{}".format(class_name, attr_name)
                 try:
-                    keys = self.flattten.split(map['key'])
+                    keys = self.flatten.split(map['key'])
                     keys = [k.replace('\\.', '.') for k in keys]
                     attr_type = map['type']
                     orig_attr = getattr(target_obj, attr)
