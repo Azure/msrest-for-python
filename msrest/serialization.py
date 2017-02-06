@@ -129,9 +129,11 @@ class Model(object):
         Remove the polymorphic key from the initial data.
         """
         for subtype_key in cls.__dict__.get('_subtype_map', {}).keys():
-            response_key = _decode_attribute_map_key(cls._attribute_map[subtype_key]['key'])
-            if response_key in response:
-                subtype_value = response.pop(response_key)
+            subtype_value = None
+
+            rest_api_response_key = _decode_attribute_map_key(cls._attribute_map[subtype_key]['key'])
+            subtype_value = response.pop(rest_api_response_key, None) or response.pop(subtype_key, None)
+            if subtype_value:
                 flatten_mapping_type = cls._flatten_subtype(subtype_key, objects)
                 return objects[flatten_mapping_type[subtype_value]]
         return cls
