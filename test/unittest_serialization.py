@@ -125,7 +125,6 @@ class TestModelDeserialization(unittest.TestCase):
         }
 
         resp = mock.create_autospec(Response)
-        resp.content = True # Hack, should not been read
         resp.text = json.dumps(data)
         resp.encoding = 'utf-8'
         model = self.d('GenericResource', resp)
@@ -706,7 +705,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         response_data = mock.create_autospec(Response)
         response_data.encoding = 'utf-8'
-        response_data.content = True # Hack, should not been read
 
         response_data.text = ''
         response = self.d("[str]", response_data)
@@ -748,7 +746,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
 
         response_data = mock.create_autospec(Response)
-        response_data.content = json.dumps({"a":"b"})
+        response_data.text = json.dumps({"a":"b"})
         response_data.encoding = 'utf-8'
 
         class EmptyResponse(Model):
@@ -764,7 +762,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         Test deserializing an object with a malformed attributes_map.
         """
         response_data = mock.create_autospec(Response)
-        response_data.content = json.dumps({"a":"b"})
+        response_data.text = json.dumps({"a":"b"})
         response_data.encoding = 'utf-8'
 
         class BadResponse(Model):
@@ -805,7 +803,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         response_data.status_code = None
         response_data.headers = {'client-request-id':None, 'etag':None}
-        response_data.content = True # Should not been read
         response_data.text = ''
 
         response = self.d(self.TestObj, response_data)
@@ -818,14 +815,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
         response_data.headers = {'client-request-id':"123", 'etag':456.3}
-        response_data.content = True # Should not been read
         response_data.text = ''
 
         response = self.d(self.TestObj, response_data)
         self.assertIsNone(response)
 
         message = {'AttrB':'1234'}
-        response_data.content = True # Hack, should not read this
         response_data.text = json.dumps(message)
         response_data.encoding = 'utf-8'
         response = self.d(self.TestObj, response_data)
@@ -844,7 +839,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
-        response_data.content = True # Hack, shoud not been read
         response_data.text = json.dumps(message)
         response_data.encoding = 'utf-8'
 
@@ -873,7 +867,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
-        response_data.content = True # Hack, should not been read
         response_data.text = json.dumps({'Key_C':True})
         response_data.encoding = 'utf-8'
 
@@ -901,7 +894,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
-        response_data.content = True # Hack, should not been read
         response_data.text = json.dumps({'AttrD': []})
         response_data.encoding = 'utf-8'
 
@@ -938,7 +930,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
-        response_data.content = True # Hack, should not been read
         response_data.text = json.dumps({'AttrF':[]})
         response_data.encoding = 'utf-8'
 
@@ -992,7 +983,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
-        response_data.content = True # Hack, should not been read
         response_data.text = json.dumps({"id":[{"ABC": "123"}]})
         response_data.encoding = 'utf-8'
 

@@ -801,16 +801,13 @@ class Deserializer(object):
         else:
             data = raw_data
 
-        if hasattr(raw_data, 'content'):
-            # This is a requests.Response
+        try:
+            # This is a requests.Response, json valid if nothing fail
             if not raw_data.text:
                 return None
-
-            try:
-                return json.loads(raw_data.text)
-            except (ValueError, TypeError):
-                return data
-
+            return json.loads(raw_data.text)
+        except (ValueError, TypeError, AttributeError):
+                pass
         return data
 
     def _instantiate_model(self, response, attrs):
