@@ -158,6 +158,11 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.s = Serializer()
         return super(TestRuntimeSerialized, self).setUp()
 
+    def test_validate(self):
+        # Assert not necessary, should not raise exception
+        self.s.validate("simplestring", "StringForLog", pattern="^[a-z]+$")
+        self.s.validate(u"UTF8ééééé", "StringForLog", pattern=r"^[\w]+$")
+
     def test_obj_serialize_none(self):
         """Test that serialize None in object is still None.
         """
