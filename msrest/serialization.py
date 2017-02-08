@@ -37,7 +37,6 @@ try:
 except ImportError:
     from urllib.parse import quote
 
-import chardet
 import isodate
 
 from .exceptions import (
@@ -798,18 +797,17 @@ class Deserializer(object):
          be returned.
         """
         if raw_data and isinstance(raw_data, bytes):
-            data = raw_data.decode(
-                encoding=chardet.detect(raw_data)['encoding'])
+            data = raw_data.decode(encoding='utf-8')
         else:
             data = raw_data
 
         if hasattr(raw_data, 'content'):
+            # This is a requests.Response
             if not raw_data.content:
                 return None
 
             if isinstance(raw_data.content, bytes):
-                encoding = chardet.detect(raw_data.content)["encoding"]
-                data = raw_data.content.decode(encoding=encoding)
+                data = raw_data.content.decode(encoding=raw_data.encoding)
             else:
                 data = raw_data.content
             try:

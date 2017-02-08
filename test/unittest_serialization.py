@@ -126,6 +126,7 @@ class TestModelDeserialization(unittest.TestCase):
 
         resp = mock.create_autospec(Response)
         resp.content = json.dumps(data)
+        resp.encoding = 'utf-8'
         model = self.d('GenericResource', resp)
         self.assertEqual(model.properties['platformFaultDomainCount'], 3)
         self.assertEqual(model.location, 'westus')
@@ -703,6 +704,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         Test direct deserialization of simple types.
         """
         response_data = mock.create_autospec(Response)
+        response_data.encoding = 'utf-8'
 
         response_data.content = json.dumps({})
         response = self.d("[str]", response_data)
@@ -745,6 +747,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         response_data = mock.create_autospec(Response)
         response_data.content = json.dumps({"a":"b"})
+        response_data.encoding = 'utf-8'
 
         class EmptyResponse(Model):
             _attribute_map = {}
@@ -760,6 +763,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         response_data = mock.create_autospec(Response)
         response_data.content = json.dumps({"a":"b"})
+        response_data.encoding = 'utf-8'
 
         class BadResponse(Model):
             _attribute_map = None
@@ -818,6 +822,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         message = {'AttrB':'1234'}
         response_data.content = json.dumps(message)
+        response_data.encoding = 'utf-8'
         response = self.d(self.TestObj, response_data)
         self.assertTrue(hasattr(response, 'attr_b'))
         self.assertEqual(response.attr_b, int(message['AttrB']))
@@ -835,6 +840,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
         response_data.content = json.dumps(message)
+        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
         self.assertTrue(hasattr(response, 'attr_a'))
@@ -862,6 +868,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
         response_data.content = json.dumps({'Key_C':True})
+        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
 
@@ -888,6 +895,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
         response_data.content = json.dumps({'AttrD': []})
+        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
         deserialized_list = [d for d in response.attr_d]
@@ -923,6 +931,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
         response_data.content = json.dumps({'AttrF':[]})
+        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
         self.assertTrue(hasattr(response, 'attr_f'))
@@ -975,6 +984,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.status_code = 200
         response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
         response_data.content = json.dumps({"id":[{"ABC": "123"}]})
+        response_data.encoding = 'utf-8'
 
         d = Deserializer({'ListObj':ListObj})
         response = d(CmplxTestObj, response_data)
