@@ -803,15 +803,11 @@ class Deserializer(object):
 
         if hasattr(raw_data, 'content'):
             # This is a requests.Response
-            if not raw_data.content:
+            if not raw_data.text:
                 return None
 
-            if isinstance(raw_data.content, bytes):
-                data = raw_data.content.decode(encoding=raw_data.encoding)
-            else:
-                data = raw_data.content
             try:
-                return json.loads(data)
+                return json.loads(raw_data.text)
             except (ValueError, TypeError):
                 return data
 
