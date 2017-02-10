@@ -130,6 +130,16 @@ class TestModelDeserialization(unittest.TestCase):
         self.assertEqual(model.properties['platformFaultDomainCount'], 3)
         self.assertEqual(model.location, 'westus')
 
+    def test_response_no_required_fields(self):
+
+        data = {"status":"Succeeded"} # Location is required and missing here
+
+        resp = mock.create_autospec(Response)
+        resp.content = json.dumps(data)
+        
+        with self.assertRaises(DeserializationError):
+            model = self.d('GenericResource', resp)
+
 class TestRuntimeSerialized(unittest.TestCase):
 
     class TestObj(Model):
@@ -836,13 +846,9 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
     def test_attr_none(self):
         """
-        Test serializing an object with None attributes.
+        Test deserializing an object with None attributes.
         """
         response_data = mock.create_autospec(Response)
-
-        with self.assertRaises(DeserializationError):
-            self.d(self.TestObj, response_data)
-
         response_data.status_code = None
         response_data.headers = {'client-request-id':None, 'etag':None}
         response_data.content = None
@@ -977,13 +983,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.content = json.dumps({'AttrF':None})
 
         response = self.d(self.TestObj, response_data)
-        self.assertTrue(hasattr(response, 'attr_f'))
-        self.assertEqual(response.attr_f, None)
-
-        response_data.content = json.dumps({})
-
-        response = self.d(self.TestObj, response_data)
-
         self.assertTrue(hasattr(response, 'attr_f'))
         self.assertEqual(response.attr_f, None)
 
