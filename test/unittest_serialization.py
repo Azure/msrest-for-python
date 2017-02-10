@@ -567,51 +567,56 @@ class TestRuntimeSerialized(unittest.TestCase):
 
             _attribute_map = {
                 "animals":{"key":"Animals", "type":"[Animal]"},
-                }
+            }
 
-            def __init__(self):
-                self.animals = None
+            def __init__(self, animals=None):
+                self.animals = animals
 
         class Animal(Model):
 
             _attribute_map = {
-                "name":{"key":"Name", "type":"str"}
-                }
+                "name":{"key":"Name", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
+            }
 
             _subtype_map = {
-                'dType': {"cat":"Cat", "dog":"Dog"}
-                }
+                'd_type': {"cat":"Cat", "dog":"Dog"}
+            }
 
-            def __init__(self):
-                self.name = None
+            def __init__(self, name=None):
+                self.name = name
 
         class Dog(Animal):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
-                "likes_dog_food":{"key":"likesDogFood","type":"bool"}
+                "likes_dog_food":{"key":"likesDogFood","type":"bool"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
-            def __init__(self):
-                self.likes_dog_food = None
-                super(Dog, self).__init__()
+            def __init__(self, name=None, likes_dog_food=None):
+                self.likes_dog_food = likes_dog_food
+                super(Dog, self).__init__(name)
+                self.d_type = 'dog'
 
         class Cat(Animal):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
-                "dislikes":{"key":"dislikes","type":"Animal"}
+                "dislikes":{"key":"dislikes","type":"Animal"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
             _subtype_map = {
-                "dType":{"siamese":"Siamese"}
+                "d_type":{"siamese":"Siamese"}
                 }
 
-            def __init__(self):
-                self.likes_mice = None
-                self.dislikes = None
-                super(Cat, self).__init__()
+            def __init__(self, name=None, likes_mice=None, dislikes = None):
+                self.likes_mice = likes_mice
+                self.dislikes = dislikes
+                super(Cat, self).__init__(name)
+                self.d_type = 'cat'
 
         class Siamese(Cat):
 
@@ -619,12 +624,14 @@ class TestRuntimeSerialized(unittest.TestCase):
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
                 "dislikes":{"key":"dislikes","type":"Animal"},
-                "color":{"key":"Color", "type":"str"}
+                "color":{"key":"Color", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
-            def __init__(self):
-                self.color = None
-                super(Siamese, self).__init__()
+            def __init__(self, name=None, likes_mice=None, dislikes = None, color=None):
+                self.color = color
+                super(Siamese, self).__init__(name, likes_mice, dislikes)
+                self.d_type = 'siamese'
 
         message = {
             "Animals": [ 
@@ -673,6 +680,40 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         serialized = self.s._serialize(zoo)
         self.assertEqual(serialized, message)
+
+        old_dependencies = self.s.dependencies
+        self.s.dependencies = {
+            'Zoo': Zoo,
+            'Animal': Animal,
+            'Dog': Dog,
+            'Cat': Cat,
+            'Siamese': Siamese
+        }
+
+        serialized = self.s.body({
+            "animals": [{
+                "dType": "dog",
+                "likes_dog_food": True, 
+                "name": "Fido" 
+            },{ 
+                "dType": "cat", 
+                "likes_mice": False, 
+                "dislikes": { 
+                    "dType": "dog", 
+                    "likes_dog_food": True, 
+                    "name": "Angry" 
+                }, 
+                "name": "Felix" 
+            },{ 
+                "dType": "siamese", 
+                "color": "grey", 
+                "likes_mice": True, 
+                "name": "Finch" 
+            }]
+        }, "Zoo")
+        self.assertEqual(serialized, message)
+
+        self.s.dependencies = old_dependencies
 
 
 class TestRuntimeDeserialized(unittest.TestCase):
@@ -1105,38 +1146,56 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
             _attribute_map = {
                 "animals":{"key":"Animals", "type":"[Animal]"},
-                }
+            }
+
+            def __init__(self, animals=None):
+                self.animals = animals
 
         class Animal(Model):
 
             _attribute_map = {
-                "name":{"key":"Name", "type":"str"}
-                }
-
-            _test_attr = 123
+                "name":{"key":"Name", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
+            }
 
             _subtype_map = {
-                'dType': {"cat":"Cat", "dog":"Dog"}
-                }
+                'd_type': {"cat":"Cat", "dog":"Dog"}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
 
         class Dog(Animal):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
-                "likes_dog_food":{"key":"likesDogFood","type":"bool"}
+                "likes_dog_food":{"key":"likesDogFood","type":"bool"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
+
+            def __init__(self, name=None, likes_dog_food=None):
+                self.likes_dog_food = likes_dog_food
+                super(Dog, self).__init__(name)
+                self.d_type = 'dog'
 
         class Cat(Animal):
 
             _attribute_map = {
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
-                "dislikes":{"key":"dislikes","type":"Animal"}
+                "dislikes":{"key":"dislikes","type":"Animal"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
 
             _subtype_map = {
-                "dType":{"siamese":"Siamese"}
+                "d_type":{"siamese":"Siamese"}
                 }
+
+            def __init__(self, name=None, likes_mice=None, dislikes = None):
+                self.likes_mice = likes_mice
+                self.dislikes = dislikes
+                super(Cat, self).__init__(name)
+                self.d_type = 'cat'
 
         class Siamese(Cat):
 
@@ -1144,8 +1203,14 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 "name":{"key":"Name", "type":"str"},
                 "likes_mice":{"key":"likesMice","type":"bool"},
                 "dislikes":{"key":"dislikes","type":"Animal"},
-                "color":{"key":"Color", "type":"str"}
+                "color":{"key":"Color", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
                 }
+
+            def __init__(self, name=None, likes_mice=None, dislikes = None, color=None):
+                self.color = color
+                super(Siamese, self).__init__(name, likes_mice, dislikes)
+                self.d_type = 'siamese'
 
         message = {
             "Animals": [ 
@@ -1192,6 +1257,50 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertIsInstance(animals[2], Siamese)
         self.assertEqual(animals[2].color, message['Animals'][2]["Color"])
         self.assertTrue(animals[2].likes_mice)
+
+    def test_polymorphic_deserialization_with_escape(self):
+
+        class Animal(Model):
+
+            _attribute_map = {
+                "name":{"key":"Name", "type":"str"},
+                "d_type":{"key":"odata\\.type", "type":"str"}
+            }
+
+            _subtype_map = {
+                'd_type': {"dog":"Dog"}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
+
+        class Dog(Animal):
+
+            _attribute_map = {
+                "name":{"key":"Name", "type":"str"},
+                "likes_dog_food":{"key":"likesDogFood","type":"bool"},
+                "d_type":{"key":"odata\\.type", "type":"str"}
+                }
+
+            def __init__(self, name=None, likes_dog_food=None):
+                self.likes_dog_food = likes_dog_food
+                super(Dog, self).__init__(name)
+                self.d_type = 'dog'
+
+        message = { 
+            "odata.type": "dog", 
+            "likesDogFood": True, 
+            "Name": "Fido" 
+            }
+
+        self.d.dependencies = {
+            'Animal':Animal, 'Dog':Dog}
+
+        animal = self.d('Animal', message)
+
+        self.assertIsInstance(animal, Dog)
+        self.assertTrue(animal.likes_dog_food)
+
 
 if __name__ == '__main__':
     unittest.main()
