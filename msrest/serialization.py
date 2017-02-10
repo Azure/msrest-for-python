@@ -498,10 +498,10 @@ class Serializer(object):
         serialized = {}
         for key, value in attr.items():
             try:
-                serialized[str(key)] = self.serialize_data(
+                serialized[self.serialize_unicode(key)] = self.serialize_data(
                     value, dict_type, **kwargs)
             except ValueError:
-                serialized[str(key)] = None
+                serialized[self.serialize_unicode(key)] = None
         return serialized
 
     def serialize_object(self, attr, **kwargs):
@@ -523,10 +523,10 @@ class Serializer(object):
             serialized = {}
             for key, value in attr.items():
                 try:
-                    serialized[str(key)] = self.serialize_object(
+                    serialized[self.serialize_unicode(key)] = self.serialize_object(
                         value, **kwargs)
                 except ValueError:
-                    serialized[str(key)] = None
+                    serialized[self.serialize_unicode(key)] = None
             return serialized
 
         if obj_type == list:
@@ -898,9 +898,9 @@ class Deserializer(object):
         :rtype: dict
         """
         if isinstance(attr, list):
-            return {str(x['key']): self.deserialize_data(
+            return {x['key']: self.deserialize_data(
                 x['value'], dict_type) for x in attr}
-        return {str(k): self.deserialize_data(
+        return {k: self.deserialize_data(
             v, dict_type) for k, v in attr.items()}
 
     def deserialize_object(self, attr, **kwargs):
@@ -923,10 +923,10 @@ class Deserializer(object):
             deserialized = {}
             for key, value in attr.items():
                 try:
-                    deserialized[str(key)] = self.deserialize_object(
+                    deserialized[key] = self.deserialize_object(
                         value, **kwargs)
                 except ValueError:
-                    deserialized[str(key)] = None
+                    deserialized[key] = None
             return deserialized
 
         if obj_type == list:
