@@ -20,6 +20,20 @@ To install:
 Release History
 ---------------
 
+2017-02-13 Version 0.4.5
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix polymorphic deserialization #11
+- Fix regexp validation if '\\w' is used in Python 2.7 #13
+- Fix dict deserialization if keys are unicode in Python 2.7
+
+**Improvements**
+
+- Add polymorphic serialisation from dict objects
+- Remove chardet and use HTTP charset declaration (fallback to utf8)
+
 2016-09-14 Version 0.4.4
 ++++++++++++++++++++++++
 

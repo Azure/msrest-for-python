@@ -3,3 +3,4 @@ venv*
 *.egg-info
 .tox
 test/.coverage
+*.pyc
