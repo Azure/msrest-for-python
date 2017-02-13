@@ -37,7 +37,6 @@ try:
 except ImportError:
     from urllib.parse import quote
 
-import chardet
 import isodate
 
 from .exceptions import (
@@ -493,10 +492,10 @@ class Serializer(object):
         serialized = {}
         for key, value in attr.items():
             try:
-                serialized[str(key)] = self.serialize_data(
+                serialized[self.serialize_unicode(key)] = self.serialize_data(
                     value, dict_type, **kwargs)
             except ValueError:
-                serialized[str(key)] = None
+                serialized[self.serialize_unicode(key)] = None
         return serialized
 
     def serialize_object(self, attr, **kwargs):
@@ -518,10 +517,10 @@ class Serializer(object):
             serialized = {}
             for key, value in attr.items():
                 try:
-                    serialized[str(key)] = self.serialize_object(
+                    serialized[self.serialize_unicode(key)] = self.serialize_object(
                         value, **kwargs)
                 except ValueError:
-                    serialized[str(key)] = None
+                    serialized[self.serialize_unicode(key)] = None
             return serialized
 
         if obj_type == list:
@@ -792,25 +791,17 @@ class Deserializer(object):
          be returned.
         """
         if raw_data and isinstance(raw_data, bytes):
-            data = raw_data.decode(
-                encoding=chardet.detect(raw_data)['encoding'])
+            data = raw_data.decode(encoding='utf-8')
         else:
             data = raw_data
 
-        if hasattr(raw_data, 'content'):
-            if not raw_data.content:
+        try:
+            # This is a requests.Response, json valid if nothing fail
+            if not raw_data.text:
                 return None
-
-            if isinstance(raw_data.content, bytes):
-                encoding = chardet.detect(raw_data.content)["encoding"]
-                data = raw_data.content.decode(encoding=encoding)
-            else:
-                data = raw_data.content
-            try:
-                return json.loads(data)
-            except (ValueError, TypeError):
-                return data
-
+            return json.loads(raw_data.text)
+        except (ValueError, TypeError, AttributeError):
+                pass
         return data
 
     def _instantiate_model(self, response, attrs):
@@ -901,9 +892,9 @@ class Deserializer(object):
         :rtype: dict
         """
         if isinstance(attr, list):
-            return {str(x['key']): self.deserialize_data(
+            return {x['key']: self.deserialize_data(
                 x['value'], dict_type) for x in attr}
-        return {str(k): self.deserialize_data(
+        return {k: self.deserialize_data(
             v, dict_type) for k, v in attr.items()}
 
     def deserialize_object(self, attr, **kwargs):
@@ -926,10 +917,10 @@ class Deserializer(object):
             deserialized = {}
             for key, value in attr.items():
                 try:
-                    deserialized[str(key)] = self.deserialize_object(
+                    deserialized[key] = self.deserialize_object(
                         value, **kwargs)
                 except ValueError:
-                    deserialized[str(key)] = None
+                    deserialized[key] = None
             return deserialized
 
         if obj_type == list:
