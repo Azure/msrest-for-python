@@ -512,6 +512,8 @@ class Serializer(object):
         obj_type = type(attr)
         if obj_type in self.basic_types:
             return self.serialize_basic(attr, self.basic_types[obj_type])
+        elif obj_type in self.dependencies.values():
+            return self._serialize(attr)
 
         if obj_type == dict:
             serialized = {}
