@@ -716,7 +716,6 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         self.s.dependencies = old_dependencies
 
-
 class TestRuntimeDeserialized(unittest.TestCase):
 
     class TestObj(Model):
@@ -1311,6 +1310,24 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertIsInstance(animal, Dog)
         self.assertTrue(animal.likes_dog_food)
 
+class TestModelInstanceEquality(unittest.TestCase):
+
+    def test_model_instance_equality(self):
+
+        class Animal(Model):
+
+            _attribute_map = {
+                "name":{"key":"Name", "type":"str"},
+            }
+
+            def __init__(self, name=None):
+                self.name = name
+
+        animal1 = Animal('a1')
+        animal2 = Animal('a2')
+        animal3 = Animal('a1')
+        self.assertTrue(animal1!=animal2)
+        self.assertTrue(animal1==animal3)
 
 if __name__ == '__main__':
     unittest.main()
