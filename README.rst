@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-03-06 Version 0.4.6
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Allow Model sub-classes to be serialized if type is "object"
+
 2017-02-13 Version 0.4.5
 ++++++++++++++++++++++++
 
