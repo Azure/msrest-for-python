@@ -43,6 +43,8 @@ def log_request(adapter, request, *args, **kwargs):
         _LOGGER.debug("Request method: %r", request.method)
         _LOGGER.debug("Request headers:")
         for header, value in request.headers.items():
+            if header.lower() == 'authorization':
+                value = '*****'
             _LOGGER.debug("    %r: %r", header, value)
         _LOGGER.debug("Request body:")
 
