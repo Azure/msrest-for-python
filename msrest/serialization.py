@@ -813,7 +813,8 @@ class Deserializer(object):
         :param d_attrs: The deserialized response attributes.
         """
         if callable(response):
-            subtype = response._get_subtype_map()
+            subtype_map = response._get_subtype_map()
+            subtype = [k for k, v in response._attribute_map.items() if v['key'] in subtype_map]
             try:
                 readonly = [k for k, v in response._validation.items()
                             if v.get('readonly')]
