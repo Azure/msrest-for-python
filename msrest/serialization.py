@@ -171,11 +171,14 @@ def _convert_to_datatype(data, data_type, localtypes):
                     localtypes) for key in data
             }
             data = data_obj(**result)
-        else:
+            constants = [name for name, config in getattr(data, '_validation', {}).items()
+                         if config.get('constant')]
             try:
-                for attr, map in data._attribute_map.items():
+                for attr, mapconfig in data._attribute_map.items():
+                    if attr in constants:
+                        continue
                     setattr(data, attr, _convert_to_datatype(
-                        getattr(data, attr), map['type'], localtypes))
+                        getattr(data, attr), mapconfig['type'], localtypes))
             except AttributeError:
                 pass
     return data
