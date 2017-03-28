@@ -26,7 +26,6 @@
 
 import requests
 from requests.auth import HTTPBasicAuth
-import requests_oauthlib as oauth
 
 
 class Authentication(object):
@@ -126,4 +125,5 @@ class OAuthTokenAuthentication(Authentication):
 
         :rtype: requests.Session.
         """
+        import requests_oauthlib as oauth
         return oauth.OAuth2Session(self.id, token=self.token)

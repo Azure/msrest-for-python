@@ -27,8 +27,6 @@
 import logging
 import sys
 
-from requests import RequestException
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -128,6 +126,8 @@ class HttpOperationError(ClientException):
 
     def __init__(self, deserialize, response,
                  resp_type=None, *args, **kwargs):
+        from requests import RequestException
+
         self.error = None
         self.message = None
         self.response = response
