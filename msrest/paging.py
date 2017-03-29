@@ -23,14 +23,16 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
-
-import collections
+try:
+    from collections.abc import Iterator
+except ImportError:
+    from collections import Iterator
 
 from .serialization import Deserializer
 from .pipeline import ClientRawResponse
 
 
-class Paged(collections.Iterable):
+class Paged(Iterator):
     """A container for paged REST responses.
 
     :param requests.Response response: server response object.
