@@ -102,3 +102,15 @@ class TestPaging(unittest.TestCase):
             ['value1.0', 'value1.1', 'value2.0', 'value2.1'],
             result_iterated
         )
+
+        deserialized = FakePaged(internal_paging, {})
+        # Push the iterator to the last element
+        for element in deserialized:
+            if element == "value2.0":
+                break
+        deserialized.reset()
+        result_iterated = list(deserialized)
+        self.assertListEqual(
+            ['value1.0', 'value1.1', 'value2.0', 'value2.1'],
+            result_iterated
+        )
