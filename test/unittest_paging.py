@@ -68,10 +68,15 @@ class TestPaging(unittest.TestCase):
                     'nextLink': 'page2',
                     'value': ['value1.0', 'value1.1']
                 }
+            elif next_link == 'page2':
+                return {
+                    'nextLink': 'page3',
+                    'value': ['value2.0', 'value2.1']
+                }
             else:
                 return {
                     'nextLink': None,
-                    'value': ['value2.0', 'value2.1']
+                    'value': ['value3.0', 'value3.1']
                 }
 
         deserialized = FakePaged(internal_paging, {})
@@ -79,6 +84,11 @@ class TestPaging(unittest.TestCase):
         self.assertListEqual(
             ['value2.0', 'value2.1'],
             page2
+        )
+        page3 = deserialized.get('page3')
+        self.assertListEqual(
+            ['value3.0', 'value3.1'],
+            page3
         )
 
     def test_reset_paging(self):
