@@ -81,18 +81,13 @@ class Paged(Iterator):
         self.reset()
         self.next_link = url
         self._advance_page()
-        return [self._next_item() for x in xrange(len(self.current_page))]
+        return self.current_page
 
     def reset(self):
         """Reset iterator to first page."""
         self.next_link = ""
         self.current_page = []
         self._current_page_iter_index = 0
-
-    def _next_item(self):
-        response = self.current_page[self._current_page_iter_index]
-        self._current_page_iter_index += 1
-        return response
 
     def _advance_page(self):
         self._current_page_iter_index = 0
@@ -105,7 +100,9 @@ class Paged(Iterator):
         # guarantee that some code won't replace the list entirely with a copy,
         # invalidating an list iterator that might be saved between iterations.
         if self._current_page_iter_index < len(self.current_page):
-            return self._next_item()
+            response = self.current_page[self._current_page_iter_index]
+            self._current_page_iter_index += 1
+            return response
         elif self.next_link is None:
             raise StopIteration("End of paging")
         else:
