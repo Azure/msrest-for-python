@@ -23,14 +23,17 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
-
-import collections
+try:
+    from collections.abc import Iterator
+    xrange = range
+except ImportError:
+    from collections import Iterator
 
 from .serialization import Deserializer
 from .pipeline import ClientRawResponse
 
 
-class Paged(collections.Iterable):
+class Paged(Iterator):
     """A container for paged REST responses.
 
     :param requests.Response response: server response object.
@@ -42,23 +45,18 @@ class Paged(collections.Iterable):
     _attribute_map = {}
 
     def __init__(self, command, classes, raw_headers=None):
-        self.next_link = ""
-        self.current_page = []
+        # Sets next_link, current_page, and _current_page_iter_index.
+        self.reset()
         self._derserializer = Deserializer(classes)
         self._get_next = command
         self._response = None
         self._raw_headers = raw_headers
 
     def __iter__(self):
-        """Iterate over response items in current page, automatically
-        retrieves next page.
-        """
-        for i in self.current_page:
-            yield i
-
-        while self.next_link is not None:
-            for i in self.next():
-                yield i
+        """Return 'self'."""
+        # Since iteration mutates this object, consider it an iterator in-and-of
+        # itself.
+        return self
 
     @classmethod
     def _get_subtype_map(cls):
@@ -73,22 +71,42 @@ class Paged(collections.Iterable):
         return raw
 
     def get(self, url):
-        """Get arbitrary page.
+        """Get an arbitrary page.
+
+        This resets the iterator and then fully consumes it to return the
+        specific page **only**.
 
         :param str url: URL to arbitrary page results.
         """
+        self.reset()
         self.next_link = url
-        return self.next()
+        self._advance_page()
+        return self.current_page
 
     def reset(self):
         """Reset iterator to first page."""
         self.next_link = ""
         self.current_page = []
+        self._current_page_iter_index = 0
 
-    def next(self):
-        """Get next page."""
-        if self.next_link is None:
-            raise GeneratorExit("End of paging")
+    def _advance_page(self):
+        self._current_page_iter_index = 0
         self._response = self._get_next(self.next_link)
         self._derserializer(self, self._response)
-        return self.current_page
+
+    def __next__(self):
+        """Iterate through responses."""
+        # Storing the list iterator might work out better, but there's no
+        # guarantee that some code won't replace the list entirely with a copy,
+        # invalidating an list iterator that might be saved between iterations.
+        if self._current_page_iter_index < len(self.current_page):
+            response = self.current_page[self._current_page_iter_index]
+            self._current_page_iter_index += 1
+            return response
+        elif self.next_link is None:
+            raise StopIteration("End of paging")
+        else:
+            self._advance_page()
+            return self.__next__()
+
+    next = __next__  # Python 2 compatibility.
