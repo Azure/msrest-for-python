@@ -44,9 +44,8 @@ class Paged(Iterator):
     _attribute_map = {}
 
     def __init__(self, command, classes, raw_headers=None):
-        self.next_link = ""
-        self.current_page = []
-        self._current_page_iter_index = 0
+        # Sets next_link, current_page, and _current_page_iter_index.
+        self.reset()
         self._derserializer = Deserializer(classes)
         self._get_next = command
         self._response = None
@@ -71,17 +70,22 @@ class Paged(Iterator):
         return raw
 
     def get(self, url):
-        """Get arbitrary page.
+        """Get an arbitrary page.
+
+        This resets the iterator and then fully consumes it to return the
+        specified page.
 
         :param str url: URL to arbitrary page results.
         """
+        self.reset()
         self.next_link = url
-        return self.next()
+        return list(self)
 
     def reset(self):
         """Reset iterator to first page."""
         self.next_link = ""
         self.current_page = []
+        self._current_page_iter_index = 0
 
     def __next__(self):
         """Iterate through responses."""
@@ -93,7 +97,7 @@ class Paged(Iterator):
             self._current_page_iter_index += 1
             return response
         elif self.next_link is None:
-            raise GeneratorExit("End of paging")
+            raise StopIteration("End of paging")
         else:
             self._current_page_iter_index = 0
             self._response = self._get_next(self.next_link)
