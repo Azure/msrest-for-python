@@ -171,6 +171,7 @@ def _convert_to_datatype(data, data_type, localtypes):
                     localtypes) for key in data
             }
             data = data_obj(**result)
+        else:
             constants = [name for name, config in getattr(data, '_validation', {}).items()
                          if config.get('constant')]
             try:
