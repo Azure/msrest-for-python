@@ -80,8 +80,7 @@ class Paged(Iterator):
         """
         self.reset()
         self.next_link = url
-        self._advance_page()
-        return self.current_page
+        return self.advance_page()
 
     def reset(self):
         """Reset iterator to first page."""
@@ -89,10 +88,13 @@ class Paged(Iterator):
         self.current_page = []
         self._current_page_iter_index = 0
 
-    def _advance_page(self):
+    def advance_page(self):
+        if self.next_link is None:
+            raise StopIteration("End of paging")
         self._current_page_iter_index = 0
         self._response = self._get_next(self.next_link)
         self._derserializer(self, self._response)
+        return self.current_page
 
     def __next__(self):
         """Iterate through responses."""
@@ -103,10 +105,8 @@ class Paged(Iterator):
             response = self.current_page[self._current_page_iter_index]
             self._current_page_iter_index += 1
             return response
-        elif self.next_link is None:
-            raise StopIteration("End of paging")
         else:
-            self._advance_page()
+            self.advance_page()
             return self.__next__()
 
     next = __next__  # Python 2 compatibility.

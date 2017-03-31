@@ -60,6 +60,34 @@ class TestPaging(unittest.TestCase):
             result_iterated
         )
 
+    def test_advance_paging(self):
+
+        def internal_paging(next_link=None, raw=False):
+            if not next_link:
+                return {
+                    'nextLink': 'page2',
+                    'value': ['value1.0', 'value1.1']
+                }
+            else:
+                return {
+                    'nextLink': None,
+                    'value': ['value2.0', 'value2.1']
+                }
+
+        deserialized = FakePaged(internal_paging, {})
+        page1 = deserialized.advance_page()
+        self.assertListEqual(
+            ['value1.0', 'value1.1'],
+            page1
+        )
+        page2 = deserialized.advance_page()
+        self.assertListEqual(
+            ['value2.0', 'value2.1'],
+            page2
+        )
+        with self.assertRaises(StopIteration):
+            deserialized.advance_page()
+
     def test_get_paging(self):
 
         def internal_paging(next_link=None, raw=False):
