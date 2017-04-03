@@ -104,15 +104,6 @@ class Model(object):
         return str(self.__dict__)
 
     @classmethod
-    def _get_subtype_map(cls):
-        attr = '_subtype_map'
-        parents = cls.__bases__
-        for base in parents:
-            if hasattr(base, attr) and base._subtype_map:
-                return base._subtype_map
-        return {}
-
-    @classmethod
     def _flatten_subtype(cls, key, objects):
         if not '_subtype_map' in cls.__dict__:
             return {}
@@ -134,7 +125,12 @@ class Model(object):
             subtype_value = response.pop(rest_api_response_key, None) or response.pop(subtype_key, None)
             if subtype_value:
                 flatten_mapping_type = cls._flatten_subtype(subtype_key, objects)
-                return objects[flatten_mapping_type[subtype_value]]
+                try:
+                    return objects[flatten_mapping_type[subtype_value]]
+                except KeyError:
+                    raise DeserializationError("Subtype value {} has no mapping".format(subtype_value))
+            else:
+                raise DeserializationError("Discriminator {} cannot be absent or null".format(subtype_key))
         return cls
 
 def _decode_attribute_map_key(key):
@@ -817,7 +813,7 @@ class Deserializer(object):
         :param d_attrs: The deserialized response attributes.
         """
         if callable(response):
-            subtype = response._get_subtype_map()
+            subtype = getattr(response, '_subtype_map', {})
             try:
                 readonly = [k for k, v in response._validation.items()
                             if v.get('readonly')]

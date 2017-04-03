@@ -1222,28 +1222,26 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 self.d_type = 'siamese'
 
         message = {
-            "Animals": [ 
-            { 
-            "dType": "dog", 
-            "likesDogFood": True, 
-            "Name": "Fido" 
-            }, 
-            { 
-            "dType": "cat", 
-            "likesMice": False, 
-            "dislikes": { 
-            "dType": "dog", 
-            "likesDogFood": True, 
-            "Name": "Angry" 
-            }, 
-            "Name": "Felix" 
-            }, 
-            { 
-            "dType": "siamese", 
-            "Color": "grey", 
-            "likesMice": True, 
-            "Name": "Finch" 
-            }]}
+            "Animals": [{ 
+                "dType": "dog", 
+                "likesDogFood": True, 
+                "Name": "Fido" 
+            },{ 
+                "dType": "cat", 
+                "likesMice": False, 
+                "dislikes": { 
+                    "dType": "dog", 
+                    "likesDogFood": True, 
+                    "Name": "Angry" 
+                }, 
+                "Name": "Felix" 
+            },{ 
+                "dType": "siamese", 
+                "Color": "grey", 
+                "likesMice": True, 
+                "Name": "Finch" 
+            }]
+        }
 
         self.d.dependencies = {
             'Zoo':Zoo, 'Animal':Animal, 'Dog':Dog,
@@ -1266,6 +1264,24 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertIsInstance(animals[2], Siamese)
         self.assertEqual(animals[2].color, message['Animals'][2]["Color"])
         self.assertTrue(animals[2].likes_mice)
+
+        message = {
+            "Name": "Didier"
+        }
+        with self.assertRaises(DeserializationError) as err:
+            animal = self.d(Animal, message)
+        exception = err.exception
+        self.assertIn(str(exception), "Discriminator d_type cannot be absent or null")
+
+        message = { 
+            "dType": "Penguin", 
+            "likesDogFood": True, 
+            "Name": "Fido" 
+        }
+        with self.assertRaises(DeserializationError) as err:
+            animal = self.d(Animal, message)
+        exception = err.exception
+        self.assertIn(str(exception), "Subtype value Penguin has no mapping")
 
     def test_polymorphic_deserialization_with_escape(self):
 
