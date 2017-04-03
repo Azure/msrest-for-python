@@ -201,7 +201,7 @@ class TestServiceClient(unittest.TestCase):
         mock_client._format_data.return_value = "formatted"
         request = ClientRequest('GET')
         ServiceClient.send_formdata(mock_client, request)
-        mock_client.send.assert_called_with(request, {}, None, files={})
+        mock_client.send.assert_called_with(request, None, None, files={})
 
         ServiceClient.send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
         mock_client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'})
