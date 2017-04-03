@@ -138,7 +138,7 @@ class ServiceClient(object):
 
         return kwargs
 
-    def send_formdata(self, request, headers={}, content={}, **config):
+    def send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.
         We only deal with file-like objects or strings at this point.
         The requests is not yet streamed.
@@ -148,11 +148,11 @@ class ServiceClient(object):
         :param dict content: Dictionary of the fields of the formdata.
         :param config: Any specific config overrides.
         """
+        if content is None:
+            content = {}
         file_data = {f: self._format_data(d) for f, d in content.items()}
-        try:
-            del headers['Content-Type']
-        except KeyError:
-            pass
+        if headers:
+            headers.pop('Content-Type', None)
         return self.send(request, headers, None, files=file_data, **config)
 
     def send(self, request, headers=None, content=None, **config):
@@ -290,7 +290,7 @@ class ServiceClient(object):
         """
         self._headers[header] = value
 
-    def get(self, url=None, params={}):
+    def get(self, url=None, params=None):
         """Create a GET request object.
 
         :param str url: The request URL.
@@ -300,7 +300,7 @@ class ServiceClient(object):
         request.method = 'GET'
         return request
 
-    def put(self, url=None, params={}):
+    def put(self, url=None, params=None):
         """Create a PUT request object.
 
         :param str url: The request URL.
@@ -310,7 +310,7 @@ class ServiceClient(object):
         request.method = 'PUT'
         return request
 
-    def post(self, url=None, params={}):
+    def post(self, url=None, params=None):
         """Create a POST request object.
 
         :param str url: The request URL.
@@ -320,7 +320,7 @@ class ServiceClient(object):
         request.method = 'POST'
         return request
 
-    def head(self, url=None, params={}):
+    def head(self, url=None, params=None):
         """Create a HEAD request object.
 
         :param str url: The request URL.
@@ -330,7 +330,7 @@ class ServiceClient(object):
         request.method = 'HEAD'
         return request
 
-    def patch(self, url=None, params={}):
+    def patch(self, url=None, params=None):
         """Create a PATCH request object.
 
         :param str url: The request URL.
@@ -340,7 +340,7 @@ class ServiceClient(object):
         request.method = 'PATCH'
         return request
 
-    def delete(self, url=None, params={}):
+    def delete(self, url=None, params=None):
         """Create a DELETE request object.
 
         :param str url: The request URL.
@@ -350,7 +350,7 @@ class ServiceClient(object):
         request.method = 'DELETE'
         return request
 
-    def merge(self, url=None, params={}):
+    def merge(self, url=None, params=None):
         """Create a MERGE request object.
 
         :param str url: The request URL.
