@@ -113,7 +113,7 @@ class AuthenticationError(ClientException):
 
 
 class HttpOperationError(ClientException):
-    """Client request failed due to server-specificed HTTP operation error.
+    """Client request failed due to server-specified HTTP operation error.
     Attempts to deserialize response into specific error object.
 
     :param Deserializer deserialize: Deserializer with data on custom
