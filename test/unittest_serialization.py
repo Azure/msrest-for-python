@@ -1266,6 +1266,14 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertTrue(animals[2].likes_mice)
 
         message = {
+            "Name": "Didier",
+            "dType": "Animal"
+        }
+        animal = self.d(Animal, message)
+        self.assertIsInstance(animal, Animal)
+        self.assertEquals(animal.name, "Didier")
+
+        message = {
             "Name": "Didier"
         }
         with self.assertRaises(DeserializationError) as err:

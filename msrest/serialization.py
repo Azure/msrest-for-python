@@ -124,6 +124,10 @@ class Model(object):
             rest_api_response_key = _decode_attribute_map_key(cls._attribute_map[subtype_key]['key'])
             subtype_value = response.pop(rest_api_response_key, None) or response.pop(subtype_key, None)
             if subtype_value:
+                # Try to match base class. Can be class name only
+                # (bug to fix in Autorest to support x-ms-discriminator-name)
+                if cls.__name__ == subtype_value:
+                    return cls
                 flatten_mapping_type = cls._flatten_subtype(subtype_key, objects)
                 try:
                     return objects[flatten_mapping_type[subtype_value]]
