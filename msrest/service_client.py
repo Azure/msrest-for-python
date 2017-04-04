@@ -32,17 +32,7 @@ try:
 except ImportError:
     from urllib.parse import urljoin, urlparse
 
-from oauthlib import oauth2
-import requests
-
-from .authentication import Authentication
-from .pipeline import ClientHTTPAdapter, ClientRequest
 from .http_logger import log_request, log_response
-from .exceptions import (
-    TokenExpiredError,
-    ClientRequestError,
-    raise_with_traceback)
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +48,8 @@ class ServiceClient(object):
     _protocols = ['http://', 'https://']
 
     def __init__(self, creds, config):
+        from .pipeline import ClientHTTPAdapter
+        from .authentication import Authentication
         self.config = config
         self.creds = creds if creds else Authentication()
 
@@ -90,6 +82,7 @@ class ServiceClient(object):
         :param str url: URL for the request.
         :param dict params: URL query parameters.
         """
+        from .pipeline import ClientRequest
         request = ClientRequest()
 
         if url:
@@ -163,6 +156,14 @@ class ServiceClient(object):
         :param content: Any body data to add to the request.
         :param config: Any specific config overrides
         """
+        import requests
+        from oauthlib import oauth2
+        from .exceptions import (
+            TokenExpiredError,
+            ClientRequestError,
+            raise_with_traceback)
+        from .pipeline import ClientRequest
+
         response = None
         session = self.creds.signed_session()
         kwargs = self._configure_session(session, **config)

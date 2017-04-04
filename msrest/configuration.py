@@ -33,14 +33,7 @@ except ImportError:
     from ConfigParser import NoOptionError
 import platform
 
-import requests
-
 from .exceptions import raise_with_traceback
-from .pipeline import (
-    ClientRetryPolicy,
-    ClientRedirectPolicy,
-    ClientProxies,
-    ClientConnection)
 from .version import msrest_version
 
 
@@ -52,6 +45,13 @@ class Configuration(object):
     """
 
     def __init__(self, base_url, filepath=None):
+        import requests
+        from .pipeline import (
+            ClientRetryPolicy,
+            ClientRedirectPolicy,
+            ClientProxies,
+            ClientConnection)
+
         # Service
         self.base_url = base_url
 
