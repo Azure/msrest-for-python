@@ -20,6 +20,21 @@ To install:
 Release History
 ---------------
 
+2017-04-04 Version 0.4.7
+++++++++++++++++++++++++
+
+**BugFixes**
+
+- Refactor paging #22:
+
+   - "next" is renamed "advance_page" and "next" returns only 1 element (Python 2 expected behavior)
+   - paging objects are now real generator and support the "next()" built-in function without need for "iter()"
+
+- Raise accurate DeserialisationError on incorrect RestAPI discriminator usage #27
+- Fix discriminator usage of the base class name #27
+- Remove default mutable arguments in Clients #20
+- Fix object comparison in some scenarios #24
+
 2017-03-06 Version 0.4.6
 ++++++++++++++++++++++++
 
