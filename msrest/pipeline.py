@@ -42,136 +42,6 @@ from .serialization import Deserializer
 _LOGGER = logging.getLogger(__name__)
 
 
-class ClientHTTPAdapter(requests.adapters.HTTPAdapter):
-    """HTTP Adapter to customize REST pipeline in Requests.
-    Handles both request and response objects.
-    """
-
-    def __init__(self, config):
-        self._client_hooks = {
-            'request': ClientPipelineHook(),
-            'response': ClientPipelineHook()}
-
-        super(ClientHTTPAdapter, self).__init__()
-
-    def _test_pipeline(self, *args, **kwargs):
-        """
-        Custom pipeline manipulation for test framework,
-        """
-        test_hosts = [('http', 'localhost', 3000),
-                      ('http', 'localhost.', 3000)]
-        for host in test_hosts:
-            self.poolmanager.pools[host] = \
-                ClientHTTPConnectionPool(host[1], port=host[2])
-
-    def event_hook(event):
-        """Function decorator to wrap events with hook callbacks."""
-        def event_wrapper(func):
-
-            @functools.wraps(func)
-            def execute_hook(self, *args, **kwargs):
-                return self._client_hooks[event](func, self, *args, **kwargs)
-
-            return execute_hook
-        return event_wrapper
-
-    def add_hook(self, event, callback, precall=True, overwrite=False):
-        """Add an event callback to hook into the REST pipeline.
-
-        :param str event: The event to hook. Currently supports 'request'
-         and 'response'.
-        :param callable callback: The function to call.
-        :param bool precall: Whether the function will be called before or
-         after the event.
-        :param bool overwrite: Whether the function will overwrite the
-         original event.
-        :raises: TypeError if the callback is not a function.
-        :raises: KeyError if the event is not supported.
-        """
-        if not callable(callback):
-            raise TypeError("Callback must be callable.")
-
-        if event not in self._client_hooks:
-            raise KeyError(
-                "Event: {!r} is not able to be hooked.".format(event))
-
-        if precall:
-            debug = "Adding %r callback before event: %r"
-            _LOGGER.debug(debug, callback.__name__, event)
-            self._client_hooks[event].precalls.append(callback)
-        else:
-            debug = "Adding %r callback after event: %r"
-            _LOGGER.debug(debug, callback.__name__, event)
-            self._client_hooks[event].postcalls.append(callback)
-
-        debug = "Callback to overwrite original call: %r"
-        _LOGGER.debug(debug, overwrite)
-        self._client_hooks[event].overwrite_call = overwrite
-
-    def remove_hook(self, event, callback):
-        """Remove a specified event hook from the pipeline.
-
-        :param str event: The event to hook. Currently supports 'request'
-         and 'response'.
-        :param callable callback: The function to remove.
-        :raises: KeyError if the event is not supported.
-        """
-        try:
-            hook_event = self._client_hooks[event]
-        except KeyError:
-            raise KeyError(
-                "Event: {!r} is not able to be hooked.".format(event))
-        else:
-            self._client_hooks[event].precalls = [
-                c for c in hook_event.precalls if c != callback]
-            self._client_hooks[event].postcalls = [
-                c for c in hook_event.postcalls if c != callback]
-
-    @event_hook("request")
-    def send(self, request, stream=False, timeout=None, verify=True,
-             cert=None, proxies=None):
-        """Sends the request object."""
-        return super(ClientHTTPAdapter, self).send(
-            request, stream, timeout, verify, cert, proxies)
-
-    @event_hook("response")
-    def build_response(self, req, resp):
-        """Builds the response object."""
-        return super(ClientHTTPAdapter, self).build_response(req, resp)
-
-
-class ClientPipelineHook(object):
-    """Pipeline hook to wrap a specific event.
-
-    :param bool overwrite: Whether to overwrite the original event.
-    """
-
-    def __init__(self, overwrite=False):
-        self.precalls = []
-        self.postcalls = []
-        self.overwrite_call = overwrite
-
-    def __call__(self, func, *args, **kwargs):
-        """Execute event and any wrapping callbacks.
-        The result of the event is passed into all post-event
-        callbacks with a 'result' keyword arg.
-        """
-        result = requests.Response()
-
-        for call in self.precalls:
-            # Execute any pre-event callabcks
-            call(*args, **kwargs)
-
-        if not self.overwrite_call:
-            # Execute original event
-            result = func(*args, **kwargs)
-
-        for call in self.postcalls:
-            # Execute any post-event callbacks
-            result = call(result=result, *args, **kwargs)
-
-        return result
-
 
 class ClientRequest(requests.Request):
     """Wrapper for requests.Request object."""
@@ -255,38 +125,6 @@ class ClientRawResponse(object):
             self.headers[name] = value
 
 
-class ClientRetry(Retry):
-    """Wrapper for urllib3 Retry object.
-    """
-
-    def __init__(self, **kwargs):
-        self.retry_cookie = None
-
-        return super(ClientRetry, self).__init__(**kwargs)
-
-    def increment(self, method=None, url=None, response=None,
-                  error=None, _pool=None, _stacktrace=None):
-        increment = super(ClientRetry, self).increment(
-            method, url, response, error, _pool, _stacktrace)
-
-        if response:
-            # Fixes open socket warnings in Python 3.
-            response.close()
-            response.release_conn()
-
-            # Collect retry cookie - we only do this for the test server
-            # at this point, unless we implement a proper cookie policy.
-            increment.retry_cookie = response.getheader("Set-Cookie")
-        return increment
-
-    def is_forced_retry(self, method, status_code):
-        debug = "Received status: %r for method %r"
-        _LOGGER.debug(debug, status_code, method)
-        output = super(ClientRetry, self).is_forced_retry(method, status_code)
-        _LOGGER.debug("Is forced retry: %r", output)
-        return output
-
-
 class ClientRetryPolicy(object):
     """Retry configuration settings.
     Container for retry policy object.
@@ -295,7 +133,7 @@ class ClientRetryPolicy(object):
     safe_codes = [i for i in range(500) if i != 408] + [501, 505]
 
     def __init__(self):
-        self.policy = ClientRetry()
+        self.policy = Retry()
         self.policy.total = 3
         self.policy.connect = 3
         self.policy.read = 3
@@ -419,36 +257,3 @@ class ClientConnection(object):
         return {'timeout': self.timeout,
                 'verify': self.verify,
                 'cert': self.cert}
-
-
-class ClientHTTPConnectionPool(HTTPConnectionPool):
-    """Cookie logic only used for test server (localhost)"""
-
-    def _add_test_cookie(self, retries, headers):
-        host = self.host.strip('.')
-        if retries.retry_cookie and host == 'localhost':
-            if headers:
-                headers['cookie'] = retries.retry_cookie
-            else:
-                self.headers['cookie'] = retries.retry_cookie
-
-    def _remove_test_cookie(self, retries, headers):
-        host = self.host.strip('.')
-        if retries.retry_cookie and host == 'localhost':
-            retries.retry_cookie = None
-            if headers:
-                del headers['cookie']
-            else:
-                del self.headers['cookie']
-
-    def urlopen(self, method, url, body=None, headers=None,
-                retries=None, *args, **kwargs):
-        if hasattr(retries, 'retry_cookie'):
-            self._add_test_cookie(retries, headers)
-
-        response = super(ClientHTTPConnectionPool, self).urlopen(
-            method, url, body, headers, retries, *args, **kwargs)
-
-        if hasattr(retries, 'retry_cookie'):
-            self._remove_test_cookie(retries, headers)
-        return response

@@ -33,10 +33,10 @@ except ImportError:
     from urllib.parse import urljoin, urlparse
 
 from oauthlib import oauth2
-import requests
+import requests.adapters
 
 from .authentication import Authentication
-from .pipeline import ClientHTTPAdapter, ClientRequest
+from .pipeline import ClientRequest
 from .http_logger import log_request, log_response
 from .exceptions import (
     TokenExpiredError,
@@ -60,12 +60,7 @@ class ServiceClient(object):
     def __init__(self, creds, config):
         self.config = config
         self.creds = creds if creds else Authentication()
-
-        self._adapter = ClientHTTPAdapter(config)
         self._headers = {}
-
-        self._adapter.add_hook("request", log_request)
-        self._adapter.add_hook("response", log_response, precall=False)
 
     def _format_data(self, data):
         """Format field data according to whether it is a stream or
@@ -131,11 +126,16 @@ class ServiceClient(object):
             return redirect_logic(resp, req, **kwargs) if attempt else []
 
         session.resolve_redirects = wrapped_redirect
-        self._adapter.max_retries = config.get(
+        def log_hook(r, *args, **kwargs):
+            log_request(None, r.request)
+            log_response(None, r.request, r, result=r)
+        session.hooks['response'].append(log_hook)
+
+        max_retries = config.get(
             'retries', self.config.retry_policy())
         for protocol in self._protocols:
-            session.mount(protocol, self._adapter)
-
+            session.mount(protocol,
+                          requests.adapters.HTTPAdapter(max_retries=max_retries))
         return kwargs
 
     def send_formdata(self, request, headers=None, content=None, **config):
@@ -231,7 +231,6 @@ class ServiceClient(object):
                     callback(chunk, response=data)
                 yield chunk
         data.close()
-        self._adapter.close()
 
     def stream_upload(self, data, callback):
         """Generator for streaming request body data.
@@ -260,26 +259,6 @@ class ServiceClient(object):
             base = self.config.base_url.format(**kwargs).rstrip('/')
             url = urljoin(base + '/', url)
         return url
-
-    def add_hook(self, event, hook, precall=True, overwrite=False):
-        """
-        Add event callback.
-
-        :param str event: The pipeline event to hook. Currently supports
-         'request' and 'response'.
-        :param callable hook: The callback function.
-        """
-        self._adapter.add_hook(event, hook, precall, overwrite)
-
-    def remove_hook(self, event, hook):
-        """
-        Remove event callback.
-
-        :param str event: The pipeline event to hook. Currently supports
-         'request' and 'response'.
-        :param callable hook: The callback function.
-        """
-        self._adapter.remove_hook(event, hook)
 
     def add_header(self, header, value):
         """Add a persistent header - this header will be applied to all
