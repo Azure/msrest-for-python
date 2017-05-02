@@ -26,7 +26,8 @@
 
 import os
 from unittest import TestLoader, TextTestRunner
-
+import logging
+#logging.basicConfig(level=logging.DEBUG, filename="d:/log.txt")
 
 if __name__ == '__main__':
 

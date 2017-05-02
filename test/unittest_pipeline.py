@@ -35,117 +35,11 @@ except ImportError:
     import mock
 
 from msrest.pipeline import (
-    ClientHTTPAdapter,
-    ClientPipelineHook,
     ClientRequest,
     ClientRawResponse)
 
 from msrest import Configuration
 
-
-class TestPipelineHooks(unittest.TestCase):
-
-    def event_hook(event):
-        def event_wrapper(func):
-            def execute_hook(self, *args, **kwargs):
-                return self.adp._client_hooks[event](func, self, *args, **kwargs)
-            return execute_hook
-        return event_wrapper
-
-    @event_hook('request')
-    def mock_send(*args, **kwargs):
-        return "Not a real response"
-
-    @event_hook('response')
-    def mock_response(*args, **kwargs):
-        resp = mock.MagicMock(result=200, headers={"a":1, "b":False})
-        return resp
-
-    def setUp(self):
-
-        self.cfg = mock.create_autospec(Configuration)
-        self.cfg.log_name = "test_log"
-        self.adp = ClientHTTPAdapter(self.cfg)
-        self.adp.send = self.mock_send
-        self.adp.build_response = self.mock_response
-
-        return super(TestPipelineHooks, self).setUp()
-    
-    def test_adding_hook(self):
-
-        self.assertTrue('request' in self.adp._client_hooks)
-        self.assertTrue('response' in self.adp._client_hooks)
-
-        with self.assertRaises(TypeError):
-            self.adp.add_hook('request', None)
-
-        with self.assertRaises(TypeError):
-            self.adp.add_hook('response', 'NotCallable')
-
-        with self.assertRaises(KeyError):
-            self.adp.add_hook('Something', lambda a:True)
-
-        def hook(*args, **kwargs):
-            pass
-
-        self.adp.add_hook('request', hook)
-        self.assertTrue(hook in self.adp._client_hooks['request'].precalls)
-        self.assertFalse(hook in self.adp._client_hooks['request'].postcalls)
-
-        def hook2(*args, **kwargs):
-            pass
-
-        self.adp.add_hook('response', hook2, precall=False)
-        self.assertFalse(hook2 in self.adp._client_hooks['response'].precalls)
-        self.assertTrue(hook2 in self.adp._client_hooks['response'].postcalls)
-
-    def test_pre_event_callback(self):
-
-        class TestEvent(Exception):
-            pass
-
-        def hook(*args, **kwargs):
-            raise TestEvent("Entered hook function")
-
-        self.adp.add_hook('request', hook)
-
-        with self.assertRaises(TestEvent):
-            self.adp.send("request_obj")
-
-    def test_overwrite_event_hook(self):
-
-        resp = self.adp.send("request_obj")
-        self.assertEqual(resp, "Not a real response")
-
-        def hook(*args, **kwargs):
-            self.assertEqual(args[1], "request_obj")
-            return None
-
-        self.adp.add_hook('request', hook, precall=False, overwrite=True)
-        resp = self.adp.send("request_obj")
-        self.assertIsNone(resp)
-
-    def test_post_event_callback(self):
-
-        def hook(*args, **kwargs):
-            self.assertTrue('result' in kwargs)
-            self.assertEqual(kwargs['result'].result, 200)
-            return kwargs['result']
-
-        self.adp.add_hook('response', hook, precall=False)
-        resp = self.adp.build_response('request_obj')
-        self.assertEqual(resp.result, 200)
-
-    def test_alter_response_callback(self):
-        
-        def hook(*args, **kwargs):
-            kwargs['result'].headers['a'] = "Changed!"
-            return kwargs['result']
-
-        self.adp.add_hook('response', hook, precall=False)
-        resp = self.adp.build_response('request_obj')
-        self.assertEqual(resp.headers['a'], "Changed!")
-        self.assertEqual(resp.headers['b'], False)
 
 
 class TestClientRequest(unittest.TestCase):

@@ -46,8 +46,6 @@ from msrest.authentication import (
     Authentication,
     OAuthTokenAuthentication)
 from msrest.pipeline import (
-    ClientHTTPAdapter,
-    ClientPipelineHook,
     ClientRequest)
 from msrest import (
     ServiceClient,
@@ -78,14 +76,11 @@ class TestRuntime(unittest.TestCase):
 
         client = ServiceClient(creds, cfg)
 
-        def hook(aptr, req, *args, **kwargs):
-            self.assertTrue('Authorization' in req.headers)
-            self.assertEqual(req.headers['Authorization'], 'Bearer eswfld123kjhn1v5423')
-        
-        client.add_hook('request', hook)
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
+        self.assertTrue('Authorization' in response.request.headers)
+        self.assertEqual(response.request.headers['Authorization'], 'Bearer eswfld123kjhn1v5423')
         check = httpretty.last_request()
         self.assertEqual(response.json(), [{"title": "Test Data"}])
 
@@ -119,40 +114,37 @@ class TestRuntime(unittest.TestCase):
         with self.assertRaises(ClientRequestError):
             client.send(request)
 
+    @httpretty.activate
     def test_request_proxy(self):
+        # Note that this test requires requests >= 2.8.0 to accept host on proxy
 
         cfg = Configuration("http://my_service.com")
         cfg.proxies.add("http://my_service.com", 'http://localhost:57979')
         creds = Authentication()
 
-        def hook(adptr, request, *args, **kwargs):
-            self.assertEqual(kwargs.get('proxies'), {"http://my_service.com":'http://localhost:57979'})
-            kwargs['result']._content_consumed = True
-            kwargs['result'].status_code = 200
-            return kwargs['result']
+        httpretty.register_uri(httpretty.GET, "http://localhost:57979/get_endpoint?check=True",
+                    body='"Mocked body"',
+                    content_type="application/json",
+                    status=200)
 
         client = ServiceClient(creds, cfg)
-        client.add_hook('request', hook, precall=False, overwrite=True)
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
+        self.assertEqual(response.json(), "Mocked body")
 
-        os.environ['HTTPS_PROXY'] = "http://localhost:1987"
+        with mock.patch.dict('os.environ', {'HTTP_PROXY': "http://localhost:1987"}):
+            httpretty.register_uri(httpretty.GET, "http://localhost:1987/get_endpoint?check=True",
+                        body='"Mocked body"',
+                        content_type="application/json",
+                        status=200)
 
-        def hook2(adptr, request, *args, **kwargs):
-            self.assertEqual(kwargs.get('proxies')['https'], "http://localhost:1987")
-            kwargs['result']._content_consumed = True
-            kwargs['result'].status_code = 200
-            return kwargs['result']
-
-        cfg = Configuration("http://my_service.com")
-        client = ServiceClient(creds, cfg)
-        client.add_hook('request', hook2, precall=False, overwrite=True)
-        url = client.format_url("/get_endpoint")
-        request = client.get(url, {'check':True})
-        response = client.send(request)
-
-        del os.environ['HTTPS_PROXY']
+            cfg = Configuration("http://my_service.com")
+            client = ServiceClient(creds, cfg)
+            url = client.format_url("/get_endpoint")
+            request = client.get(url, {'check':True})
+            response = client.send(request)
+            self.assertEqual(response.json(), "Mocked body")
 
 
 class TestRedirect(unittest.TestCase):

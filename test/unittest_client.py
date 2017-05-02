@@ -37,10 +37,6 @@ from oauthlib import oauth2
 
 from msrest import ServiceClient
 from msrest.authentication import OAuthTokenAuthentication
-from msrest.pipeline import (
-    ClientHTTPAdapter,
-    ClientPipelineHook,
-    ClientRequest)
 
 from msrest import Configuration
 from msrest.exceptions import ClientRequestError, TokenExpiredError
@@ -99,23 +95,6 @@ class TestServiceClient(unittest.TestCase):
         client.add_header("test", "value")
 
         self.assertEqual(client._headers.get('test'), 'value')
-
-    def test_client_add_hook(self):
-
-        client = ServiceClient(self.creds, self.cfg)
-
-        def hook():
-            pass
-        
-        client.add_hook("request", hook)
-        self.assertTrue(hook in client._adapter._client_hooks['request'].precalls)
-
-        client.add_hook("request", hook, precall=False)
-        self.assertTrue(hook in client._adapter._client_hooks['request'].postcalls)
-
-        client.remove_hook("request", hook)
-        self.assertFalse(hook in client._adapter._client_hooks['request'].precalls)
-        self.assertFalse(hook in client._adapter._client_hooks['request'].postcalls)
 
     def test_format_url(self):
 
