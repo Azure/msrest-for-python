@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2017-05-22 Version 0.4.8
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix random "pool is closed" error (#29)
+- Fix requests dependency to version 2.x, since version 3.x is annunced to be breaking.
+
 2017-04-04 Version 0.4.7
 ++++++++++++++++++++++++
 
