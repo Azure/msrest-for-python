@@ -4,3 +4,4 @@ venv*
 .tox
 test/.coverage
 *.pyc
+.idea

@@ -101,7 +101,7 @@ class Paged(Iterator):
         # Storing the list iterator might work out better, but there's no
         # guarantee that some code won't replace the list entirely with a copy,
         # invalidating an list iterator that might be saved between iterations.
-        if self._current_page_iter_index < len(self.current_page):
+        if self.current_page and self._current_page_iter_index < len(self.current_page):
             response = self.current_page[self._current_page_iter_index]
             self._current_page_iter_index += 1
             return response
