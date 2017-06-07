@@ -152,3 +152,14 @@ class TestPaging(unittest.TestCase):
             ['value1.0', 'value1.1', 'value2.0', 'value2.1'],
             result_iterated
         )
+
+    def test_none_value(self):
+        def internal_paging(next_link=None, raw=False):
+            return {
+                'nextLink': None,
+                'value': None
+            }
+
+        deserialized = FakePaged(internal_paging, {})
+        result_iterated = list(deserialized)
+        self.assertEqual(len(result_iterated), 0)
