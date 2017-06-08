@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-06-08 Version 0.4.9
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Accept "null" value for paging array as an empty list and do not raise (#30)
+
 2017-05-22 Version 0.4.8
 ++++++++++++++++++++++++
 
