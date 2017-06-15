@@ -74,7 +74,7 @@ class Configuration(object):
             requests.__version__,
             msrest_version)
 
-        # Users hooks. Must respect requests hook callback signature
+        # Requests hooks. Must respect requests hook callback signature
         # Note that we will inject the following parameters:
         # - kwargs['msrest']['session'] with the current session
         self.hooks = []
