@@ -131,6 +131,18 @@ class ServiceClient(object):
             log_response(None, r.request, r, result=r)
         session.hooks['response'].append(log_hook)
 
+        def make_user_hook_cb(user_hook, session):
+            def user_hook_cb(r, *args, **kwargs):
+                kwargs.setdefault("msrest", {})
+                kwargs["msrest"] = {
+                    'session': session
+                }
+                user_hook(r, *args, **kwargs)
+            return user_hook_cb
+
+        for user_hook in self.config.user_hooks:
+            session.hooks['response'].append(make_user_hook_cb(user_hook, session))
+
         max_retries = config.get(
             'retries', self.config.retry_policy())
         for protocol in self._protocols:
