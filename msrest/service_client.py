@@ -140,7 +140,7 @@ class ServiceClient(object):
                 user_hook(r, *args, **kwargs)
             return user_hook_cb
 
-        for user_hook in self.config.user_hooks:
+        for user_hook in self.config.hooks:
             session.hooks['response'].append(make_user_hook_cb(user_hook, session))
 
         max_retries = config.get(
