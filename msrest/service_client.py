@@ -134,7 +134,7 @@ class ServiceClient(object):
         def make_user_hook_cb(user_hook, session):
             def user_hook_cb(r, *args, **kwargs):
                 kwargs.setdefault("msrest", {})['session'] = session
-                user_hook(r, *args, **kwargs)
+                return user_hook(r, *args, **kwargs)
             return user_hook_cb
 
         for user_hook in self.config.hooks:
