@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-06-15 Version 0.4.10
++++++++++++++++++++++++++
+
+**Features**
+
+- Add requests hooks to configuration
+
 2017-06-08 Version 0.4.9
 ++++++++++++++++++++++++
 
