@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-06-21 Version 0.4.11
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix incorrect dependency to "requests" 2.14.x, instead of 2.x meant in 0.4.8
+
 2017-06-15 Version 0.4.10
 +++++++++++++++++++++++++
 
