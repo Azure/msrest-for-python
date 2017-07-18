@@ -40,7 +40,7 @@ from .exceptions import (
 
 _LOGGER = logging.getLogger(__name__)
 
-class AsyncServiceClient:
+class AsyncServiceClientMixin:
 
     async def async_send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.

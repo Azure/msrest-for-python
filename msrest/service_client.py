@@ -46,16 +46,16 @@ from .exceptions import (
 
 if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
-    from .async_client import AsyncServiceClient
+    from .async_client import AsyncServiceClientMixin
 else:
-    class AsyncServiceClient(object):
+    class AsyncServiceClientMixin(object):
         pass
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ServiceClient(AsyncServiceClient):
+class ServiceClient(AsyncServiceClientMixin):
     """REST Service Client.
     Maintains client pipeline and handles all requests and responses.
 
