@@ -37,7 +37,7 @@ if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
     from .async_paging import AsyncPaginMixin
 else:
-    class AsyncPaginMixin:
+    class AsyncPaginMixin(object):
         pass
 
 class Paged(AsyncPaginMixin, Iterator):
@@ -47,12 +47,13 @@ class Paged(AsyncPaginMixin, Iterator):
     :param callable command: Function to retrieve the next page of items.
     :param dict classes: A dictionary of class dependencies for
      deserialization.
+    :param dict raw_headers: A dict of raw headers to add if "raw" is called
     """
     _validation = {}
     _attribute_map = {}
 
-    def __init__(self, command, classes, raw_headers=None):
-        # Sets next_link, current_page, and _current_page_iter_index.
+    def __init__(self, command, classes, raw_headers=None, **kwargs):
+        super(Paged, self).__init__(**kwargs)
         self.reset()
         self._derserializer = Deserializer(classes)
         self._get_next = command

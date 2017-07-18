@@ -56,7 +56,7 @@ class TestPaging(object):
                     'value': ['value2.0', 'value2.1']
                 }
 
-        deserialized = FakePaged(internal_paging, {})
+        deserialized = FakePaged(None, {}, async_command=internal_paging)
 
         # 3.6 only : result_iterated = [obj async for obj in deserialized]
         result_iterated = []
@@ -80,7 +80,7 @@ class TestPaging(object):
                     'value': ['value2.0', 'value2.1']
                 }
 
-        deserialized = FakePaged(internal_paging, {})
+        deserialized = FakePaged(None, {}, async_command=internal_paging)
         page1 = await deserialized.async_advance_page()
         assert ['value1.0', 'value1.1'] == page1
 

@@ -24,15 +24,27 @@
 #
 # --------------------------------------------------------------------------
 from collections.abc import AsyncIterator
+import logging
 
+_LOGGER = logging.getLogger(__name__)
 
 class AsyncPaginMixin(AsyncIterator):
+
+    def __init__(self, *args, **kwargs):
+        """Bring async to Paging.
+
+        "async_command" is mandatory keyword argument for this mixin
+        """
+        self._async_get_next = kwargs.get("async_command")
+        if not self._async_get_next:
+            _LOGGER.warning("Paging async iterator protocol is not available for %s",
+                            self.__class__.__name__)
 
     async def async_advance_page(self):
         if self.next_link is None:
             raise StopAsyncIteration("End of paging")
         self._current_page_iter_index = 0
-        self._response = await self._get_next(self.next_link)
+        self._response = await self._async_get_next(self.next_link)
         self._derserializer(self, self._response)
         return self.current_page
     
