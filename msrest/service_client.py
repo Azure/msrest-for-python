@@ -27,6 +27,7 @@
 import contextlib
 import logging
 import os
+import sys
 try:
     from urlparse import urljoin, urlparse
 except ImportError:
@@ -43,11 +44,18 @@ from .exceptions import (
     ClientRequestError,
     raise_with_traceback)
 
+if sys.version_info >= (3, 5, 2):
+    # Not executed on old Python, no syntax error
+    from .async_client import AsyncServiceClient
+else:
+    class AsyncServiceClient(object):
+        pass
+
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ServiceClient(object):
+class ServiceClient(AsyncServiceClient):
     """REST Service Client.
     Maintains client pipeline and handles all requests and responses.
 
