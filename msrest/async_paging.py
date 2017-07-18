@@ -40,6 +40,18 @@ class AsyncPagedMixin(AsyncIterator):
             _LOGGER.warning("Paging async iterator protocol is not available for %s",
                             self.__class__.__name__)
 
+    async def async_get(self, url):
+        """Get an arbitrary page.
+
+        This resets the iterator and then fully consumes it to return the
+        specific page **only**.
+
+        :param str url: URL to arbitrary page results.
+        """
+        self.reset()
+        self.next_link = url
+        return await self.async_advance_page()
+
     async def async_advance_page(self):
         if self.next_link is None:
             raise StopAsyncIteration("End of paging")

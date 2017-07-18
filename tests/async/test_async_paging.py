@@ -90,9 +90,10 @@ class TestPaging(object):
         with pytest.raises(StopAsyncIteration):
             await deserialized.async_advance_page()
 
-    def test_get_paging(self):
+    @pytest.mark.asyncio
+    async def test_get_paging(self):
 
-        def internal_paging(next_link=None, raw=False):
+        async def internal_paging(next_link=None, raw=False):
             if not next_link:
                 return {
                     'nextLink': 'page2',
@@ -109,16 +110,17 @@ class TestPaging(object):
                     'value': ['value3.0', 'value3.1']
                 }
 
-        deserialized = FakePaged(internal_paging, {})
-        page2 = deserialized.get('page2')
+        deserialized = FakePaged(None, {}, async_command=internal_paging)
+        page2 = await deserialized.async_get('page2')
         assert ['value2.0', 'value2.1'] == page2
 
-        page3 = deserialized.get('page3')
+        page3 = await deserialized.async_get('page3')
         assert ['value3.0', 'value3.1'] == page3
 
-    def test_reset_paging(self):
+    @pytest.mark.asyncio
+    async def test_reset_paging(self):
 
-        def internal_paging(next_link=None, raw=False):
+        async def internal_paging(next_link=None, raw=False):
             if not next_link:
                 return {
                     'nextLink': 'page2',
@@ -130,27 +132,43 @@ class TestPaging(object):
                     'value': ['value2.0', 'value2.1']
                 }
 
-        deserialized = FakePaged(internal_paging, {})
+        deserialized = FakePaged(None, {}, async_command=internal_paging)
         deserialized.reset()
-        result_iterated = list(deserialized)
+
+        # 3.6 only : result_iterated = [obj async for obj in deserialized]
+        result_iterated = []
+        async for obj in deserialized:
+            result_iterated.append(obj)
+        
         assert ['value1.0', 'value1.1', 'value2.0', 'value2.1'] == result_iterated
 
-        deserialized = FakePaged(internal_paging, {})
+        deserialized = FakePaged(None, {}, async_command=internal_paging)
         # Push the iterator to the last element
-        for element in deserialized:
+        async for element in deserialized:
             if element == "value2.0":
                 break
         deserialized.reset()
-        result_iterated = list(deserialized)
+
+        # 3.6 only : result_iterated = [obj async for obj in deserialized]
+        result_iterated = []
+        async for obj in deserialized:
+            result_iterated.append(obj)
+        
         assert ['value1.0', 'value1.1', 'value2.0', 'value2.1'] == result_iterated
 
-    def test_none_value(self):
-        def internal_paging(next_link=None, raw=False):
+    @pytest.mark.asyncio
+    async def test_none_value(self):
+        async def internal_paging(next_link=None, raw=False):
             return {
                 'nextLink': None,
                 'value': None
             }
 
-        deserialized = FakePaged(internal_paging, {})
-        result_iterated = list(deserialized)
+        deserialized = FakePaged(None, {}, async_command=internal_paging)
+
+        # 3.6 only : result_iterated = [obj async for obj in deserialized]
+        result_iterated = []
+        async for obj in deserialized:
+            result_iterated.append(obj)
+
         assert len(result_iterated) == 0
