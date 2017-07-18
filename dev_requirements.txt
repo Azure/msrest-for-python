@@ -3,4 +3,4 @@ httpretty>=0.8.10
 mock;python_version<="2.7"
 pytest
 pytest-cov
-pytest-asyncio;python_version>="3.5.2"
+pytest-asyncio;python_full_version>="3.5.2"
