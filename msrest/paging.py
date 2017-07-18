@@ -35,12 +35,12 @@ from .pipeline import ClientRawResponse
 
 if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
-    from .async_paging import AsyncPaginMixin
+    from .async_paging import AsyncPagedMixin
 else:
-    class AsyncPaginMixin(object):
+    class AsyncPagedMixin(object):
         pass
 
-class Paged(AsyncPaginMixin, Iterator):
+class Paged(AsyncPagedMixin, Iterator):
     """A container for paged REST responses.
 
     :param requests.Response response: server response object.

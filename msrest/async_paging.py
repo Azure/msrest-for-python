@@ -28,7 +28,7 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-class AsyncPaginMixin(AsyncIterator):
+class AsyncPagedMixin(AsyncIterator):
 
     def __init__(self, *args, **kwargs):
         """Bring async to Paging.
