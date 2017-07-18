@@ -23,6 +23,7 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
+import sys
 try:
     from collections.abc import Iterator
     xrange = range
@@ -32,8 +33,14 @@ except ImportError:
 from .serialization import Deserializer
 from .pipeline import ClientRawResponse
 
+if sys.version_info >= (3, 5, 2):
+    # Not executed on old Python, no syntax error
+    from .async_paging import AsyncPaginMixin
+else:
+    class AsyncPaginMixin:
+        pass
 
-class Paged(Iterator):
+class Paged(AsyncPaginMixin, Iterator):
     """A container for paged REST responses.
 
     :param requests.Response response: server response object.
