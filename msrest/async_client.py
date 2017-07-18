@@ -42,6 +42,23 @@ _LOGGER = logging.getLogger(__name__)
 
 class AsyncServiceClient:
 
+    async def async_send_formdata(self, request, headers=None, content=None, **config):
+        """Send data as a multipart form-data request.
+        We only deal with file-like objects or strings at this point.
+        The requests is not yet streamed.
+
+        :param ClientRequest request: The request object to be sent.
+        :param dict headers: Any headers to add to the request.
+        :param dict content: Dictionary of the fields of the formdata.
+        :param config: Any specific config overrides.
+        """
+        if content is None:
+            content = {}
+        file_data = {f: self._format_data(d) for f, d in content.items()}
+        if headers:
+            headers.pop('Content-Type', None)
+        return await self.send(request, headers, None, files=file_data, **config)
+
     async def async_send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
 

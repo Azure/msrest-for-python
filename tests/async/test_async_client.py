@@ -113,15 +113,15 @@ class TestServiceClient(unittest.TestCase):
         mock_client._format_data.return_value = "formatted"
         mock_client.send = make_coroutine(send_mock)
         request = ClientRequest('GET')
-        future = ServiceClient.send_formdata(mock_client, request)
+        future = ServiceClient.async_send_formdata(mock_client, request)
         self.loop.run_until_complete(future)
         send_mock.assert_called_with(request, None, None, files={})
 
-        future = ServiceClient.send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
+        future = ServiceClient.async_send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
         self.loop.run_until_complete(future)
         send_mock.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'})
 
-        future = ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
+        future = ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
         self.loop.run_until_complete(future)
         send_mock.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'})
 
