@@ -111,7 +111,7 @@ class TestServiceClient(unittest.TestCase):
         send_mock = mock.Mock() 
         mock_client = mock.create_autospec(ServiceClient)
         mock_client._format_data.return_value = "formatted"
-        mock_client.send = make_coroutine(send_mock)
+        mock_client.async_send = make_coroutine(send_mock)
         request = ClientRequest('GET')
         future = ServiceClient.async_send_formdata(mock_client, request)
         self.loop.run_until_complete(future)

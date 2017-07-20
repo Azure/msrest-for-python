@@ -34,7 +34,7 @@ import requests
 from .exceptions import (
     TokenExpiredError,
     ClientRequestError,
-    raise_with_traceback
+    raise_with_traceback,
 )
 
 
@@ -44,6 +44,7 @@ class AsyncServiceClientMixin:
 
     async def async_send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.
+
         We only deal with file-like objects or strings at this point.
         The requests is not yet streamed.
 
@@ -57,7 +58,7 @@ class AsyncServiceClientMixin:
         file_data = {f: self._format_data(d) for f, d in content.items()}
         if headers:
             headers.pop('Content-Type', None)
-        return await self.send(request, headers, None, files=file_data, **config)
+        return await self.async_send(request, headers, None, files=file_data, **config)
 
     async def async_send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
