@@ -238,7 +238,6 @@ class Serializer(object):
         "unique": lambda x, y: len(x) != len(set(x)),
         "multiple": lambda x, y: x % y != 0
         }
-    flatten = re.compile(r"(?<!\\)\.")
 
     def __init__(self, classes=None):
         self.serialize_type = {
@@ -288,7 +287,7 @@ class Serializer(object):
                 attr_name = attr
                 debug_name = "{}.{}".format(class_name, attr_name)
                 try:
-                    keys = self.flatten.split(map['key'])
+                    keys = _FLATTEN.split(map['key'])
                     keys = [_decode_attribute_map_key(k) for k in keys]
                     attr_type = map['type']
                     orig_attr = getattr(target_obj, attr)
@@ -735,7 +734,6 @@ class Deserializer(object):
     valid_date = re.compile(
         r'\d{4}[-]\d{2}[-]\d{2}T\d{2}:\d{2}:\d{2}'
         '\.?\d*Z?[-+]?[\d{2}]?:?[\d{2}]?')
-    flatten = re.compile(r"(?<!\\)\.")
 
     def __init__(self, classes=None):
         self.deserialize_type = {
@@ -781,7 +779,7 @@ class Deserializer(object):
                 working_data = data
 
                 while '.' in key:
-                    dict_keys = self.flatten.split(key)
+                    dict_keys = _FLATTEN.split(key)
                     if len(dict_keys) == 1:
                         key = _decode_attribute_map_key(dict_keys[0])
                         break
