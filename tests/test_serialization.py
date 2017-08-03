@@ -716,6 +716,43 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         self.s.dependencies = old_dependencies
 
+    def test_key_type(self):
+
+        class TestKeyTypeObj(Model):
+
+            _validation = {}
+            _attribute_map = {
+                'attr_a': {'key':'attr_a', 'type':'int'},
+                'attr_b': {'key':'id', 'type':'int'},
+                'attr_c': {'key':'KeyC', 'type': 'int'},
+                'attr_d': {'key':'properties.KeyD', 'type': 'int'},
+            }
+
+        old_dependencies = self.s.dependencies
+        self.s.dependencies = {
+            'TestKeyTypeObj': TestKeyTypeObj,
+        }
+
+        serialized = self.s.body({
+            "attr_a": 1,
+            "id": 2,
+            "keyc": 3,
+            "keyd": 4
+        }, "TestKeyTypeObj")
+
+        message = {
+            "attr_a": 1,
+            "id": 2,
+            "KeyC": 3,
+            "properties": {
+                "KeyD": 4
+            }
+        }
+        
+        self.assertEqual(serialized, message)
+
+        self.s.dependencies = old_dependencies
+
 class TestRuntimeDeserialized(unittest.TestCase):
 
     class TestObj(Model):

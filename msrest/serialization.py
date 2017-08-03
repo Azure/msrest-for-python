@@ -75,6 +75,7 @@ try:
 except ImportError:
     TZ_UTC = UTC()
 
+_FLATTEN = re.compile(r"(?<!\\)\.")
 
 class Model(object):
     """Mixin for all client request body/response body models to support
@@ -137,6 +138,36 @@ class Model(object):
                 raise DeserializationError("Discriminator {} cannot be absent or null".format(subtype_key))
         return cls
 
+    @classmethod
+    def _solve(cls, dict_data):
+        """Solve this dict against this model a dict where key are attributes.
+
+        This can be used to support case insentive key matching or accept
+        both RestAPI keys and attribute keys in dict input.
+        :param dict dict_data: A dict of data, where keys syntax is uncertain
+        :returns: This same dict with key as intended attributes
+        :raises: KeyError If at least one dict key is not found
+        """
+        attr_keys = {s.lower(): s for s in cls._attribute_map}
+        result_dict = {}
+        for key, value in dict_data.items():
+            lower_key = key.lower()
+            pure_key = attr_keys.pop(lower_key, None)
+            if pure_key:
+                result_dict[pure_key] = value
+            else:
+                for lower_attr_key, attr_key in attr_keys.items():
+                    rest_split_key = _FLATTEN.split(cls._attribute_map[attr_key]['key'])[-1]
+                    rest_api_response_key = _decode_attribute_map_key(rest_split_key)
+                    if lower_key == rest_api_response_key.lower():
+                        result_dict[attr_key] = value
+                        break
+                else:
+                    raise KeyError("Unable to find attribute for {}".format(key))
+                del attr_keys[lower_attr_key]
+        assert len(result_dict) == len(dict_data)
+        return result_dict
+
 def _decode_attribute_map_key(key):
     """This decode a key in an _attribute_map to the actual key we want to look at
        inside the received data.
@@ -164,6 +195,7 @@ def _convert_to_datatype(data, data_type, localtypes):
             return data
         elif not isinstance(data, data_obj):
             data_obj = data_obj._classify(data, localtypes)
+            data = data_obj._solve(data)
             result = {
                 key: _convert_to_datatype(
                     data[key],
