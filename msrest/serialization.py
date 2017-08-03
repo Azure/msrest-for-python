@@ -122,7 +122,7 @@ class Model(object):
         for subtype_key in cls.__dict__.get('_subtype_map', {}).keys():
             subtype_value = None
 
-            rest_api_response_key = _decode_attribute_map_key(cls._attribute_map[subtype_key]['key'])
+            rest_api_response_key = cls._get_rest_key_parts(subtype_key)[-1]
             subtype_value = response.pop(rest_api_response_key, None) or response.pop(subtype_key, None)
             if subtype_value:
                 # Try to match base class. Can be class name only
@@ -157,7 +157,7 @@ class Model(object):
                 result_dict[pure_key] = value
             else:
                 for lower_attr_key, attr_key in attr_keys.items():
-                    rest_api_response_key = cls._get_rest_key_part(attr_key)[-1]
+                    rest_api_response_key = cls._get_rest_key_parts(attr_key)[-1]
                     if lower_key == rest_api_response_key.lower():
                         result_dict[attr_key] = value
                         break
@@ -168,7 +168,7 @@ class Model(object):
         return result_dict
 
     @classmethod
-    def _get_rest_key_part(cls, attr_key):
+    def _get_rest_key_parts(cls, attr_key):
         """Get the RestAPI key of this attr, split it and decode part
         :param str attr_key: Attribute key must be in attribute_map.
         :returns: A list of RestAPI part
