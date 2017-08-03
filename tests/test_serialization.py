@@ -159,6 +159,24 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.s = Serializer()
         return super(TestRuntimeSerialized, self).setUp()
 
+    def test_to_dict(self):
+        t = self.TestObj()
+        t.attr_a = "Test"
+        t.attr_b = 42
+        t.attr_c = True
+        t.attr_d = [1,2,3]
+        t.attr_e = {"pi": 3.14}
+
+        as_dict = t.to_dict()
+        expected_dict = {
+            "id": "Test",
+            "AttrB": 42,
+            "Key_C": True,
+            "AttrD": [1,2,3],
+            "AttrE": {"pi": 3.14}
+        }
+        self.assertDictEqual(expected_dict, as_dict)
+
     def test_validate(self):
         # Assert not necessary, should not raise exception
         self.s.validate("simplestring", "StringForLog", pattern="^[a-z]+$")

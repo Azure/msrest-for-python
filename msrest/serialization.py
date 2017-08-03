@@ -157,8 +157,7 @@ class Model(object):
                 result_dict[pure_key] = value
             else:
                 for lower_attr_key, attr_key in attr_keys.items():
-                    rest_split_key = _FLATTEN.split(cls._attribute_map[attr_key]['key'])[-1]
-                    rest_api_response_key = _decode_attribute_map_key(rest_split_key)
+                    rest_api_response_key = cls._get_rest_key_part(attr_key)[-1]
                     if lower_key == rest_api_response_key.lower():
                         result_dict[attr_key] = value
                         break
@@ -167,6 +166,33 @@ class Model(object):
                 del attr_keys[lower_attr_key]
         assert len(result_dict) == len(dict_data)
         return result_dict
+
+    @classmethod
+    def _get_rest_key_part(cls, attr_key):
+        """Get the RestAPI key of this attr, split it and decode part
+        :param str attr_key: Attribute key must be in attribute_map.
+        :returns: A list of RestAPI part
+        :rtype: list
+        """
+        rest_split_key = _FLATTEN.split(cls._attribute_map[attr_key]['key'])
+        return [_decode_attribute_map_key(key_part) for key_part in rest_split_key]
+
+    def to_dict(self):
+        """Return a dictionnary view of this model, using RestAPI key syntax.
+
+        Note that this is NOT intended to be sent to Azure, nor a correct representation
+        of the JSON from Azure, but just a convenience method to get a dict.
+
+        :returns: A dict view of this model
+        :rtype: dict
+        """
+        result = {}
+        for key, value in [(key, getattr(self, key)) for key in self._attribute_map]:
+            key_to_use = self._get_rest_key_part(key)[-1]
+            value_to_use = value.to_dict() if hasattr(value, 'to_dict') else value
+            result[key_to_use] = value_to_use
+        return result
+
 
 def _decode_attribute_map_key(key):
     """This decode a key in an _attribute_map to the actual key we want to look at
