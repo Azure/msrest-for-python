@@ -28,7 +28,7 @@ import sys
 import json
 import isodate
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import unittest
 try:
     from unittest import mock
@@ -141,7 +141,8 @@ class TestRuntimeSerialized(unittest.TestCase):
             'attr_b': {'key':'AttrB', 'type':'int'},
             'attr_c': {'key':'Key_C', 'type': 'bool'},
             'attr_d': {'key':'AttrD', 'type':'[int]'},
-            'attr_e': {'key':'AttrE', 'type': '{float}'}
+            'attr_e': {'key':'AttrE', 'type': '{float}'},
+            'attr_f': {'key':'AttrF', 'type': 'duration'}
             }
 
         def __init__(self):
@@ -151,6 +152,7 @@ class TestRuntimeSerialized(unittest.TestCase):
             self.attr_c = None
             self.attr_d = None
             self.attr_e = None
+            self.attr_f = None
 
         def __str__(self):
             return "Test_Object"
@@ -337,6 +339,16 @@ class TestRuntimeSerialized(unittest.TestCase):
         test_obj = [1,2,3]
         output = self.s._serialize(test_obj, '[str]', div=',')
         self.assertEqual(output, ",".join([str(i) for i in test_obj]))
+
+    def test_attr_duration(self):
+        """
+        Test serializing a duration
+        """
+        test_obj = self.TestObj()
+        test_obj.attr_f = timedelta(days=1)
+
+        message = self.s._serialize(test_obj)
+        self.assertEquals("P1D", message["AttrF"])
 
     def test_attr_list_simple(self):
         """
