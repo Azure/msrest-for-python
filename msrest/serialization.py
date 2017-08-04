@@ -104,6 +104,15 @@ class Model(object):
     def __str__(self):
         return str(self.__dict__)
 
+    def serialize(self):
+        """Return the JSON that would be sent to azure from this model.
+
+        :returns: A dict JSON compatible object
+        :rtype: dict
+        """
+        serializer = Serializer()
+        return serializer._serialize(self)
+
     @classmethod
     def _flatten_subtype(cls, key, objects):
         if not '_subtype_map' in cls.__dict__:
@@ -455,8 +464,10 @@ class Serializer(object):
             elif data_type in self.serialize_type:
                 return self.serialize_type[data_type](data, **kwargs)
 
-            enum_type = self.dependencies.get(data_type)
-            if enum_type and issubclass(enum_type, Enum):
+            # If dependencies is empty, try with current data class
+            # It has to be a subclass of Enum anyway
+            enum_type = self.dependencies.get(data_type, data.__class__)
+            if issubclass(enum_type, Enum):
                 return Serializer.serialize_enum(data, enum_obj=enum_type)
 
             iter_type = data_type[0] + data_type[-1]
@@ -557,7 +568,8 @@ class Serializer(object):
         obj_type = type(attr)
         if obj_type in self.basic_types:
             return self.serialize_basic(attr, self.basic_types[obj_type])
-        elif obj_type in self.dependencies.values():
+        # If it's a model or I know this dependency, serialize as a Model
+        elif obj_type in self.dependencies.values() or isinstance(obj_type, Model):
             return self._serialize(attr)
 
         if obj_type == dict:

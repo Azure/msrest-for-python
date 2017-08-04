@@ -161,6 +161,27 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.s = Serializer()
         return super(TestRuntimeSerialized, self).setUp()
 
+    def test_serialize_direct_model(self):
+        testobj = self.TestObj()
+        testobj.attr_a = "myid"
+        testobj.attr_b = 42
+        testobj.attr_c = True
+        testobj.attr_d = [1,2,3]
+        testobj.attr_e = {"pi": 3.14}
+        testobj.attr_f = timedelta(1)
+
+        serialized = testobj.serialize()
+        expected = {
+            "id": "myid",
+            "AttrB": 42,
+            "Key_C": True,
+            "AttrD": [1,2,3],
+            "AttrE": {"pi": 3.14},
+            "AttrF": "P1D"
+        }
+        self.assertEquals(expected, serialized)
+
+
     def test_validate(self):
         # Assert not necessary, should not raise exception
         self.s.validate("simplestring", "StringForLog", pattern="^[a-z]+$")
@@ -571,7 +592,10 @@ class TestRuntimeSerialized(unittest.TestCase):
             } 
         }
         self.maxDiff = None
-        self.assertEqual(message, output) 
+        self.assertEqual(message, output)
+
+        message = ComplexJson().serialize()
+        self.assertEqual(message, output)
 
     def test_polymorphic_serialization(self):
 
