@@ -28,6 +28,7 @@ import sys
 import json
 import isodate
 import logging
+from enum import Enum
 from datetime import datetime, timedelta
 import unittest
 try:
@@ -230,6 +231,39 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         with self.assertRaises(SerializationError):
             self.s._serialize(test_obj)
+
+    def test_attr_enum(self):
+        """
+        Test serializing with Enum.
+        """
+
+        test_obj = type("TestEnumObj", (Model,), {"_attribute_map":None})
+        test_obj._attribute_map = {
+            "abc":{"key":"ABC", "type":"TestEnum"}
+        }
+        class TestEnum(Enum):
+            val = "Value"
+
+        t = test_obj
+        t.abc = TestEnum.val
+
+        serialized = self.s._serialize(test_obj)
+        expected = {
+            "ABC": "Value"
+        }
+
+        self.assertEqual(expected, serialized)
+
+        class TestEnum2(Enum):
+            val2 = "Value2"
+        t.abc = TestEnum2.val2
+
+        serializer = Serializer({
+            'TestEnum': TestEnum,
+            'TestEnum2': TestEnum2
+        })
+        with self.assertRaises(SerializationError):
+            serializer._serialize(t)
 
     def test_attr_none(self):
         """

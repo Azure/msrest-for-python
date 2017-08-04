@@ -598,12 +598,12 @@ class Serializer(object):
     @staticmethod
     def serialize_enum(attr, enum_obj=None):
         try:
-            return attr.value
+            result = attr.value
         except AttributeError:
-            pass
+            result = attr
         try:
-            enum_obj(attr)
-            return attr
+            enum_obj(result)
+            return result
         except ValueError:
             for enum_value in enum_obj:
                 if enum_value.value.lower() == str(attr).lower():
