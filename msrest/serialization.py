@@ -77,6 +77,37 @@ except ImportError:
 
 _FLATTEN = re.compile(r"(?<!\\)\.")
 
+def attribute_transfomer(key, attr_desc, value):
+    """A key transfomer that returns the Python attribute.
+
+    :param str key: The attribute name
+    :param dict attr_desc: The attribute metadata
+    :param object value: The value
+    :returns: A key using attribute name
+    """
+    return key
+
+def full_restapi_key_transformer(key, attr_desc, value):
+    """A key transfomer that returns the full RestAPI key path.
+
+    :param str _: The attribute name
+    :param dict attr_desc: The attribute metadata
+    :param object value: The value
+    :returns: A list of keys using RestAPI syntax.
+    """
+    keys = _FLATTEN.split(attr_desc['key'])
+    return [_decode_attribute_map_key(k) for k in keys]
+
+def last_restapi_key_transformer(key, attr_desc, value):
+    """A key transfomer that returns the last RestAPI key.
+
+    :param str _: The attribute name
+    :param dict attr_desc: The attribute metadata
+    :param object value: The value
+    :returns: The last RestAPI key.
+    """
+    return full_restapi_key_transformer(key, attr_desc, value)[-1]
+
 class Model(object):
     """Mixin for all client request body/response body models to support
     serialization and deserialization.
@@ -107,11 +138,45 @@ class Model(object):
     def serialize(self):
         """Return the JSON that would be sent to azure from this model.
 
+        This is an alias to `to_dict(full_restapi_key_transformer)`.
+
         :returns: A dict JSON compatible object
         :rtype: dict
         """
         serializer = Serializer()
         return serializer._serialize(self)
+
+    def as_dict(self, key_transformer=attribute_transfomer):
+        """Return a dict that can be JSONify using json.dump.
+
+        Advanced usage might optionaly use a callback as parameter:
+
+        .. code::python
+
+            def my_key_transformer(key, attr_desc, value):
+                return key
+
+        Key is the attribute name used in Python. Attr_desc
+        is a dict of metadata. Currently contains 'type' with the 
+        msrest type and 'key' with the RestAPI encoded key.
+        Value is the current value in this object.
+
+        The string returned will be used to serialize the key.
+        If the return type is a list, this is considered hierarchical
+        result dict.
+
+        See the three examples in this file:
+
+        - attribute_transfomer
+        - full_restapi_key_transfomer
+        - last_restapi_key_transformer
+
+        :param function key_transformer: A key transformer function.
+        :returns: A dict JSON compatible object
+        :rtype: dict
+        """
+        serializer = Serializer()
+        return serializer._serialize(self, key_transformer=key_transformer)
 
     @classmethod
     def _flatten_subtype(cls, key, objects):
@@ -283,6 +348,7 @@ class Serializer(object):
         :rtype: str, dict
         :raises: SerializationError if serialization fails.
         """
+        key_transformer=kwargs.get("key_transformer", full_restapi_key_transformer)
         if target_obj is None:
             return None
 
@@ -306,10 +372,10 @@ class Serializer(object):
                 attr_name = attr
                 debug_name = "{}.{}".format(class_name, attr_name)
                 try:
-                    keys = _FLATTEN.split(map['key'])
-                    keys = [_decode_attribute_map_key(k) for k in keys]
-                    attr_type = map['type']
                     orig_attr = getattr(target_obj, attr)
+                    keys = key_transformer(attr, map.copy(), orig_attr)
+                    keys = keys if isinstance(keys, list) else [keys]
+                    attr_type = map['type']
                     validation = target_obj._validation.get(attr_name, {})
                     orig_attr = self.validate(
                         orig_attr, debug_name, **validation)
@@ -439,7 +505,7 @@ class Serializer(object):
                 if validator(data, value):
                     raise ValidationError(key, name, value)
         except TypeError:
-            raise ValidationError("unknown", name)
+            raise ValidationError("unknown", name, "unknown")
         else:
             return data
 

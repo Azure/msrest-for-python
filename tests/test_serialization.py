@@ -38,7 +38,7 @@ except ImportError:
 
 from requests import Response
 
-from msrest.serialization import Model
+from msrest.serialization import Model, last_restapi_key_transformer
 from msrest import Serializer, Deserializer
 from msrest.exceptions import SerializationError, DeserializationError, ValidationError
 
@@ -143,7 +143,8 @@ class TestRuntimeSerialized(unittest.TestCase):
             'attr_c': {'key':'Key_C', 'type': 'bool'},
             'attr_d': {'key':'AttrD', 'type':'[int]'},
             'attr_e': {'key':'AttrE', 'type': '{float}'},
-            'attr_f': {'key':'AttrF', 'type': 'duration'}
+            'attr_f': {'key':'AttrF', 'type': 'duration'},
+            'attr_g': {'key':'properties.AttrG', 'type':'str'},
             }
 
         def __init__(self):
@@ -154,6 +155,7 @@ class TestRuntimeSerialized(unittest.TestCase):
             self.attr_d = None
             self.attr_e = None
             self.attr_f = None
+            self.attr_g = None
 
         def __str__(self):
             return "Test_Object"
@@ -170,6 +172,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         testobj.attr_d = [1,2,3]
         testobj.attr_e = {"pi": 3.14}
         testobj.attr_f = timedelta(1)
+        testobj.attr_g = "RecursiveObject"
 
         serialized = testobj.serialize()
         expected = {
@@ -178,9 +181,48 @@ class TestRuntimeSerialized(unittest.TestCase):
             "Key_C": True,
             "AttrD": [1,2,3],
             "AttrE": {"pi": 3.14},
-            "AttrF": "P1D"
+            "AttrF": "P1D",
+            "properties": {
+                "AttrG": "RecursiveObject"
+            }
         }
-        self.assertEquals(expected, serialized)
+        self.assertDictEqual(expected, serialized)
+
+        jsonable = json.dumps(testobj.as_dict())
+        expected = {
+            "attr_a": "myid",
+            "attr_b": 42,
+            "attr_c": True,
+            "attr_d": [1,2,3],
+            "attr_e": {"pi": 3.14},
+            "attr_f": "P1D",
+            "attr_g": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
+
+        jsonable = json.dumps(testobj.as_dict(last_restapi_key_transformer))
+        expected = {
+            "id": "myid",
+            "AttrB": 42,
+            "Key_C": True,
+            "AttrD": [1,2,3],
+            "AttrE": {"pi": 3.14},
+            "AttrF": "P1D",
+            "AttrG": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
+
+        jsonable = json.dumps(testobj.as_dict(lambda x,y,z: x+"XYZ"))
+        expected = {
+            "attr_aXYZ": "myid",
+            "attr_bXYZ": 42,
+            "attr_cXYZ": True,
+            "attr_dXYZ": [1,2,3],
+            "attr_eXYZ": {"pi": 3.14},
+            "attr_fXYZ": "P1D",
+            "attr_gXYZ": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
 
 
     def test_validate(self):
