@@ -4,5 +4,6 @@
     "python.unitTest.pyTestEnabled": true,
     "files.exclude": {
         "**/*.pyc": true
-    }
+    },
+    "git.ignoreLimitWarning": true
 }
