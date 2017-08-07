@@ -893,6 +893,25 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.d = Deserializer()
         return super(TestRuntimeDeserialized, self).setUp()
 
+    def test_cls_method_deserialization(self):
+        json_data = {
+            'id': 'myid',
+            'AttrB': 42,
+            'Key_C': True,
+            'AttrD': [1,2,3],
+            'AttrE': {'pi': 3.14},
+            'AttrF': [['internal', 'list', 'of', 'strings']]
+        }
+
+        model_instance = self.TestObj.from_dict(json_data)
+        self.assertEqual(model_instance.attr_a, 'myid')
+        self.assertEqual(model_instance.attr_b, 42)
+        self.assertEqual(model_instance.attr_c, True)
+        self.assertEqual(model_instance.attr_d, [1,2,3])
+        self.assertEqual(model_instance.attr_e, {'pi': 3.14})
+        self.assertEqual(model_instance.attr_f, [['internal', 'list', 'of', 'strings']])
+
+
     def test_non_obj_deserialization(self):
         """
         Test direct deserialization of simple types.

@@ -32,6 +32,7 @@ from enum import Enum
 import json
 import logging
 import re
+import sys
 try:
     from urllib import quote
 except ImportError:
@@ -177,6 +178,24 @@ class Model(object):
         """
         serializer = Serializer()
         return serializer._serialize(self, key_transformer=key_transformer)
+
+    @classmethod
+    def deserialize(cls, data):
+        try:
+            str_models = cls.__module__.rsplit('.',1)[0]
+            models = sys.modules[str_models]
+            client_models = {k: v for k, v in models.__dict__.items() if isinstance(v, type)}
+            if cls.__name__ not in client_models:
+                raise ValueError("Not Autorest generated code")
+        except Exception:
+            # Assume it's not Autorest generated (tests?). Add ourselves as dependencies.
+            client_models = {cls.__name__: cls}
+        deserializer = Deserializer(client_models)
+        return deserializer(cls.__name__, data)
+
+    @classmethod
+    def from_dict(cls, data):
+        return cls.deserialize(data)
 
     @classmethod
     def _flatten_subtype(cls, key, objects):
