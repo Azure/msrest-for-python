@@ -78,7 +78,7 @@ except ImportError:
 
 _FLATTEN = re.compile(r"(?<!\\)\.")
 
-def attribute_transfomer(key, attr_desc, value):
+def attribute_transformer(key, attr_desc, value):
     """A key transfomer that returns the Python attribute.
 
     :param str key: The attribute name
@@ -178,7 +178,7 @@ class Model(object):
         serializer = Serializer()
         return serializer._serialize(self)
 
-    def as_dict(self, key_transformer=attribute_transfomer, keep_readonly=True):
+    def as_dict(self, key_transformer=attribute_transformer, keep_readonly=True):
         """Return a dict that can be JSONify using json.dump.
 
         Advanced usage might optionaly use a callback as parameter:
@@ -199,7 +199,7 @@ class Model(object):
 
         See the three examples in this file:
 
-        - attribute_transfomer
+        - attribute_transformer
         - full_restapi_key_transfomer
         - last_restapi_key_transformer
 
