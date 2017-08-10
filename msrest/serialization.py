@@ -109,6 +109,19 @@ def last_restapi_key_transformer(key, attr_desc, value):
     """
     return full_restapi_key_transformer(key, attr_desc, value)[-1]
 
+def _validate_iterator_type(attr_type, data):
+    result = []
+    if attr_type.startswith('[') and data is not None:
+        for content in data:
+            result += _validate_iterator_type(attr_type[1:-1], content) 
+    elif attr_type.startswith('{') and data is not None:
+        for content in data.values():
+            result += _validate_iterator_type(attr_type[1:-1], content)
+    elif hasattr(data, '_validation'):
+        return data.validate()
+    return result
+
+
 class Model(object):
     """Mixin for all client request body/response body models to support
     serialization and deserialization.
@@ -136,10 +149,29 @@ class Model(object):
     def __str__(self):
         return str(self.__dict__)
 
+    def validate(self):
+        """Validate this model recursively and return a list of ValidationError.
+
+        :returns: A list of validation error
+        :rtype: list
+        """
+        validation_result = []
+        for attr_name, value in [(attr, getattr(self, attr)) for attr in self._attribute_map]:
+            attr_type = self._attribute_map[attr_name]['type']
+            
+            if attr_type[0] in ['[', '{']:
+                validation_result += _validate_iterator_type(attr_type, value)
+            else:
+                try:
+                    Serializer.validate(value, attr_name, **self._validation.get(attr_name, {}))
+                except ValidationError as validation_error:
+                    validation_result.append(validation_error)
+        return validation_result
+
     def serialize(self):
         """Return the JSON that would be sent to azure from this model.
 
-        This is an alias to `to_dict(full_restapi_key_transformer)`.
+        This is an alias to `as_dict(full_restapi_key_transformer, keep_readonly=False)`.
 
         :returns: A dict JSON compatible object
         :rtype: dict
@@ -147,7 +179,7 @@ class Model(object):
         serializer = Serializer()
         return serializer._serialize(self)
 
-    def as_dict(self, key_transformer=attribute_transfomer):
+    def as_dict(self, key_transformer=attribute_transfomer, keep_readonly=True):
         """Return a dict that can be JSONify using json.dump.
 
         Advanced usage might optionaly use a callback as parameter:
@@ -177,10 +209,10 @@ class Model(object):
         :rtype: dict
         """
         serializer = Serializer()
-        return serializer._serialize(self, key_transformer=key_transformer)
+        return serializer._serialize(self, key_transformer=key_transformer, keep_readonly=keep_readonly)
 
     @classmethod
-    def deserialize(cls, data):
+    def _infer_class_models(cls):
         try:
             str_models = cls.__module__.rsplit('.',1)[0]
             models = sys.modules[str_models]
@@ -190,12 +222,37 @@ class Model(object):
         except Exception:
             # Assume it's not Autorest generated (tests?). Add ourselves as dependencies.
             client_models = {cls.__name__: cls}
-        deserializer = Deserializer(client_models)
+        return client_models
+
+    @classmethod
+    def deserialize(cls, data):
+        """Parse a dict using the RestAPI syntax and return a model.
+
+        :param dict data: A dict using RestAPI structure
+        :returns: An instance of this model
+        :raises: DeserializationError if something went wrong
+        """
+        deserializer = Deserializer(cls._infer_class_models())
         return deserializer(cls.__name__, data)
 
     @classmethod
-    def from_dict(cls, data):
-        return cls.deserialize(data)
+    def from_dict(cls, data, strict_key_extractor=None, optional_key_extractors=None):
+        """Parse a dict using given key extractor return a model.
+
+        By default consider no strict parsing and add all known optional key
+        extractors (rest_key_extractor and attribute_key_extractor)
+
+        :param dict data: A dict using RestAPI structure
+        :returns: An instance of this model
+        :raises: DeserializationError if something went wrong
+        """
+        deserializer = Deserializer(cls._infer_class_models())
+        deserializer.strict_key_extractor = strict_key_extractor
+        deserializer.optional_key_extractors = [
+            rest_key_extractor,
+            attribute_key_extractor
+        ] if optional_key_extractors is None else optional_key_extractors
+        return deserializer(cls.__name__, data)
 
     @classmethod
     def _flatten_subtype(cls, key, objects):
@@ -368,6 +425,7 @@ class Serializer(object):
         :raises: SerializationError if serialization fails.
         """
         key_transformer=kwargs.get("key_transformer", full_restapi_key_transformer)
+        keep_readonly=kwargs.get("keep_readonly", False)
         if target_obj is None:
             return None
 
@@ -389,15 +447,14 @@ class Serializer(object):
             attributes = target_obj._attribute_map
             for attr, map in attributes.items():
                 attr_name = attr
+                if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
+                    continue
                 debug_name = "{}.{}".format(class_name, attr_name)
                 try:
                     orig_attr = getattr(target_obj, attr)
                     keys = key_transformer(attr, map.copy(), orig_attr)
                     keys = keys if isinstance(keys, list) else [keys]
                     attr_type = map['type']
-                    validation = target_obj._validation.get(attr_name, {})
-                    orig_attr = self.validate(
-                        orig_attr, debug_name, **validation)
                     new_attr = self.serialize_data(
                         orig_attr, attr_type, **kwargs)
 
@@ -434,6 +491,9 @@ class Serializer(object):
         if data is None:
             raise ValidationError("required", "body", True)
         data = _convert_to_datatype(data, data_type, self.dependencies)
+        errors = _validate_iterator_type(data_type, data)
+        if errors:
+            raise errors[0]
         return self._serialize(data, data_type, **kwargs)
 
     def url(self, name, data, data_type, **kwargs):
@@ -508,7 +568,8 @@ class Serializer(object):
         else:
             return str(output)
 
-    def validate(self, data, name, **kwargs):
+    @classmethod
+    def validate(cls, data, name, **kwargs):
         """Validate that a piece of data meets certain conditions"""
         required = kwargs.get('required', False)
         if required and data is None:
@@ -520,7 +581,7 @@ class Serializer(object):
 
         try:
             for key, value in kwargs.items():
-                validator = self.validation.get(key, lambda x, y: False)
+                validator = cls.validation.get(key, lambda x, y: False)
                 if validator(data, value):
                     raise ValidationError(key, name, value)
         except TypeError:
@@ -829,6 +890,25 @@ class Serializer(object):
         except AttributeError:
             raise TypeError("Unix time object must be valid Datetime object.")
 
+def rest_key_extractor(attr, attr_desc, data):
+    attr_type = attr_desc['type']
+    key = attr_desc['key']
+    working_data = data
+
+    while '.' in key:
+        dict_keys = _FLATTEN.split(key)
+        if len(dict_keys) == 1:
+            key = _decode_attribute_map_key(dict_keys[0])
+            break
+        working_key = _decode_attribute_map_key(dict_keys[0])
+        working_data = working_data.get(working_key, data)
+        key = '.'.join(dict_keys[1:])
+
+    return working_data.get(key)
+
+
+def attribute_key_extractor(attr, attr_desc, data):
+    return data[attr]
 
 class Deserializer(object):
     """Response object model deserializer.
@@ -858,6 +938,10 @@ class Deserializer(object):
             '{}': self.deserialize_dict
             }
         self.dependencies = dict(classes) if classes else {}
+        self.optional_key_extractors = [
+            attribute_key_extractor
+        ]
+        self.strict_key_extractor = rest_key_extractor
 
     def __call__(self, target_obj, response_data):
         """Call the deserializer to process a REST response.
@@ -881,21 +965,22 @@ class Deserializer(object):
             attributes = response._attribute_map
             d_attrs = {}
             for attr, map in attributes.items():
-                attr_type = map['type']
-                key = map['key']
-                working_data = data
+                if self.strict_key_extractor:
+                    raw_value = rest_key_extractor(attr, map, data)
 
-                while '.' in key:
-                    dict_keys = _FLATTEN.split(key)
-                    if len(dict_keys) == 1:
-                        key = _decode_attribute_map_key(dict_keys[0])
-                        break
-                    working_key = _decode_attribute_map_key(dict_keys[0])
-                    working_data = working_data.get(working_key, data)
-                    key = '.'.join(dict_keys[1:])
+                else:
+                    key_extractor_exceptions = [] # What to do with that?
+                    for key_extractor in self.optional_key_extractors:
+                        try:
+                            raw_value = key_extractor(attr, map, data)
+                        except Exception as err:
+                            key_extractor_exceptions.append(err)
+                        else:
+                            break
+                    else:
+                        raise KeyError("No optional extractor were able to extract from "+attr)
 
-                raw_value = working_data.get(key)
-                value = self.deserialize_data(raw_value, attr_type)
+                value = self.deserialize_data(raw_value, map['type'])
                 d_attrs[attr] = value
         except (AttributeError, TypeError, KeyError) as err:
             msg = "Unable to deserialize to object: " + class_name

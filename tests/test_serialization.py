@@ -38,9 +38,11 @@ except ImportError:
 
 from requests import Response
 
-from msrest.serialization import Model, last_restapi_key_transformer
+from msrest.serialization import Model, last_restapi_key_transformer, full_restapi_key_transformer
 from msrest import Serializer, Deserializer
 from msrest.exceptions import SerializationError, DeserializationError, ValidationError
+
+from . import storage_models
 
 
 class Resource(Model):
@@ -230,6 +232,35 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.s.validate("simplestring", "StringForLog", pattern="^[a-z]+$")
         self.s.validate(u"UTF8ééééé", "StringForLog", pattern=r"^[\w]+$")
 
+    def test_model_validate(self):
+
+        class TestObj(Model):
+
+            _validation = {
+                'name': {'min_length': 3},
+            }                
+            _attribute_map = {
+                'name': {'key':'name', 'type':'str'},
+                'rec_list': {'key':'rec_list', 'type':'[[TestObj]]'},
+                'rec_dict': {'key':'rec_dict', 'type':'{{TestObj}}'},
+            }
+            
+            def __init__(self, name):
+                self.name = name
+                self.rec_list = None
+                self.rec_dict = None
+
+        obj = TestObj("ab")
+        obj.rec_list = [[TestObj("bc")]]
+        obj.rec_dict = {"key": {"key": TestObj("bc")}}
+
+        broken_rules = obj.validate()
+        self.assertEquals(3, len(broken_rules))
+        self.assertEquals(
+            "Parameter 'name' must have length greater than 3.",
+            str(broken_rules[0])
+        )
+
     def test_obj_serialize_none(self):
         """Test that serialize None in object is still None.
         """
@@ -328,7 +359,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         test_obj.attr_b = None
 
         with self.assertRaises(ValidationError):
-            self.s._serialize(test_obj)
+            self.s.body(test_obj, 'TestObj')
+
+        validation_errors = test_obj.validate()
+        self.assertEqual(len(validation_errors), 1)
 
         test_obj.attr_b = 25
 
@@ -358,7 +392,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         test_obj.attr_a = None
 
         with self.assertRaises(ValidationError):
-            self.s._serialize(test_obj)
+            self.s.body(test_obj, 'TestObj')
+
+        validation_errors = test_obj.validate()
+        self.assertEqual(len(validation_errors), 1)
 
         self.TestObj._validation = {}
         test_obj.attr_a = "TestString"
@@ -903,13 +940,72 @@ class TestRuntimeDeserialized(unittest.TestCase):
             'AttrF': [['internal', 'list', 'of', 'strings']]
         }
 
+        def assert_model(inst):
+            self.assertEqual(inst.attr_a, 'myid')
+            self.assertEqual(inst.attr_b, 42)
+            self.assertEqual(inst.attr_c, True)
+            self.assertEqual(inst.attr_d, [1,2,3])
+            self.assertEqual(inst.attr_e, {'pi': 3.14})
+            self.assertEqual(inst.attr_f, [['internal', 'list', 'of', 'strings']])
+
         model_instance = self.TestObj.from_dict(json_data)
-        self.assertEqual(model_instance.attr_a, 'myid')
-        self.assertEqual(model_instance.attr_b, 42)
-        self.assertEqual(model_instance.attr_c, True)
-        self.assertEqual(model_instance.attr_d, [1,2,3])
-        self.assertEqual(model_instance.attr_e, {'pi': 3.14})
-        self.assertEqual(model_instance.attr_f, [['internal', 'list', 'of', 'strings']])
+        assert_model(model_instance)
+
+        # Get an attribute version of  this model
+        attr_data = {
+            'attr_a': 'myid',
+            'attr_b': 42,
+            'attr_c': True,
+            'attr_d': [1,2,3],
+            'attr_e': {'pi': 3.14},
+            'attr_f': [['internal', 'list', 'of', 'strings']]
+        }
+        self.TestObj.from_dict(attr_data)
+        assert_model(model_instance)
+
+
+    def test_deserialize_storage(self):
+        StorageAccount = storage_models.StorageAccount
+
+        json_storage = {
+            'id': '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test_mgmt_storage_test_storage_accounts43b8102a/providers/Microsoft.Storage/storageAccounts/pyarmstorage43b8102a',
+            'kind': 'Storage',
+            'location': 'westus',
+            'name': 'pyarmstorage43b8102a',
+            'properties': {
+                'creationTime': '2017-07-19T23:19:21.7640412Z',
+                'primaryEndpoints': {'blob': 'https://pyarmstorage43b8102a.blob.core.windows.net/',
+                    'file': 'https://pyarmstorage43b8102a.file.core.windows.net/',
+                    'queue': 'https://pyarmstorage43b8102a.queue.core.windows.net/',
+                    'table': 'https://pyarmstorage43b8102a.table.core.windows.net/'},
+                'primaryLocation': 'westus',
+                'provisioningState': 'Succeeded',
+                'statusOfPrimary': 'available',
+                'supportsHttpsTrafficOnly': False},
+            'sku': {'name': 'Standard_LRS', 'tier': 'Standard'},
+            'tags': {},
+            'type': 'Microsoft.Storage/storageAccounts'}
+
+        storage_account = StorageAccount.deserialize(json_storage)
+
+        self.assertEquals(storage_account.id, json_storage['id']) # basic
+        self.assertEquals(storage_account.sku.name, storage_models.SkuName(json_storage['sku']['name'])) # Nested + enum
+        self.assertEquals(storage_account.primary_location, json_storage['properties']['primaryLocation']) # Flatten
+
+        json_storage_output = storage_account.serialize()
+        self.assertEqual(len(json_storage_output), 3) # Only 3 keys are not readonly
+
+        json_storage_output = storage_account.as_dict(full_restapi_key_transformer)
+        self.assertListEqual(
+            sorted(list(json_storage_output.keys())),
+            sorted(list(json_storage.keys()))
+        )
+
+        json_storage_output = storage_account.as_dict(full_restapi_key_transformer, keep_readonly=False)
+        self.assertListEqual(
+            sorted(list(json_storage_output.keys())),
+            ['location', 'properties', 'tags']
+        )
 
 
     def test_non_obj_deserialization(self):
