@@ -109,14 +109,14 @@ def last_restapi_key_transformer(key, attr_desc, value):
     """
     return full_restapi_key_transformer(key, attr_desc, value)[-1]
 
-def _validate_iterator_type(attr_type, data):
+def _recursive_validate(attr_type, data):
     result = []
     if attr_type.startswith('[') and data is not None:
         for content in data:
-            result += _validate_iterator_type(attr_type[1:-1], content) 
+            result += _recursive_validate(attr_type[1:-1], content)
     elif attr_type.startswith('{') and data is not None:
         for content in data.values():
-            result += _validate_iterator_type(attr_type[1:-1], content)
+            result += _recursive_validate(attr_type[1:-1], content)
     elif hasattr(data, '_validation'):
         return data.validate()
     return result
@@ -164,9 +164,7 @@ class Model(object):
             except ValidationError as validation_error:
                 validation_result.append(validation_error)
 
-            # If it's a list, try recursevly too
-            if attr_type[0] in ['[', '{']:
-                validation_result += _validate_iterator_type(attr_type, value)
+            validation_result += _recursive_validate(attr_type, value)
         return validation_result
 
     def serialize(self):
@@ -492,7 +490,7 @@ class Serializer(object):
         if data is None:
             raise ValidationError("required", "body", True)
         data = _convert_to_datatype(data, data_type, self.dependencies)
-        errors = _validate_iterator_type(data_type, data)
+        errors = _recursive_validate(data_type, data)
         if errors:
             raise errors[0]
         return self._serialize(data, data_type, **kwargs)

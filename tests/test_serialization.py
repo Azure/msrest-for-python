@@ -245,6 +245,7 @@ class TestRuntimeSerialized(unittest.TestCase):
                 'rec_list': {'key':'rec_list', 'type':'[[TestObj]]'},
                 'rec_dict': {'key':'rec_dict', 'type':'{{TestObj}}'},
                 'display_names': {'key': 'display_names', 'type': '[str]'},
+                'obj': {'key':'obj', 'type':'TestObj'},
             }
             
             def __init__(self, name):
@@ -252,14 +253,16 @@ class TestRuntimeSerialized(unittest.TestCase):
                 self.rec_list = None
                 self.rec_dict = None
                 self.display_names = None
+                self.obj = None
 
         obj = TestObj("ab")
         obj.rec_list = [[TestObj("bc")]]
         obj.rec_dict = {"key": {"key": TestObj("bc")}}
         obj.display_names = ["ab"]
+        obj.obj = TestObj("ab")
 
         broken_rules = obj.validate()
-        self.assertEquals(4, len(broken_rules))
+        self.assertEquals(5, len(broken_rules))
         self.assertEquals(
             "Parameter 'name' must have length greater than 3.",
             str(broken_rules[0])
