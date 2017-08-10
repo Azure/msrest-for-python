@@ -158,14 +158,15 @@ class Model(object):
         validation_result = []
         for attr_name, value in [(attr, getattr(self, attr)) for attr in self._attribute_map]:
             attr_type = self._attribute_map[attr_name]['type']
-            
+
+            try:
+                Serializer.validate(value, attr_name, **self._validation.get(attr_name, {}))
+            except ValidationError as validation_error:
+                validation_result.append(validation_error)
+
+            # If it's a list, try recursevly too
             if attr_type[0] in ['[', '{']:
                 validation_result += _validate_iterator_type(attr_type, value)
-            else:
-                try:
-                    Serializer.validate(value, attr_name, **self._validation.get(attr_name, {}))
-                except ValidationError as validation_error:
-                    validation_result.append(validation_error)
         return validation_result
 
     def serialize(self):

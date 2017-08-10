@@ -238,27 +238,36 @@ class TestRuntimeSerialized(unittest.TestCase):
 
             _validation = {
                 'name': {'min_length': 3},
+                'display_names': {'min_items': 2},
             }                
             _attribute_map = {
                 'name': {'key':'name', 'type':'str'},
                 'rec_list': {'key':'rec_list', 'type':'[[TestObj]]'},
                 'rec_dict': {'key':'rec_dict', 'type':'{{TestObj}}'},
+                'display_names': {'key': 'display_names', 'type': '[str]'},
             }
             
             def __init__(self, name):
                 self.name = name
                 self.rec_list = None
                 self.rec_dict = None
+                self.display_names = None
 
         obj = TestObj("ab")
         obj.rec_list = [[TestObj("bc")]]
         obj.rec_dict = {"key": {"key": TestObj("bc")}}
+        obj.display_names = ["ab"]
 
         broken_rules = obj.validate()
-        self.assertEquals(3, len(broken_rules))
+        self.assertEquals(4, len(broken_rules))
         self.assertEquals(
             "Parameter 'name' must have length greater than 3.",
             str(broken_rules[0])
+        )
+
+        self.assertEquals(
+            "Parameter 'display_names' must contain at least 2 items.",
+            str(broken_rules[3])
         )
 
     def test_obj_serialize_none(self):
