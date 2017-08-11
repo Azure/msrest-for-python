@@ -1042,7 +1042,7 @@ class Deserializer(object):
                 return None
             return json.loads(raw_data.text)
         except (ValueError, TypeError, AttributeError):
-                pass
+            pass
         return data
 
     def _instantiate_model(self, response, attrs):
