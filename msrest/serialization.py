@@ -337,46 +337,6 @@ def _decode_attribute_map_key(key):
     """
     return key.replace('\\.', '.')
 
-def _convert_to_datatype(data, data_type, localtypes):
-    if data is None:
-        return data
-    data_obj = localtypes.get(data_type.strip('{[]}'))
-    if data_obj:
-        if data_type.startswith('['):
-            data = [
-                _convert_to_datatype(
-                    param, data_type[1:-1], localtypes) for param in data
-            ]
-        elif data_type.startswith('{'):
-            data = {
-                key: _convert_to_datatype(
-                    data[key], data_type[1:-1], localtypes) for key in data
-            }
-        elif issubclass(data_obj, Enum):
-            return data
-        elif not isinstance(data, data_obj):
-            data_obj = data_obj._classify(data, localtypes)
-            data = data_obj._solve(data)
-            result = {
-                key: _convert_to_datatype(
-                    data[key],
-                    data_obj._attribute_map[key]['type'],
-                    localtypes) for key in data
-            }
-            data = data_obj(**result)
-        else:
-            constants = [name for name, config in getattr(data, '_validation', {}).items()
-                         if config.get('constant')]
-            try:
-                for attr, mapconfig in data._attribute_map.items():
-                    if attr in constants:
-                        continue
-                    setattr(data, attr, _convert_to_datatype(
-                        getattr(data, attr), mapconfig['type'], localtypes))
-            except AttributeError:
-                pass
-    return data
-
 
 class Serializer(object):
     """Request object model serializer."""
@@ -491,7 +451,15 @@ class Serializer(object):
         """
         if data is None:
             raise ValidationError("required", "body", True)
-        data = _convert_to_datatype(data, data_type, self.dependencies)
+
+        deserializer = Deserializer(self.dependencies)
+        deserializer.key_extractors = [
+            rest_key_case_insensitive_extractor,
+            attribute_key_case_insensitive_extractor,
+            last_rest_key_case_insensitive_extractor
+        ]
+        data = deserializer(data_type, data)
+
         errors = _recursive_validate(data_type, data)
         if errors:
             raise errors[0]
@@ -985,6 +953,23 @@ class Deserializer(object):
         :raises: DeserializationError if deserialization fails.
         :return: Deserialized object.
         """
+        # This is already a model, go recursive just in case
+        if hasattr(response_data, "_attribute_map"):
+            constants = [name for name, config in getattr(response_data, '_validation', {}).items()
+                         if config.get('constant')]
+            try:
+                for attr, mapconfig in response_data._attribute_map.items():
+                    if attr in constants:
+                        continue
+                    setattr(
+                        response_data,
+                        attr,
+                        self(mapconfig['type'], getattr(response_data, attr))
+                    )
+                return response_data
+            except AttributeError:
+                return
+
         data = self._unpack_content(response_data)
         response, class_name = self._classify_target(target_obj, data)
 
