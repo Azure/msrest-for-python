@@ -975,6 +975,67 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.TestObj.from_dict(attr_data)
         assert_model(model_instance)
 
+    def test_robust_deserialization(self):
+
+        class TestKeyTypeObj(Model):
+
+            _validation = {}
+            _attribute_map = {
+                'attr_a': {'key':'attr_a', 'type':'int'},
+                'attr_b': {'key':'id', 'type':'int'},
+                'attr_c': {'key':'KeyC', 'type': 'int'},
+                'attr_d': {'key':'properties.KeyD', 'type': 'int'},
+            }
+
+        obj = TestKeyTypeObj.from_dict({
+            "attr_a": 1,
+            "id": 2,
+            "keyc": 3,
+            "keyd": 4
+        })
+
+        self.assertEqual(1, obj.attr_a)
+        self.assertEqual(2, obj.attr_b)
+        self.assertEqual(3, obj.attr_c)
+        self.assertEqual(4, obj.attr_d)
+
+        obj = TestKeyTypeObj.from_dict({
+            "attr_a": 1,
+            "id": 2,
+            "keyc": 3,
+            "properties": {
+                "KeyD": 4
+            }
+        })
+
+        self.assertEqual(1, obj.attr_a)
+        self.assertEqual(2, obj.attr_b)
+        self.assertEqual(3, obj.attr_c)
+        self.assertEqual(4, obj.attr_d)
+
+        with self.assertRaises(DeserializationError):
+            obj = TestKeyTypeObj.from_dict({
+                "attr_b": 1,
+                "id": 2,
+                "keyc": 3,
+                "keyd": 4
+            })
+
+    def test_basic_deserialization(self):
+        class TestObj(Model):
+
+            _validation = {
+                'name': {'min_length': 3},
+            }                
+            _attribute_map = {
+                'name': {'key':'RestName', 'type':'str'},
+            }
+            
+            def __init__(self, name):
+                self.name = name
+
+        obj = TestObj.from_dict({'name': 'ab'})
+        self.assertEqual('ab', obj.name)
 
     def test_deserialize_storage(self):
         StorageAccount = storage_models.StorageAccount

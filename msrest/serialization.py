@@ -235,22 +235,23 @@ class Model(object):
         return deserializer(cls.__name__, data)
 
     @classmethod
-    def from_dict(cls, data, strict_key_extractor=None, optional_key_extractors=None):
+    def from_dict(cls, data, key_extractors=None):
         """Parse a dict using given key extractor return a model.
 
-        By default consider no strict parsing and add all known optional key
-        extractors (rest_key_extractor and attribute_key_extractor)
+        By default consider key
+        extractors (rest_key_case_insensitive_extractor, attribute_key_case_insensitive_extractor
+        and last_rest_key_case_insensitive_extractor)
 
         :param dict data: A dict using RestAPI structure
         :returns: An instance of this model
         :raises: DeserializationError if something went wrong
         """
         deserializer = Deserializer(cls._infer_class_models())
-        deserializer.strict_key_extractor = strict_key_extractor
-        deserializer.optional_key_extractors = [
-            rest_key_extractor,
-            attribute_key_extractor
-        ] if optional_key_extractors is None else optional_key_extractors
+        deserializer.key_extractors = [
+            rest_key_case_insensitive_extractor,
+            attribute_key_case_insensitive_extractor,
+            last_rest_key_case_insensitive_extractor
+        ] if key_extractors is None else key_extractors
         return deserializer(cls.__name__, data)
 
     @classmethod
@@ -890,7 +891,6 @@ class Serializer(object):
             raise TypeError("Unix time object must be valid Datetime object.")
 
 def rest_key_extractor(attr, attr_desc, data):
-    attr_type = attr_desc['type']
     key = attr_desc['key']
     working_data = data
 
@@ -905,9 +905,44 @@ def rest_key_extractor(attr, attr_desc, data):
 
     return working_data.get(key)
 
+def rest_key_case_insensitive_extractor(attr, attr_desc, data):
+    key = attr_desc['key']
+    working_data = data
 
-def attribute_key_extractor(attr, attr_desc, data):
-    return data[attr]
+    while '.' in key:
+        dict_keys = _FLATTEN.split(key)
+        if len(dict_keys) == 1:
+            key = _decode_attribute_map_key(dict_keys[0])
+            break
+        working_key = _decode_attribute_map_key(dict_keys[0])
+        working_data = attribute_key_case_insensitive_extractor(working_key, None, working_data)
+        key = '.'.join(dict_keys[1:])
+
+    if working_data:
+        return attribute_key_case_insensitive_extractor(key, None, working_data)
+
+def last_rest_key_extractor(attr, attr_desc, data):
+    key = attr_desc['key']
+    dict_keys = _FLATTEN.split(key)
+    return attribute_key_extractor(dict_keys[-1], None, data)
+
+def last_rest_key_case_insensitive_extractor(attr, attr_desc, data):
+    key = attr_desc['key']
+    dict_keys = _FLATTEN.split(key)
+    return attribute_key_case_insensitive_extractor(dict_keys[-1], None, data)
+
+def attribute_key_extractor(attr, _, data):
+    return data.get(attr)
+
+def attribute_key_case_insensitive_extractor(attr, _, data):
+    found_key = None
+    lower_attr = attr.lower()
+    for key in data:
+        if lower_attr == key.lower():
+            found_key = key
+            break
+
+    return data.get(found_key)
 
 class Deserializer(object):
     """Response object model deserializer.
@@ -937,10 +972,9 @@ class Deserializer(object):
             '{}': self.deserialize_dict
             }
         self.dependencies = dict(classes) if classes else {}
-        self.optional_key_extractors = [
-            attribute_key_extractor
+        self.key_extractors = [
+            rest_key_extractor
         ]
-        self.strict_key_extractor = rest_key_extractor
 
     def __call__(self, target_obj, response_data):
         """Call the deserializer to process a REST response.
@@ -964,20 +998,14 @@ class Deserializer(object):
             attributes = response._attribute_map
             d_attrs = {}
             for attr, map in attributes.items():
-                if self.strict_key_extractor:
-                    raw_value = rest_key_extractor(attr, map, data)
 
-                else:
-                    key_extractor_exceptions = [] # What to do with that?
-                    for key_extractor in self.optional_key_extractors:
-                        try:
-                            raw_value = key_extractor(attr, map, data)
-                        except Exception as err:
-                            key_extractor_exceptions.append(err)
-                        else:
-                            break
-                    else:
-                        raise KeyError("No optional extractor were able to extract from "+attr)
+                raw_value = None
+                for key_extractor in self.key_extractors:
+                    found_value = key_extractor(attr, map, data)
+                    if found_value is not None:
+                        if raw_value is not None and raw_value != found_value:
+                            raise KeyError('Use twice the key: "{}"'.format(attr))
+                        raw_value = found_value
 
                 value = self.deserialize_data(raw_value, map['type'])
                 d_attrs[attr] = value
