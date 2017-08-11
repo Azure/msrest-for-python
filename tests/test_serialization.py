@@ -38,7 +38,7 @@ except ImportError:
 
 from requests import Response
 
-from msrest.serialization import Model, last_restapi_key_transformer, full_restapi_key_transformer
+from msrest.serialization import Model, last_restapi_key_transformer, full_restapi_key_transformer, rest_key_extractor
 from msrest import Serializer, Deserializer
 from msrest.exceptions import SerializationError, DeserializationError, ValidationError
 
@@ -974,6 +974,31 @@ class TestRuntimeDeserialized(unittest.TestCase):
         }
         self.TestObj.from_dict(attr_data)
         assert_model(model_instance)
+
+    def test_personalize_deserialization(self):
+
+        class TestDurationObj(Model):
+            _attribute_map = {
+                'attr_a': {'key':'attr_a', 'type':'duration'},
+            }
+
+        with self.assertRaises(DeserializationError):
+            obj = TestDurationObj.from_dict({
+                "attr_a": "00:00:10"
+            })
+
+        def duration_rest_key_extractor(attr, attr_desc, data):
+            value = rest_key_extractor(attr, attr_desc, data)
+            if attr == "attr_a":
+                # Stupid parsing, this is just a test
+                return "PT"+value[-2:]+"S"
+
+        obj = TestDurationObj.from_dict(
+            {"attr_a": "00:00:10"},
+            key_extractors=[duration_rest_key_extractor]
+        )
+        self.assertEqual(timedelta(seconds=10), obj.attr_a)
+
 
     def test_robust_deserialization(self):
 
