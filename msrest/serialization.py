@@ -176,7 +176,7 @@ class Model(object):
         :returns: A dict JSON compatible object
         :rtype: dict
         """
-        serializer = Serializer()
+        serializer = Serializer(self._infer_class_models())
         return serializer._serialize(self, keep_readonly=keep_readonly)
 
     def as_dict(self, keep_readonly=True, key_transformer=attribute_transformer):
@@ -208,7 +208,7 @@ class Model(object):
         :returns: A dict JSON compatible object
         :rtype: dict
         """
-        serializer = Serializer()
+        serializer = Serializer(self._infer_class_models())
         return serializer._serialize(self, key_transformer=key_transformer, keep_readonly=keep_readonly)
 
     @classmethod
