@@ -202,7 +202,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         }
         self.assertDictEqual(expected, json.loads(jsonable))
 
-        jsonable = json.dumps(testobj.as_dict(last_restapi_key_transformer))
+        jsonable = json.dumps(testobj.as_dict(key_transformer=last_restapi_key_transformer))
         expected = {
             "id": "myid",
             "AttrB": 42,
@@ -214,7 +214,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         }
         self.assertDictEqual(expected, json.loads(jsonable))
 
-        jsonable = json.dumps(testobj.as_dict(lambda x,y,z: x+"XYZ"))
+        jsonable = json.dumps(testobj.as_dict(key_transformer=lambda x,y,z: x+"XYZ"))
         expected = {
             "attr_aXYZ": "myid",
             "attr_bXYZ": 42,
@@ -1093,13 +1093,13 @@ class TestRuntimeDeserialized(unittest.TestCase):
         json_storage_output = storage_account.serialize()
         self.assertEqual(len(json_storage_output), 3) # Only 3 keys are not readonly
 
-        json_storage_output = storage_account.as_dict(full_restapi_key_transformer)
+        json_storage_output = storage_account.as_dict(key_transformer=full_restapi_key_transformer)
         self.assertListEqual(
             sorted(list(json_storage_output.keys())),
             sorted(list(json_storage.keys()))
         )
 
-        json_storage_output = storage_account.as_dict(full_restapi_key_transformer, keep_readonly=False)
+        json_storage_output = storage_account.as_dict(keep_readonly=False, key_transformer=full_restapi_key_transformer)
         self.assertListEqual(
             sorted(list(json_storage_output.keys())),
             ['location', 'properties', 'tags']

@@ -167,18 +167,19 @@ class Model(object):
             validation_result += _recursive_validate(attr_type, value)
         return validation_result
 
-    def serialize(self):
+    def serialize(self, keep_readonly=False):
         """Return the JSON that would be sent to azure from this model.
 
         This is an alias to `as_dict(full_restapi_key_transformer, keep_readonly=False)`.
 
+        :param bool keep_readonly: If you want to serialize the readonly attributes
         :returns: A dict JSON compatible object
         :rtype: dict
         """
         serializer = Serializer()
-        return serializer._serialize(self)
+        return serializer._serialize(self, keep_readonly=keep_readonly)
 
-    def as_dict(self, key_transformer=attribute_transformer, keep_readonly=True):
+    def as_dict(self, keep_readonly=True, key_transformer=attribute_transformer):
         """Return a dict that can be JSONify using json.dump.
 
         Advanced usage might optionaly use a callback as parameter:
@@ -424,8 +425,8 @@ class Serializer(object):
         :rtype: str, dict
         :raises: SerializationError if serialization fails.
         """
-        key_transformer=kwargs.get("key_transformer", full_restapi_key_transformer)
-        keep_readonly=kwargs.get("keep_readonly", False)
+        key_transformer = kwargs.get("key_transformer", full_restapi_key_transformer)
+        keep_readonly = kwargs.get("keep_readonly", False)
         if target_obj is None:
             return None
 
