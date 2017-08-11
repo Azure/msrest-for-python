@@ -453,7 +453,7 @@ class Serializer(object):
             raise ValidationError("required", "body", True)
 
         # Just in case this is a dict
-        if data_type.strip('[]{}') in self.dependencies:        
+        if data_type.strip('[]{}') in self.dependencies:
             deserializer = Deserializer(self.dependencies)
             deserializer.key_extractors = [
                 rest_key_case_insensitive_extractor,
@@ -1234,6 +1234,8 @@ class Deserializer(object):
         :rtype: Enum
         :raises: DeserializationError if string is not valid enum value.
         """
+        if isinstance(data, enum_obj):
+            return data
         if isinstance(data, int):
             # Workaround. We might consider remove it in the future.
             # https://github.com/Azure/azure-rest-api-specs/issues/141
