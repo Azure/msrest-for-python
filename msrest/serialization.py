@@ -453,14 +453,19 @@ class Serializer(object):
             raise ValidationError("required", "body", True)
 
         # Just in case this is a dict
-        if data_type.strip('[]{}') in self.dependencies:
-            deserializer = Deserializer(self.dependencies)
-            deserializer.key_extractors = [
-                rest_key_case_insensitive_extractor,
-                attribute_key_case_insensitive_extractor,
-                last_rest_key_case_insensitive_extractor
-            ]
-            data = deserializer(data_type, data)
+        internal_data_type = data_type.strip('[]{}')
+        if internal_data_type in self.dependencies and not isinstance(internal_data_type, Enum):
+            try:
+                deserializer = Deserializer(self.dependencies)
+                deserializer.key_extractors = [
+                    rest_key_case_insensitive_extractor,
+                    attribute_key_case_insensitive_extractor,
+                    last_rest_key_case_insensitive_extractor
+                ]
+                data = deserializer(data_type, data)
+            except DeserializationError as err:
+                raise_with_traceback(
+                    SerializationError, "Unable to build a model: "+str(err), err)
 
         errors = _recursive_validate(data_type, data)
         if errors:
@@ -967,7 +972,8 @@ class Deserializer(object):
                     if value is None:
                         continue
                     local_type = mapconfig['type']
-                    if local_type.strip('[]{}') not in self.dependencies:
+                    internal_data_type = local_type.strip('[]{}')
+                    if internal_data_type not in self.dependencies or isinstance(internal_data_type, Enum):
                         continue
                     setattr(
                         response_data,
