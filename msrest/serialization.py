@@ -452,6 +452,7 @@ class Serializer(object):
         if data is None:
             raise ValidationError("required", "body", True)
 
+        # Just in case this is a dict
         deserializer = Deserializer(self.dependencies)
         deserializer.key_extractors = [
             rest_key_case_insensitive_extractor,
@@ -961,10 +962,16 @@ class Deserializer(object):
                 for attr, mapconfig in response_data._attribute_map.items():
                     if attr in constants:
                         continue
+                    value = getattr(response_data, attr)
+                    if value is None:
+                        continue
+                    local_type = mapconfig['type']
+                    if local_type.strip('[]{}') not in self.dependencies:
+                        continue
                     setattr(
                         response_data,
                         attr,
-                        self(mapconfig['type'], getattr(response_data, attr))
+                        self(local_type, value)
                     )
                 return response_data
             except AttributeError:
