@@ -453,13 +453,14 @@ class Serializer(object):
             raise ValidationError("required", "body", True)
 
         # Just in case this is a dict
-        deserializer = Deserializer(self.dependencies)
-        deserializer.key_extractors = [
-            rest_key_case_insensitive_extractor,
-            attribute_key_case_insensitive_extractor,
-            last_rest_key_case_insensitive_extractor
-        ]
-        data = deserializer(data_type, data)
+        if data_type.strip('[]{}') in self.dependencies:        
+            deserializer = Deserializer(self.dependencies)
+            deserializer.key_extractors = [
+                rest_key_case_insensitive_extractor,
+                attribute_key_case_insensitive_extractor,
+                last_rest_key_case_insensitive_extractor
+            ]
+            data = deserializer(data_type, data)
 
         errors = _recursive_validate(data_type, data)
         if errors:
