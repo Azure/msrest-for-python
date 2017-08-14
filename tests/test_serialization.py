@@ -214,7 +214,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         }
         self.assertDictEqual(expected, json.loads(jsonable))
 
-        jsonable = json.dumps(testobj.as_dict(key_transformer=lambda x,y,z: x+"XYZ"))
+        jsonable = json.dumps(testobj.as_dict(key_transformer=lambda x,y,z: (x+"XYZ", z)))
         expected = {
             "attr_aXYZ": "myid",
             "attr_bXYZ": 42,
@@ -223,6 +223,24 @@ class TestRuntimeSerialized(unittest.TestCase):
             "attr_eXYZ": {"pi": 3.14},
             "attr_fXYZ": "P1D",
             "attr_gXYZ": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
+
+        def value_override(attr, attr_desc, value):
+            key, value = last_restapi_key_transformer(attr, attr_desc, value)
+            if key == "AttrB":
+                value += 1
+            return key, value
+
+        jsonable = json.dumps(testobj.as_dict(key_transformer=value_override))
+        expected = {
+            "id": "myid",
+            "AttrB": 43,
+            "Key_C": True,
+            "AttrD": [1,2,3],
+            "AttrE": {"pi": 3.14},
+            "AttrF": "P1D",
+            "AttrG": "RecursiveObject"
         }
         self.assertDictEqual(expected, json.loads(jsonable))
 

@@ -86,7 +86,7 @@ def attribute_transformer(key, attr_desc, value):
     :param object value: The value
     :returns: A key using attribute name
     """
-    return key
+    return (key, value)
 
 def full_restapi_key_transformer(key, attr_desc, value):
     """A key transfomer that returns the full RestAPI key path.
@@ -97,7 +97,7 @@ def full_restapi_key_transformer(key, attr_desc, value):
     :returns: A list of keys using RestAPI syntax.
     """
     keys = _FLATTEN.split(attr_desc['key'])
-    return [_decode_attribute_map_key(k) for k in keys]
+    return ([_decode_attribute_map_key(k) for k in keys], value)
 
 def last_restapi_key_transformer(key, attr_desc, value):
     """A key transfomer that returns the last RestAPI key.
@@ -107,7 +107,8 @@ def last_restapi_key_transformer(key, attr_desc, value):
     :param object value: The value
     :returns: The last RestAPI key.
     """
-    return full_restapi_key_transformer(key, attr_desc, value)[-1]
+    key, value = full_restapi_key_transformer(key, attr_desc, value)
+    return (key[-1], value)
 
 def _recursive_validate(attr_type, data):
     result = []
@@ -413,7 +414,7 @@ class Serializer(object):
                 debug_name = "{}.{}".format(class_name, attr_name)
                 try:
                     orig_attr = getattr(target_obj, attr)
-                    keys = key_transformer(attr, map.copy(), orig_attr)
+                    keys, orig_attr = key_transformer(attr, map.copy(), orig_attr)
                     keys = keys if isinstance(keys, list) else [keys]
                     attr_type = map['type']
                     new_attr = self.serialize_data(
