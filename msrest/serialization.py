@@ -377,6 +377,7 @@ class Serializer(object):
             '{}': self.serialize_dict
             }
         self.dependencies = dict(classes) if classes else {}
+        self.key_transformer = full_restapi_key_transformer
 
     def _serialize(self, target_obj, data_type=None, **kwargs):
         """Serialize data into a string according to type.
@@ -386,7 +387,7 @@ class Serializer(object):
         :rtype: str, dict
         :raises: SerializationError if serialization fails.
         """
-        key_transformer = kwargs.get("key_transformer", full_restapi_key_transformer)
+        key_transformer = kwargs.get("key_transformer", self.key_transformer)
         keep_readonly = kwargs.get("keep_readonly", False)
         if target_obj is None:
             return None
