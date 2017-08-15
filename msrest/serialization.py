@@ -161,7 +161,8 @@ class Model(object):
             attr_type = self._attribute_map[attr_name]['type']
 
             try:
-                Serializer.validate(value, attr_name, **self._validation.get(attr_name, {}))
+                debug_name = "{}.{}".format(self.__class__.__name__, attr_name)
+                Serializer.validate(value, debug_name, **self._validation.get(attr_name, {}))
             except ValidationError as validation_error:
                 validation_result.append(validation_error)
 
@@ -215,7 +216,7 @@ class Model(object):
     @classmethod
     def _infer_class_models(cls):
         try:
-            str_models = cls.__module__.rsplit('.',1)[0]
+            str_models = cls.__module__.rsplit('.', 1)[0]
             models = sys.modules[str_models]
             client_models = {k: v for k, v in models.__dict__.items() if isinstance(v, type)}
             if cls.__name__ not in client_models:
@@ -258,7 +259,7 @@ class Model(object):
 
     @classmethod
     def _flatten_subtype(cls, key, objects):
-        if not '_subtype_map' in cls.__dict__:
+        if '_subtype_map' not in cls.__dict__:
             return {}
         result = dict(cls._subtype_map[key])
         for valuetype in cls._subtype_map[key].values():
@@ -289,35 +290,6 @@ class Model(object):
             else:
                 raise DeserializationError("Discriminator {} cannot be absent or null".format(subtype_key))
         return cls
-
-    @classmethod
-    def _solve(cls, dict_data):
-        """Solve this dict against this model a dict where key are attributes.
-
-        This can be used to support case insentive key matching or accept
-        both RestAPI keys and attribute keys in dict input.
-        :param dict dict_data: A dict of data, where keys syntax is uncertain
-        :returns: This same dict with key as intended attributes
-        :raises: KeyError If at least one dict key is not found
-        """
-        attr_keys = {s.lower(): s for s in cls._attribute_map}
-        result_dict = {}
-        for key, value in dict_data.items():
-            lower_key = key.lower()
-            pure_key = attr_keys.pop(lower_key, None)
-            if pure_key:
-                result_dict[pure_key] = value
-            else:
-                for lower_attr_key, attr_key in attr_keys.items():
-                    rest_api_response_key = cls._get_rest_key_parts(attr_key)[-1]
-                    if lower_key == rest_api_response_key.lower():
-                        result_dict[attr_key] = value
-                        break
-                else:
-                    raise KeyError("Unable to find attribute for {}".format(key))
-                del attr_keys[lower_attr_key]
-        assert len(result_dict) == len(dict_data)
-        return result_dict
 
     @classmethod
     def _get_rest_key_parts(cls, attr_key):
@@ -408,16 +380,15 @@ class Serializer(object):
 
         try:
             attributes = target_obj._attribute_map
-            for attr, map in attributes.items():
+            for attr, attr_desc in attributes.items():
                 attr_name = attr
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
                     continue
-                debug_name = "{}.{}".format(class_name, attr_name)
                 try:
                     orig_attr = getattr(target_obj, attr)
-                    keys, orig_attr = key_transformer(attr, map.copy(), orig_attr)
+                    keys, orig_attr = key_transformer(attr, attr_desc.copy(), orig_attr)
                     keys = keys if isinstance(keys, list) else [keys]
-                    attr_type = map['type']
+                    attr_type = attr_desc['type']
                     new_attr = self.serialize_data(
                         orig_attr, attr_type, **kwargs)
 
@@ -715,9 +686,7 @@ class Serializer(object):
                 except ValueError:
                     pass
             return serialized
-
-        else:
-            return str(attr)
+        return str(attr)
 
     @staticmethod
     def serialize_enum(attr, enum_obj=None):
@@ -932,7 +901,7 @@ class Deserializer(object):
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
     valid_date = re.compile(
         r'\d{4}[-]\d{2}[-]\d{2}T\d{2}:\d{2}:\d{2}'
-        '\.?\d*Z?[-+]?[\d{2}]?:?[\d{2}]?')
+        r'\.?\d*Z?[-+]?[\d{2}]?:?[\d{2}]?')
 
     def __init__(self, classes=None):
         self.deserialize_type = {
@@ -999,17 +968,17 @@ class Deserializer(object):
         try:
             attributes = response._attribute_map
             d_attrs = {}
-            for attr, map in attributes.items():
+            for attr, attr_desc in attributes.items():
 
                 raw_value = None
                 for key_extractor in self.key_extractors:
-                    found_value = key_extractor(attr, map, data)
+                    found_value = key_extractor(attr, attr_desc, data)
                     if found_value is not None:
                         if raw_value is not None and raw_value != found_value:
                             raise KeyError('Use twice the key: "{}"'.format(attr))
                         raw_value = found_value
 
-                value = self.deserialize_data(raw_value, map['type'])
+                value = self.deserialize_data(raw_value, attr_desc['type'])
                 d_attrs[attr] = value
         except (AttributeError, TypeError, KeyError) as err:
             msg = "Unable to deserialize to object: " + class_name
@@ -1372,14 +1341,14 @@ class Deserializer(object):
 
             check_decimal = attr.split('.')
             if len(check_decimal) > 1:
-                decimal = ""
+                decimal_str = ""
                 for digit in check_decimal[1]:
                     if digit.isdigit():
-                        decimal += digit
+                        decimal_str += digit
                     else:
                         break
-                if len(decimal) > 6:
-                    attr = attr.replace(decimal, decimal[0:-1])
+                if len(decimal_str) > 6:
+                    attr = attr.replace(decimal_str, decimal_str[0:-1])
 
             date_obj = isodate.parse_datetime(attr)
             test_utc = date_obj.utctimetuple()

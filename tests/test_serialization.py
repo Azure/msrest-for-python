@@ -283,11 +283,11 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.assertEquals(5, len(broken_rules))
         str_broken_rules = [str(v) for v in broken_rules]
         self.assertIn(
-            "Parameter 'name' must have length greater than 3.",
+            "Parameter 'TestObj.name' must have length greater than 3.",
             str_broken_rules
         )
         self.assertIn(
-            "Parameter 'display_names' must contain at least 2 items.",
+            "Parameter 'TestObj.display_names' must contain at least 2 items.",
             str_broken_rules
         )
 
