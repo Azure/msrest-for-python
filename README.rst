@@ -20,6 +20,27 @@ To install:
 Release History
 ---------------
 
+2017-08-21 Version 0.4.12
++++++++++++++++++++++++++
+
+**Features**
+
+- Input is now more lenient
+- Model have a "validate" method to check content constraints
+- Model have now 4 new methods:
+
+  - "serialize" that gives the RestAPI that will be sent
+  - "as_dict" that returns a dict version of the Model. Callbacks are available.
+  - "deserialize" the parses the RestAPI JSON into a Model
+  - "from_dict" that parses several dict syntax into a Model. Callbacks are available.
+
+More details and examples in the Wiki article on Github:
+https://github.com/Azure/msrest-for-python/wiki/msrest-0.4.12---Serialization-change
+
+**Bugfixes**
+
+- Better Enum checking (#38)
+
 2017-06-21 Version 0.4.11
 +++++++++++++++++++++++++
 
