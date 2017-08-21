@@ -28,7 +28,8 @@ import sys
 import json
 import isodate
 import logging
-from datetime import datetime
+from enum import Enum
+from datetime import datetime, timedelta
 import unittest
 try:
     from unittest import mock
@@ -37,9 +38,11 @@ except ImportError:
 
 from requests import Response
 
-from msrest.serialization import Model
+from msrest.serialization import Model, last_restapi_key_transformer, full_restapi_key_transformer, rest_key_extractor
 from msrest import Serializer, Deserializer
 from msrest.exceptions import SerializationError, DeserializationError, ValidationError
+
+from . import storage_models
 
 
 class Resource(Model):
@@ -141,7 +144,9 @@ class TestRuntimeSerialized(unittest.TestCase):
             'attr_b': {'key':'AttrB', 'type':'int'},
             'attr_c': {'key':'Key_C', 'type': 'bool'},
             'attr_d': {'key':'AttrD', 'type':'[int]'},
-            'attr_e': {'key':'AttrE', 'type': '{float}'}
+            'attr_e': {'key':'AttrE', 'type': '{float}'},
+            'attr_f': {'key':'AttrF', 'type': 'duration'},
+            'attr_g': {'key':'properties.AttrG', 'type':'str'},
             }
 
         def __init__(self):
@@ -151,6 +156,8 @@ class TestRuntimeSerialized(unittest.TestCase):
             self.attr_c = None
             self.attr_d = None
             self.attr_e = None
+            self.attr_f = None
+            self.attr_g = None
 
         def __str__(self):
             return "Test_Object"
@@ -159,10 +166,130 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.s = Serializer()
         return super(TestRuntimeSerialized, self).setUp()
 
+    def test_serialize_direct_model(self):
+        testobj = self.TestObj()
+        testobj.attr_a = "myid"
+        testobj.attr_b = 42
+        testobj.attr_c = True
+        testobj.attr_d = [1,2,3]
+        testobj.attr_e = {"pi": 3.14}
+        testobj.attr_f = timedelta(1)
+        testobj.attr_g = "RecursiveObject"
+
+        serialized = testobj.serialize()
+        expected = {
+            "id": "myid",
+            "AttrB": 42,
+            "Key_C": True,
+            "AttrD": [1,2,3],
+            "AttrE": {"pi": 3.14},
+            "AttrF": "P1D",
+            "properties": {
+                "AttrG": "RecursiveObject"
+            }
+        }
+        self.assertDictEqual(expected, serialized)
+
+        jsonable = json.dumps(testobj.as_dict())
+        expected = {
+            "attr_a": "myid",
+            "attr_b": 42,
+            "attr_c": True,
+            "attr_d": [1,2,3],
+            "attr_e": {"pi": 3.14},
+            "attr_f": "P1D",
+            "attr_g": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
+
+        jsonable = json.dumps(testobj.as_dict(key_transformer=last_restapi_key_transformer))
+        expected = {
+            "id": "myid",
+            "AttrB": 42,
+            "Key_C": True,
+            "AttrD": [1,2,3],
+            "AttrE": {"pi": 3.14},
+            "AttrF": "P1D",
+            "AttrG": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
+
+        jsonable = json.dumps(testobj.as_dict(key_transformer=lambda x,y,z: (x+"XYZ", z)))
+        expected = {
+            "attr_aXYZ": "myid",
+            "attr_bXYZ": 42,
+            "attr_cXYZ": True,
+            "attr_dXYZ": [1,2,3],
+            "attr_eXYZ": {"pi": 3.14},
+            "attr_fXYZ": "P1D",
+            "attr_gXYZ": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
+
+        def value_override(attr, attr_desc, value):
+            key, value = last_restapi_key_transformer(attr, attr_desc, value)
+            if key == "AttrB":
+                value += 1
+            return key, value
+
+        jsonable = json.dumps(testobj.as_dict(key_transformer=value_override))
+        expected = {
+            "id": "myid",
+            "AttrB": 43,
+            "Key_C": True,
+            "AttrD": [1,2,3],
+            "AttrE": {"pi": 3.14},
+            "AttrF": "P1D",
+            "AttrG": "RecursiveObject"
+        }
+        self.assertDictEqual(expected, json.loads(jsonable))
+
+
     def test_validate(self):
         # Assert not necessary, should not raise exception
         self.s.validate("simplestring", "StringForLog", pattern="^[a-z]+$")
         self.s.validate(u"UTF8ééééé", "StringForLog", pattern=r"^[\w]+$")
+
+    def test_model_validate(self):
+
+        class TestObj(Model):
+
+            _validation = {
+                'name': {'min_length': 3},
+                'display_names': {'min_items': 2},
+            }                
+            _attribute_map = {
+                'name': {'key':'name', 'type':'str'},
+                'rec_list': {'key':'rec_list', 'type':'[[TestObj]]'},
+                'rec_dict': {'key':'rec_dict', 'type':'{{TestObj}}'},
+                'display_names': {'key': 'display_names', 'type': '[str]'},
+                'obj': {'key':'obj', 'type':'TestObj'},
+            }
+            
+            def __init__(self, name):
+                self.name = name
+                self.rec_list = None
+                self.rec_dict = None
+                self.display_names = None
+                self.obj = None
+
+        obj = TestObj("ab")
+        obj.rec_list = [[TestObj("bc")]]
+        obj.rec_dict = {"key": {"key": TestObj("bc")}}
+        obj.display_names = ["ab"]
+        obj.obj = TestObj("ab")
+
+        broken_rules = obj.validate()
+        self.assertEquals(5, len(broken_rules))
+        str_broken_rules = [str(v) for v in broken_rules]
+        self.assertIn(
+            "Parameter 'TestObj.name' must have length greater than 3.",
+            str_broken_rules
+        )
+        self.assertIn(
+            "Parameter 'TestObj.display_names' must contain at least 2 items.",
+            str_broken_rules
+        )
 
     def test_obj_serialize_none(self):
         """Test that serialize None in object is still None.
@@ -208,6 +335,39 @@ class TestRuntimeSerialized(unittest.TestCase):
         with self.assertRaises(SerializationError):
             self.s._serialize(test_obj)
 
+    def test_attr_enum(self):
+        """
+        Test serializing with Enum.
+        """
+
+        test_obj = type("TestEnumObj", (Model,), {"_attribute_map":None})
+        test_obj._attribute_map = {
+            "abc":{"key":"ABC", "type":"TestEnum"}
+        }
+        class TestEnum(Enum):
+            val = "Value"
+
+        t = test_obj
+        t.abc = TestEnum.val
+
+        serialized = self.s._serialize(test_obj)
+        expected = {
+            "ABC": "Value"
+        }
+
+        self.assertEqual(expected, serialized)
+
+        class TestEnum2(Enum):
+            val2 = "Value2"
+        t.abc = TestEnum2.val2
+
+        serializer = Serializer({
+            'TestEnum': TestEnum,
+            'TestEnum2': TestEnum2
+        })
+        with self.assertRaises(SerializationError):
+            serializer._serialize(t)
+
     def test_attr_none(self):
         """
         Test serializing an object with None attributes.
@@ -229,7 +389,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         test_obj.attr_b = None
 
         with self.assertRaises(ValidationError):
-            self.s._serialize(test_obj)
+            self.s.body(test_obj, 'TestObj')
+
+        validation_errors = test_obj.validate()
+        self.assertEqual(len(validation_errors), 1)
 
         test_obj.attr_b = 25
 
@@ -259,7 +422,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         test_obj.attr_a = None
 
         with self.assertRaises(ValidationError):
-            self.s._serialize(test_obj)
+            self.s.body(test_obj, 'TestObj')
+
+        validation_errors = test_obj.validate()
+        self.assertEqual(len(validation_errors), 1)
 
         self.TestObj._validation = {}
         test_obj.attr_a = "TestString"
@@ -319,6 +485,16 @@ class TestRuntimeSerialized(unittest.TestCase):
         test_obj = [1,2,3]
         output = self.s._serialize(test_obj, '[str]', div=',')
         self.assertEqual(output, ",".join([str(i) for i in test_obj]))
+
+    def test_attr_duration(self):
+        """
+        Test serializing a duration
+        """
+        test_obj = self.TestObj()
+        test_obj.attr_f = timedelta(days=1)
+
+        message = self.s._serialize(test_obj)
+        self.assertEquals("P1D", message["AttrF"])
 
     def test_attr_list_simple(self):
         """
@@ -559,7 +735,10 @@ class TestRuntimeSerialized(unittest.TestCase):
             } 
         }
         self.maxDiff = None
-        self.assertEqual(message, output) 
+        self.assertEqual(message, output)
+
+        message = ComplexJson().serialize()
+        self.assertEqual(message, output)
 
     def test_polymorphic_serialization(self):
 
@@ -716,6 +895,43 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         self.s.dependencies = old_dependencies
 
+    def test_key_type(self):
+
+        class TestKeyTypeObj(Model):
+
+            _validation = {}
+            _attribute_map = {
+                'attr_a': {'key':'attr_a', 'type':'int'},
+                'attr_b': {'key':'id', 'type':'int'},
+                'attr_c': {'key':'KeyC', 'type': 'int'},
+                'attr_d': {'key':'properties.KeyD', 'type': 'int'},
+            }
+
+        old_dependencies = self.s.dependencies
+        self.s.dependencies = {
+            'TestKeyTypeObj': TestKeyTypeObj,
+        }
+
+        serialized = self.s.body({
+            "attr_a": 1,
+            "id": 2,
+            "keyc": 3,
+            "keyd": 4
+        }, "TestKeyTypeObj")
+
+        message = {
+            "attr_a": 1,
+            "id": 2,
+            "KeyC": 3,
+            "properties": {
+                "KeyD": 4
+            }
+        }
+        
+        self.assertEqual(serialized, message)
+
+        self.s.dependencies = old_dependencies
+
 class TestRuntimeDeserialized(unittest.TestCase):
 
     class TestObj(Model):
@@ -743,6 +959,170 @@ class TestRuntimeDeserialized(unittest.TestCase):
     def setUp(self):
         self.d = Deserializer()
         return super(TestRuntimeDeserialized, self).setUp()
+
+    def test_cls_method_deserialization(self):
+        json_data = {
+            'id': 'myid',
+            'AttrB': 42,
+            'Key_C': True,
+            'AttrD': [1,2,3],
+            'AttrE': {'pi': 3.14},
+            'AttrF': [['internal', 'list', 'of', 'strings']]
+        }
+
+        def assert_model(inst):
+            self.assertEqual(inst.attr_a, 'myid')
+            self.assertEqual(inst.attr_b, 42)
+            self.assertEqual(inst.attr_c, True)
+            self.assertEqual(inst.attr_d, [1,2,3])
+            self.assertEqual(inst.attr_e, {'pi': 3.14})
+            self.assertEqual(inst.attr_f, [['internal', 'list', 'of', 'strings']])
+
+        model_instance = self.TestObj.from_dict(json_data)
+        assert_model(model_instance)
+
+        # Get an attribute version of  this model
+        attr_data = {
+            'attr_a': 'myid',
+            'attr_b': 42,
+            'attr_c': True,
+            'attr_d': [1,2,3],
+            'attr_e': {'pi': 3.14},
+            'attr_f': [['internal', 'list', 'of', 'strings']]
+        }
+        self.TestObj.from_dict(attr_data)
+        assert_model(model_instance)
+
+    def test_personalize_deserialization(self):
+
+        class TestDurationObj(Model):
+            _attribute_map = {
+                'attr_a': {'key':'attr_a', 'type':'duration'},
+            }
+
+        with self.assertRaises(DeserializationError):
+            obj = TestDurationObj.from_dict({
+                "attr_a": "00:00:10"
+            })
+
+        def duration_rest_key_extractor(attr, attr_desc, data):
+            value = rest_key_extractor(attr, attr_desc, data)
+            if attr == "attr_a":
+                # Stupid parsing, this is just a test
+                return "PT"+value[-2:]+"S"
+
+        obj = TestDurationObj.from_dict(
+            {"attr_a": "00:00:10"},
+            key_extractors=[duration_rest_key_extractor]
+        )
+        self.assertEqual(timedelta(seconds=10), obj.attr_a)
+
+
+    def test_robust_deserialization(self):
+
+        class TestKeyTypeObj(Model):
+
+            _validation = {}
+            _attribute_map = {
+                'attr_a': {'key':'attr_a', 'type':'int'},
+                'attr_b': {'key':'id', 'type':'int'},
+                'attr_c': {'key':'KeyC', 'type': 'int'},
+                'attr_d': {'key':'properties.KeyD', 'type': 'int'},
+            }
+
+        obj = TestKeyTypeObj.from_dict({
+            "attr_a": 1,
+            "id": 2,
+            "keyc": 3,
+            "keyd": 4
+        })
+
+        self.assertEqual(1, obj.attr_a)
+        self.assertEqual(2, obj.attr_b)
+        self.assertEqual(3, obj.attr_c)
+        self.assertEqual(4, obj.attr_d)
+
+        obj = TestKeyTypeObj.from_dict({
+            "attr_a": 1,
+            "id": 2,
+            "keyc": 3,
+            "properties": {
+                "KeyD": 4
+            }
+        })
+
+        self.assertEqual(1, obj.attr_a)
+        self.assertEqual(2, obj.attr_b)
+        self.assertEqual(3, obj.attr_c)
+        self.assertEqual(4, obj.attr_d)
+
+        with self.assertRaises(DeserializationError):
+            obj = TestKeyTypeObj.from_dict({
+                "attr_b": 1,
+                "id": 2,
+                "keyc": 3,
+                "keyd": 4
+            })
+
+    def test_basic_deserialization(self):
+        class TestObj(Model):
+
+            _validation = {
+                'name': {'min_length': 3},
+            }                
+            _attribute_map = {
+                'name': {'key':'RestName', 'type':'str'},
+            }
+            
+            def __init__(self, name):
+                self.name = name
+
+        obj = TestObj.from_dict({'name': 'ab'})
+        self.assertEqual('ab', obj.name)
+
+    def test_deserialize_storage(self):
+        StorageAccount = storage_models.StorageAccount
+
+        json_storage = {
+            'id': '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test_mgmt_storage_test_storage_accounts43b8102a/providers/Microsoft.Storage/storageAccounts/pyarmstorage43b8102a',
+            'kind': 'Storage',
+            'location': 'westus',
+            'name': 'pyarmstorage43b8102a',
+            'properties': {
+                'creationTime': '2017-07-19T23:19:21.7640412Z',
+                'primaryEndpoints': {'blob': 'https://pyarmstorage43b8102a.blob.core.windows.net/',
+                    'file': 'https://pyarmstorage43b8102a.file.core.windows.net/',
+                    'queue': 'https://pyarmstorage43b8102a.queue.core.windows.net/',
+                    'table': 'https://pyarmstorage43b8102a.table.core.windows.net/'},
+                'primaryLocation': 'westus',
+                'provisioningState': 'Succeeded',
+                'statusOfPrimary': 'available',
+                'supportsHttpsTrafficOnly': False},
+            'sku': {'name': 'Standard_LRS', 'tier': 'Standard'},
+            'tags': {},
+            'type': 'Microsoft.Storage/storageAccounts'}
+
+        storage_account = StorageAccount.deserialize(json_storage)
+
+        self.assertEquals(storage_account.id, json_storage['id']) # basic
+        self.assertEquals(storage_account.sku.name, storage_models.SkuName(json_storage['sku']['name'])) # Nested + enum
+        self.assertEquals(storage_account.primary_location, json_storage['properties']['primaryLocation']) # Flatten
+
+        json_storage_output = storage_account.serialize()
+        self.assertEqual(len(json_storage_output), 3) # Only 3 keys are not readonly
+
+        json_storage_output = storage_account.as_dict(key_transformer=full_restapi_key_transformer)
+        self.assertListEqual(
+            sorted(list(json_storage_output.keys())),
+            sorted(list(json_storage.keys()))
+        )
+
+        json_storage_output = storage_account.as_dict(keep_readonly=False, key_transformer=full_restapi_key_transformer)
+        self.assertListEqual(
+            sorted(list(json_storage_output.keys())),
+            ['location', 'properties', 'tags']
+        )
+
 
     def test_non_obj_deserialization(self):
         """
