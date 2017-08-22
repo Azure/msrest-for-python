@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-08-22 Version 0.4.13
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix regression introduced in msrest 0.4.12 - dict syntax using isodate.Duration (#42)
+
 2017-08-21 Version 0.4.12
 +++++++++++++++++++++++++
 
