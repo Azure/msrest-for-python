@@ -918,6 +918,9 @@ class Deserializer(object):
             '[]': self.deserialize_iter,
             '{}': self.deserialize_dict
             }
+        self.deserialize_expected_types = {
+            'duration': (isodate.Duration, datetime.timedelta)
+        }
         self.dependencies = dict(classes) if classes else {}
         self.key_extractors = [
             rest_key_extractor
@@ -1080,6 +1083,8 @@ class Deserializer(object):
             if data_type in self.basic_types.values():
                 return self.deserialize_basic(data, data_type)
             if data_type in self.deserialize_type:
+                if isinstance(data, self.deserialize_expected_types.get(data_type, tuple())):
+                    return data
                 data_val = self.deserialize_type[data_type](data)
                 return data_val
 

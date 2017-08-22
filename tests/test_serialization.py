@@ -138,7 +138,6 @@ class TestRuntimeSerialized(unittest.TestCase):
 
     class TestObj(Model):
 
-        _validation = {}
         _attribute_map = {
             'attr_a': {'key':'id', 'type':'str'},
             'attr_b': {'key':'AttrB', 'type':'int'},
@@ -147,23 +146,30 @@ class TestRuntimeSerialized(unittest.TestCase):
             'attr_e': {'key':'AttrE', 'type': '{float}'},
             'attr_f': {'key':'AttrF', 'type': 'duration'},
             'attr_g': {'key':'properties.AttrG', 'type':'str'},
-            }
+        }
 
-        def __init__(self):
+        def __init__(self,
+                attr_a=None,
+                attr_b=None,
+                attr_c=None,
+                attr_d=None,
+                attr_e=None,
+                attr_f=None,
+                attr_g=None):
 
-            self.attr_a = None
-            self.attr_b = None
-            self.attr_c = None
-            self.attr_d = None
-            self.attr_e = None
-            self.attr_f = None
-            self.attr_g = None
+            self.attr_a = attr_a
+            self.attr_b = attr_b
+            self.attr_c = attr_c
+            self.attr_d = attr_d
+            self.attr_e = attr_e
+            self.attr_f = attr_f
+            self.attr_g = attr_g
 
         def __str__(self):
             return "Test_Object"
 
     def setUp(self):
-        self.s = Serializer()
+        self.s = Serializer({'TestObj': self.TestObj})
         return super(TestRuntimeSerialized, self).setUp()
 
     def test_serialize_direct_model(self):
@@ -496,6 +502,14 @@ class TestRuntimeSerialized(unittest.TestCase):
         message = self.s._serialize(test_obj)
         self.assertEquals("P1D", message["AttrF"])
 
+        test_obj = self.TestObj()
+        test_obj.attr_f = isodate.parse_duration("P3Y6M4DT12H30M5S")
+
+        message = self.s.body({
+            "attr_f": isodate.parse_duration("P3Y6M4DT12H30M5S")},
+            'TestObj')
+        self.assertEquals("P3Y6M4DT12H30M5S", message["AttrF"])
+
     def test_attr_list_simple(self):
         """
         Test serializing an object with simple-typed list attributes
@@ -657,8 +671,8 @@ class TestRuntimeSerialized(unittest.TestCase):
         g = self.s.body({"test":{"value":"data"}}, 'object')
         self.assertEqual(g, {"test":{"value":"data"}})
 
-        h = self.s.serialize_data({"test":self.TestObj()}, 'object')
-        self.assertEqual(h, {"test":"Test_Object"})
+        h = self.s.serialize_data({"test":self.TestObj('id')}, 'object')
+        self.assertEqual(h, {"test":{'id': 'id'}})
 
         i =  self.s.serialize_data({"test":[1,2,3,4,5]}, 'object')
         self.assertEqual(i, {"test":[1,2,3,4,5]})
