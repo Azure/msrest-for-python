@@ -1200,6 +1200,12 @@ class Deserializer(object):
         :param str data: response string to be deserialized.
         :rtype: str or unicode
         """
+        # We might be here because we have an enum modeled as string,
+        # and we try to deserialize a partial dict with enum inside
+        if isinstance(data, Enum):
+            return data
+
+        # Consider this is real string
         try:
             if isinstance(data, unicode):
                 return data
