@@ -353,10 +353,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         class TestEnum(Enum):
             val = "Value"
 
-        t = test_obj
+        t = test_obj()
         t.abc = TestEnum.val
 
-        serialized = self.s._serialize(test_obj)
+        serialized = self.s._serialize(t)
         expected = {
             "ABC": "Value"
         }
@@ -373,6 +373,31 @@ class TestRuntimeSerialized(unittest.TestCase):
         })
         with self.assertRaises(SerializationError):
             serializer._serialize(t)
+
+        serializer = Serializer({
+            'TestEnumObj': test_obj,
+            'TestEnum': TestEnum
+        })
+        serialized = serializer.body({
+            'abc': TestEnum.val
+        }, 'TestEnumObj')
+        expected = {
+            'ABC': 'Value'
+        }
+        self.assertEqual(expected, serialized)
+
+        # model-as-string=True
+        test_obj._attribute_map = {
+            "abc":{"key":"ABC", "type":"str"}
+        }
+        serialized = serializer.body({
+            'abc': TestEnum.val
+        }, 'TestEnumObj')
+        expected = {
+            'ABC': 'Value'
+        }
+        self.assertEqual(expected, serialized)
+
 
     def test_attr_none(self):
         """
