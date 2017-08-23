@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-08-23 Version 0.4.14
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix regression introduced in msrest 0.4.12 - dict syntax with enum modeled as string and enum used
+
 2017-08-22 Version 0.4.13
 +++++++++++++++++++++++++
 
