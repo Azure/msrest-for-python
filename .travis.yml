@@ -19,7 +19,7 @@ matrix:
 before_install:
   - docker pull lmazuel/autorest-test-server
   - docker run -p 3000:3000 lmazuel/autorest-test-server &
-  - git clone https://github.com/Azure/autorest.git
+  - git clone https://github.com/Azure/autorest.python.git
 install:
   - pip install tox
 script:
