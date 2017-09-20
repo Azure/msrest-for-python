@@ -4,6 +4,8 @@ language: python
 cache: pip
 services:
   - docker
+node_js:
+  - "7"  
 matrix:
   include:
     - python: 2.7
