@@ -1012,25 +1012,40 @@ class Deserializer(object):
             pass  # Target is not a Model, no classify
         return target, target.__class__.__name__
 
-    def _unpack_content(self, raw_data):
+    JSON_MIMETYPES = [
+        'application/json',
+        'text/json' # Because we're open minded people...
+    ]
+
+    @staticmethod
+    def _unpack_content(raw_data, content_type=None):
         """Extract data from the body of a REST response object.
 
-        :param raw_data: Data to be processed. This could be a
-         requests.Response object, in which case the json content will be
-         be returned.
+        If raw_data is a requests.Response object, follow Content-Type
+        to parse (ignore content_type parameter).
+        If bytes is given, decode using UTF8 first. 
+        If content_type is given, try to parse.
+        Otherwise, return initial data.
+        We assume everything is UTF8 (BOM acceptable).
+
+        :param raw_data: Data to be processed.
+        :param content_type: How to parse if raw_data is a string/bytes.
+        :raises JSONDecodeError: If JSON is requested and parsing is impossible.
+        :raises UnicodeDecodeError: If bytes is not UTF8
         """
-        if raw_data and isinstance(raw_data, bytes):
-            data = raw_data.decode(encoding='utf-8')
+
+        if hasattr(raw_data, 'text'): # Our requests.Response test
+            content_type = raw_data.headers['content-type'].split(";")[0].strip().lower()
+            data = raw_data.text
+        elif raw_data and isinstance(raw_data, bytes):
+            data = raw_data.decode(encoding='utf-8-sig')
         else:
             data = raw_data
 
-        try:
-            # This is a requests.Response, json valid if nothing fail
-            if not raw_data.text:
-                return None
-            return json.loads(raw_data.text)
-        except (ValueError, TypeError, AttributeError):
-            pass
+        if content_type in Deserializer.JSON_MIMETYPES:
+            return json.loads(data) # Do not catch anything here
+        elif "xml" in (content_type or []):
+            raise DeserializationError("Do not support XML right now")
         return data
 
     def _instantiate_model(self, response, attrs):
@@ -1110,8 +1125,13 @@ class Deserializer(object):
         :param str iter_type: The type of object in the iterable.
         :rtype: list
         """
-        if not attr and not isinstance(attr, list):
+        if attr is None:
             return None
+        if not isinstance(attr, list):
+            raise DeserializationError("Cannot deserialize as [{}] an object of type {}".format(
+                iter_type,
+                type(attr)
+            ))
         return [self.deserialize_data(a, iter_type) for a in attr]
 
     def deserialize_dict(self, attr, dict_type):

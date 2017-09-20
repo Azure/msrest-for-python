@@ -129,7 +129,7 @@ class TestModelDeserialization(unittest.TestCase):
 
         resp = mock.create_autospec(Response)
         resp.text = json.dumps(data)
-        resp.encoding = 'utf-8'
+        resp.headers = {"content-type": "application/json; charset=utf8"}
         model = self.d('GenericResource', resp)
         self.assertEqual(model.properties['platformFaultDomainCount'], 3)
         self.assertEqual(model.location, 'westus')
@@ -1162,25 +1162,36 @@ class TestRuntimeDeserialized(unittest.TestCase):
             ['location', 'properties', 'tags']
         )
 
+    def test_invalid_json(self):
+        """
+        Test invalid JSON
+        """
+        response_data = mock.create_autospec(Response)
+        response_data.headers = {"content-type": "application/json; charset=utf8"}
+        response_data.text = '["tata"]]'
+
+        with self.assertRaises(json.JSONDecodeError):
+            self.d("[str]", response_data)
+
 
     def test_non_obj_deserialization(self):
         """
         Test direct deserialization of simple types.
         """
         response_data = mock.create_autospec(Response)
-        response_data.encoding = 'utf-8'
+        response_data.headers = {"content-type": "application/json; charset=utf8"}
 
         response_data.text = ''
-        response = self.d("[str]", response_data)
-        self.assertIsNone(response)
+        with self.assertRaises(json.JSONDecodeError):
+            self.d("[str]", response_data)
+
+        response_data.text = json.dumps('')
+        with self.assertRaises(DeserializationError):
+            self.d("[str]", response_data)
 
         response_data.text = json.dumps({})
-        response = self.d("[str]", response_data)
-        self.assertIsNone(response)
-
-        response_data.text = ""
-        response = self.d("[str]", response_data)
-        self.assertIsNone(response)
+        with self.assertRaises(DeserializationError):
+            self.d("[str]", response_data)
 
         message = ["a","b","b"]
         response_data.text = json.dumps(message)
@@ -1189,9 +1200,9 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         response_data.text = json.dumps(12345)
         with self.assertRaises(DeserializationError):
-            response = self.d("[str]", response_data)
+            self.d("[str]", response_data)
 
-        response_data.text = 'true'
+        response_data.text = json.dumps('true')
         response = self.d('bool', response_data)
         self.assertEqual(response, True)
 
@@ -1201,7 +1212,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         response_data.text = json.dumps("true1")
         with self.assertRaises(DeserializationError):
-            response = self.d('bool', response_data)
+            self.d('bool', response_data)
 
 
     def test_obj_with_no_attr(self):
@@ -1211,7 +1222,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         response_data = mock.create_autospec(Response)
         response_data.text = json.dumps({"a":"b"})
-        response_data.encoding = 'utf-8'
+        response_data.headers = {"content-type": "application/json; charset=utf8"}
 
         class EmptyResponse(Model):
             _attribute_map = {}
@@ -1227,7 +1238,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         response_data = mock.create_autospec(Response)
         response_data.text = json.dumps({"a":"b"})
-        response_data.encoding = 'utf-8'
+        response_data.headers = {"content-type": "application/json; charset=utf8"}
 
         class BadResponse(Model):
             _attribute_map = None
@@ -1261,13 +1272,8 @@ class TestRuntimeDeserialized(unittest.TestCase):
         Test serializing an object with None attributes.
         """
         response_data = mock.create_autospec(Response)
-
-        with self.assertRaises(DeserializationError):
-            self.d(self.TestObj, response_data)
-
-        response_data.status_code = None
-        response_data.headers = {'client-request-id':None, 'etag':None}
-        response_data.text = ''
+        response_data.headers = {"content-type": "application/json; charset=utf8"}
+        response_data.text = 'null'
 
         response = self.d(self.TestObj, response_data)
         self.assertIsNone(response)
@@ -1278,15 +1284,15 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
-        response_data.headers = {'client-request-id':"123", 'etag':456.3}
+        response_data.headers = {
+            'client-request-id':"123",
+            'etag':456.3,
+            "content-type": "application/json; charset=utf8"
+        }
         response_data.text = ''
-
-        response = self.d(self.TestObj, response_data)
-        self.assertIsNone(response)
 
         message = {'AttrB':'1234'}
         response_data.text = json.dumps(message)
-        response_data.encoding = 'utf-8'
         response = self.d(self.TestObj, response_data)
         self.assertTrue(hasattr(response, 'attr_b'))
         self.assertEqual(response.attr_b, int(message['AttrB']))
@@ -1302,9 +1308,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
         message = {'id':'InterestingValue'}
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
-        response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
+        response_data.headers = {
+            'client-request-id': 'a',
+            'etag': 'b',
+            "content-type": "application/json; charset=utf8"
+        }
         response_data.text = json.dumps(message)
-        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
         self.assertTrue(hasattr(response, 'attr_a'))
@@ -1330,9 +1339,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
-        response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
+        response_data.headers = {
+            'client-request-id': 'a',
+            'etag': 'b',
+            "content-type": "application/json; charset=utf8"
+        }
         response_data.text = json.dumps({'Key_C':True})
-        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
 
@@ -1357,9 +1369,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
-        response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
+        response_data.headers = {
+            'client-request-id': 'a',
+            'etag': 'b',
+            "content-type": "application/json; charset=utf8"
+        }
         response_data.text = json.dumps({'AttrD': []})
-        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
         deserialized_list = [d for d in response.attr_d]
@@ -1393,9 +1408,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
-        response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
+        response_data.headers = {
+            'client-request-id': 'a',
+            'etag': 'b',
+            "content-type": "application/json; charset=utf8"
+        }
         response_data.text = json.dumps({'AttrF':[]})
-        response_data.encoding = 'utf-8'
 
         response = self.d(self.TestObj, response_data)
         self.assertTrue(hasattr(response, 'attr_f'))
@@ -1446,9 +1464,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         response_data = mock.create_autospec(Response)
         response_data.status_code = 200
-        response_data.headers = {'client-request-id': 'a', 'etag': 'b'}
+        response_data.headers = {
+            'client-request-id': 'a',
+            'etag': 'b',
+            "content-type": "application/json; charset=utf8"
+        }
         response_data.text = json.dumps({"id":[{"ABC": "123"}]})
-        response_data.encoding = 'utf-8'
 
         d = Deserializer({'ListObj':ListObj})
         response = d(CmplxTestObj, response_data)
