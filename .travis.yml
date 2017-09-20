@@ -37,6 +37,7 @@ before_install:
   - docker run -p 3000:3000 lmazuel/autorest-test-server &
   - git clone https://github.com/Azure/autorest.python.git
   - cd autorest.python
+  - apt-get install libunwind8-dev
   - nvm install 7
   - npm install # Install test server pre-requisites
 install:
