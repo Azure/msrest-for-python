@@ -4,8 +4,6 @@ language: python
 cache: pip
 services:
   - docker
-node_js:
-  - "7"  
 matrix:
   include:
     - python: 2.7
@@ -39,6 +37,7 @@ before_install:
   - docker run -p 3000:3000 lmazuel/autorest-test-server &
   - git clone https://github.com/Azure/autorest.python.git
   - cd autorest.python
+  - nvm install 7
   - npm install # Install test server pre-requisites
 install:
   - pip install tox
