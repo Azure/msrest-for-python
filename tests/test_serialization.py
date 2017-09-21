@@ -35,6 +35,12 @@ try:
     from unittest import mock
 except ImportError:
     import mock
+# I want to be sure that if JSONDecodeError is available, it's the exception I get
+# So I don't assertRaises(ValueError) on purpose
+try:
+    from json import JSONDecodeError
+except ImportError:
+    import ValueError as JSONDecodeError
 
 from requests import Response
 
@@ -1170,7 +1176,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.headers = {"content-type": "application/json; charset=utf8"}
         response_data.text = '["tata"]]'
 
-        with self.assertRaises(json.JSONDecodeError):
+        with self.assertRaises(JSONDecodeError):
             self.d("[str]", response_data)
 
 
@@ -1182,7 +1188,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         response_data.headers = {"content-type": "application/json; charset=utf8"}
 
         response_data.text = ''
-        with self.assertRaises(json.JSONDecodeError):
+        with self.assertRaises(JSONDecodeError):
             self.d("[str]", response_data)
 
         response_data.text = json.dumps('')
