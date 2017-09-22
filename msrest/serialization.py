@@ -926,11 +926,12 @@ class Deserializer(object):
             rest_key_extractor
         ]
 
-    def __call__(self, target_obj, response_data):
+    def __call__(self, target_obj, response_data, content_type=None):
         """Call the deserializer to process a REST response.
 
         :param str target_obj: Target data type to deserialize to.
         :param requests.Response response_data: REST response object.
+        :param str content_type: Swagger "produces" if available.
         :raises: DeserializationError if deserialization fails.
         :return: Deserialized object.
         """
@@ -958,7 +959,7 @@ class Deserializer(object):
             except AttributeError:
                 return
 
-        data = self._unpack_content(response_data)
+        data = self._unpack_content(response_data, content_type)
         response, class_name = self._classify_target(target_obj, data)
 
         if isinstance(response, basestring):
@@ -1035,7 +1036,16 @@ class Deserializer(object):
         """
 
         if hasattr(raw_data, 'text'): # Our requests.Response test
-            content_type = raw_data.headers['content-type'].split(";")[0].strip().lower()
+            # Try to use content-type from headers if available
+            if 'content-type' in raw_data.headers:
+                content_type = raw_data.headers['content-type'].split(";")[0].strip().lower()
+            # Ouch, this server does not declare what it sent...
+            # Use Swagger "produces", which will be passed to "content_type" here
+            # If "content_type" also is empty, this means that it's an old version
+            # of Autorest for Python, let's guess it's JSON...
+            elif not content_type:
+                content_type = "application/json"
+            # Whatever content type, data is readable (not bytes). Get it as a string.
             data = raw_data.text
         elif raw_data and isinstance(raw_data, bytes):
             data = raw_data.decode(encoding='utf-8-sig')
