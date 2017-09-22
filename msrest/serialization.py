@@ -1039,11 +1039,15 @@ class Deserializer(object):
             # Try to use content-type from headers if available
             if 'content-type' in raw_data.headers:
                 content_type = raw_data.headers['content-type'].split(";")[0].strip().lower()
-            # Ouch, this server does not declare what it sent...
+            # Ouch, this server did not declare what it sent...
             # Use Swagger "produces", which will be passed to "content_type" here
             # If "content_type" also is empty, this means that it's an old version
             # of Autorest for Python, let's guess it's JSON...
+            # Also, since Autorest was considering that an empty body was a valid JSON,
+            # need that test as well....
             elif not content_type:
+                if not raw_data.text:
+                    return None
                 content_type = "application/json"
             # Whatever content type, data is readable (not bytes). Get it as a string.
             data = raw_data.text
