@@ -40,7 +40,7 @@ except ImportError:
 try:
     from json import JSONDecodeError
 except ImportError:
-    import ValueError as JSONDecodeError
+    JSONDecodeError = ValueError
 
 from requests import Response
 
