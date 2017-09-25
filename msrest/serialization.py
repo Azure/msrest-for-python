@@ -1057,7 +1057,10 @@ class Deserializer(object):
             data = raw_data
 
         if content_type in Deserializer.JSON_MIMETYPES:
-            return json.loads(data) # Do not catch anything here
+            try:
+                return json.loads(data) # Do not catch anything here
+            except ValueError as err:
+                raise DeserializationError("JSON is invalid: {}".format(err), err)
         elif "xml" in (content_type or []):
             raise DeserializationError("Do not support XML right now")
         return data
