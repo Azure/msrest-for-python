@@ -33,7 +33,7 @@ except ImportError:
     from ConfigParser import NoOptionError
 import platform
 
-import requests
+import requests.adapters
 
 from .exceptions import raise_with_traceback
 from .pipeline import (
@@ -66,6 +66,9 @@ class Configuration(object):
 
         # Redirect configuration
         self.redirect_policy = ClientRedirectPolicy()
+
+        # Transport Adapter
+        self.adapter = requests.adapters.HTTPAdapter
 
         # User-Agent Header
         self._user_agent = "python/{} ({}) requests/{} msrest/{}".format(

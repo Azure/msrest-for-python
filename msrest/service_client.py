@@ -144,7 +144,7 @@ class ServiceClient(object):
             'retries', self.config.retry_policy())
         for protocol in self._protocols:
             session.mount(protocol,
-                          requests.adapters.HTTPAdapter(max_retries=max_retries))
+                          self.config.adapter(max_retries=max_retries))
         return kwargs
 
     def send_formdata(self, request, headers=None, content=None, **config):
