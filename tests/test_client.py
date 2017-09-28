@@ -50,6 +50,22 @@ class TestServiceClient(unittest.TestCase):
         self.creds = mock.create_autospec(OAuthTokenAuthentication)
         return super(TestServiceClient, self).setUp()
 
+    def test_session_callback(self):
+
+        client = ServiceClient(self.creds, self.cfg)
+        local_session = requests.Session()
+
+        def callback(session, global_config, local_config, **kwargs):
+            self.assertIs(session, local_session)
+            self.assertIs(global_config, self.cfg)
+            self.assertTrue(local_config["test"])
+            return {'used_callback': True}
+
+        self.cfg.session_configuration_callback = callback
+
+        output_kwargs = client._configure_session(local_session, **{"test": True})
+        self.assertTrue(output_kwargs['used_callback'])
+
     def test_client_request(self):
 
         client = ServiceClient(self.creds, self.cfg)

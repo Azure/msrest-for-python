@@ -44,6 +44,19 @@ from .pipeline import (
 from .version import msrest_version
 
 
+def default_session_configuration_callback(session, global_config, local_config, **kwargs):
+    """Configuration callback if you need to change default session configuration.
+
+    :param requests.Session session: The session.
+    :param Configuration global_config: The global configuration.
+    :param dict local_config: The on-the-fly configuration passed on the call.
+    :param dict kwargs: The current computed values for session.request method.
+    :return: Must return kwargs, to be passed to session.request. If None is return, initial kwargs will be used.
+    :rtype: dict
+    """
+    return kwargs
+
+
 class Configuration(object):
     """Client configuration.
 
@@ -78,6 +91,8 @@ class Configuration(object):
         # Note that we will inject the following parameters:
         # - kwargs['msrest']['session'] with the current session
         self.hooks = []
+
+        self.session_configuration_callback = default_session_configuration_callback
 
         self._config = configparser.ConfigParser()
         self._config.optionxform = str

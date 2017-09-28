@@ -145,6 +145,11 @@ class ServiceClient(object):
         for protocol in self._protocols:
             session.mount(protocol,
                           requests.adapters.HTTPAdapter(max_retries=max_retries))
+
+        output_kwargs = self.config.session_configuration_callback(session, self.config, config, **kwargs)
+        if output_kwargs is not None:
+            kwargs = output_kwargs
+
         return kwargs
 
     def send_formdata(self, request, headers=None, content=None, **config):
