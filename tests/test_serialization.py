@@ -172,6 +172,32 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.s = Serializer({'TestObj': self.TestObj})
         return super(TestRuntimeSerialized, self).setUp()
 
+    def test_validation_flag(self):
+        s = Serializer()
+        s.client_side_validation = True
+
+        with self.assertRaises(ValidationError):
+            s.query("filter", "", "str", min_length=666)
+        with self.assertRaises(ValidationError):
+            s.url("filter", "", "str", min_length=666)
+        with self.assertRaises(ValidationError):
+            s.header("filter", "", "str", min_length=666)
+
+        test_obj = self.TestObj()
+        self.TestObj._validation = {
+            'attr_b': {'required': True},
+        }
+        test_obj.attr_b = None
+
+        with self.assertRaises(ValidationError):
+            self.s.body(test_obj, 'TestObj')
+
+        s.client_side_validation = False
+        s.query("filter", "", "str", min_length=666)
+        s.url("filter", "", "str", min_length=666)
+        s.header("filter", "", "str", min_length=666)
+        s.body(test_obj, 'TestObj')
+
     def test_serialize_direct_model(self):
         testobj = self.TestObj()
         testobj.attr_a = "myid"
