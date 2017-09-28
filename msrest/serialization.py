@@ -623,6 +623,8 @@ class Serializer(object):
          in the iterable into a combined string. Default is 'None'.
         :rtype: list, str
         """
+        if isinstance(data, str):
+            raise SerializationError("Refuse str type as a valid iter type.")
         serialized = []
         for d in data:
             try:
