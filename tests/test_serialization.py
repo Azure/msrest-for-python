@@ -736,6 +736,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         b = self.s.serialize_iter([], 'int')
         self.assertEqual(b, [])
 
+    def test_serialize_str_as_iter(self):
+        with self.assertRaises(SerializationError):
+            self.s.serialize_iter("I am a string", 'str')
+
     def test_serialize_json_obj(self):
 
         class ComplexId(Model):
