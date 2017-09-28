@@ -136,7 +136,13 @@ class HttpOperationError(ClientException):
                 self.error = deserialize(resp_type, response)
                 if self.error is None:
                     self.error = deserialize.dependencies[resp_type]()
-                self.message = self.error.message
+                # ARM uses OData v4
+                # http://docs.oasis-open.org/odata/odata-json-format/v4.0/os/odata-json-format-v4.0-os.html#_Toc372793091
+                # Code and Message are REQUIRED
+                self.message = "({}) {}".format(
+                    self.error.error.code,
+                    self.error.error.message
+                )
         except (DeserializationError, AttributeError, KeyError):
             pass
 
