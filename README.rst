@@ -20,6 +20,24 @@ To install:
 Release History
 ---------------
 
+2017-09-28 Version 0.4.15
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Always log response body (#16)
+- Improved exception message if error JSON is Odata v4 (#55)
+- Refuse "str" as a valid "[str]" type (#41)
+- Better exception handling if input from server is not JSON valid
+
+**Features**
+
+- Add Configuration.session_configuration_callback to customize the requests.Session if necessary (#52)
+- Add a flag to Serializer to disable client-side-validation (#51)
+- Remove "import requests" from "exceptions.py" for apps that require fast loading time (#23)
+
+Thank you to jayden-at-arista for his contribution
+
 2017-08-23 Version 0.4.14
 +++++++++++++++++++++++++
 
