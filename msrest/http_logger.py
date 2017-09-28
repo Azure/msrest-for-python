@@ -38,6 +38,9 @@ def log_request(adapter, request, *args, **kwargs):
     :param ClientHTTPAdapter adapter: Adapter making the request.
     :param requests.Request request: The request object.
     """
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
+        return
+
     try:
         _LOGGER.debug("Request URL: %r", request.url)
         _LOGGER.debug("Request method: %r", request.method)
@@ -64,6 +67,9 @@ def log_response(adapter, request, response, *args, **kwargs):
     :param requests.Request request: The request object.
     :param requests.Response response: The response object.
     """
+    if not _LOGGER.isEnabledFor(logging.DEBUG):
+        return
+
     try:
         result = kwargs['result']
         _LOGGER.debug("Response status: %r", result.status_code)
@@ -83,8 +89,6 @@ def log_response(adapter, request, response, *args, **kwargs):
             _LOGGER.debug("Body contains binary data.")
         elif result.headers.get("content-type", "").startswith("image"):
             _LOGGER.debug("Body contains image data.")
-        elif result.headers.get("transfer-encoding") == 'chunked':
-            _LOGGER.debug("Body contains chunked data.")
         else:
             _LOGGER.debug(str(result.content))
         return result
