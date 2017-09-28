@@ -75,7 +75,7 @@ class TokenExpiredError(ClientException):
 class ValidationError(ClientException):
     """Request parameter validation failed."""
 
-    messages = {
+    _messages = {
         "min_length": "must have length greater than {!r}.",
         "max_length": "must have length less than {!r}.",
         "minimum": "must be greater than {!r}.",
@@ -94,7 +94,7 @@ class ValidationError(ClientException):
         self.rule = rule
         self.target = target
         message = "Parameter {!r} ".format(target)
-        reason = self.messages.get(
+        reason = self._messages.get(
             rule, "failed to meet validation requirement.")
         message += reason.format(value)
         super(ValidationError, self).__init__(message, *args, **kwargs)
