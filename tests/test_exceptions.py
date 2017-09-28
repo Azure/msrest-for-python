@@ -38,6 +38,20 @@ from msrest.exceptions import HttpOperationError
 
 class TestExceptions(unittest.TestCase):
 
+    def test_request_exception(self):
+        def raise_for_status():
+            raise requests.RequestException()
+
+        deserializer = Deserializer()
+        response = mock.create_autospec(requests.Response)
+        response.raise_for_status = raise_for_status
+        response.reason = "TESTING"
+
+        excep = HttpOperationError(deserializer, response)
+
+        self.assertIn("TESTING", str(excep))
+        self.assertIn("Operation returned an invalid status code", str(excep))
+
     def test_custom_exception(self):
 
         class ErrorResponse(Model):
@@ -80,7 +94,7 @@ class TestExceptions(unittest.TestCase):
             {
                 "error": {
                     "code": "NotOptedIn",
-                    "message": "You are not allowed to download invoices. Please contact your account administrator (ptvsazure@outlook.com) to turn on access in the management portal for allowing to download invoices through the API."
+                    "message": "You are not allowed to download invoices. Please contact your account administrator to turn on access in the management portal for allowing to download invoices through the API."
                 }
             }            
         )
