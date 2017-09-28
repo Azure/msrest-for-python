@@ -27,8 +27,6 @@
 import logging
 import sys
 
-from requests import RequestException
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -149,7 +147,10 @@ class HttpOperationError(ClientException):
         if not self.error or not self.message:
             try:
                 response.raise_for_status()
-            except RequestException as err:
+            # Two possible raises here:
+            # - Attribute error if response is not requests.RequestException. Do not catch.
+            # - requests.RequestException. Catch base class IOError to avoid explicit import of requests here.
+            except IOError as err:
                 if not self.error:
                     self.error = err
 
