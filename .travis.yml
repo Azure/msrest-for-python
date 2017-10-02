@@ -35,7 +35,10 @@ jobs:
     - stage: deploy
       python: 3.6
       if: type = push and tag =~ ^v0.4
+      before_install: skip
+      install: skip
       script: skip
+      after_success: skip
       deploy:
          provider: pypi
          user: Laurent.Mazuel
