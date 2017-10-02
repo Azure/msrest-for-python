@@ -44,10 +44,6 @@ jobs:
          skip_upload_docs: true
          # password: use $PYPI_PASSWORD
          distributions: "sdist bdist_wheel"
-  on:
-    tags: true
-    python: '3.6'
-
 before_install:
   - docker pull lmazuel/autorest-test-server
   - docker run -p 3000:3000 lmazuel/autorest-test-server &
