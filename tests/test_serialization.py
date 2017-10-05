@@ -1432,6 +1432,9 @@ class TestRuntimeDeserialized(unittest.TestCase):
             response = self.d(self.TestObj, response_data)
             deserialized_list = [d for d in response.attr_d]
 
+        self.assertListEqual(sorted(self.d("[str]", ["a", "b", "c"])), ["a", "b", "c"])
+        self.assertListEqual(sorted(self.d("[str]", {"a", "b", "c"})), ["a", "b", "c"])
+
     def test_attr_list_in_list(self):
         """
         Test deserializing a list of lists
