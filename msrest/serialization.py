@@ -1151,7 +1151,7 @@ class Deserializer(object):
         """
         if attr is None:
             return None
-        if not isinstance(attr, list):
+        if not isinstance(attr, (list, set)):
             raise DeserializationError("Cannot deserialize as [{}] an object of type {}".format(
                 iter_type,
                 type(attr)
