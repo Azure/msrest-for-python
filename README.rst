@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-10-05 Version 0.4.16
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix regression: accept "set<str>" as a valid "[str]" (#60)
+
 2017-09-28 Version 0.4.15
 +++++++++++++++++++++++++
 
