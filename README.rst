@@ -26,10 +26,12 @@ Release History
 **Features**
 
 This make Authentication classes more consistent:
+
 - OAuthTokenAuthentication is now a subclass of BasicTokenAuthentication (was Authentication)
 - BasicTokenAuthentication has now a "set_token" methods that does nothing.
 
 This allows test like "isintance(o, BasicTokenAuthentication)" to be guaranted that the following attributes exists:
+
 - token
 - set_token()
 - signed_session()
