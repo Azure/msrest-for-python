@@ -39,6 +39,7 @@ except ImportError:
 
 from msrest.authentication import (
     BasicAuthentication,
+    BasicTokenAuthentication,
     OAuthTokenAuthentication)
 
 from requests import Request
@@ -70,6 +71,19 @@ class TestAuthentication(unittest.TestCase):
         req = session.auth(self.request)
         self.assertTrue('Authorization' in req.headers)
         self.assertTrue(req.headers['Authorization'].startswith('Basic '))
+
+    def test_basic_token_auth(self):
+
+        token = {
+            'access_token': '123456789'
+        }
+        basic = BasicTokenAuthentication(token)
+        basic.set_token() # Just check that this does not raise
+        session = basic.signed_session()
+
+        req = session.prepare_request(self.request)
+        self.assertTrue('Authorization' in req.headers)
+        self.assertEquals(req.headers['Authorization'], 'Bearer 123456789')
 
     def test_token_auth(self):
 
