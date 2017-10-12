@@ -20,6 +20,22 @@ To install:
 Release History
 ---------------
 
+2017-10-12 Version 0.4.17
++++++++++++++++++++++++++
+
+**Features**
+
+This make Authentication classes more consistent:
+- OAuthTokenAuthentication is now a subclass of BasicTokenAuthentication (was Authentication)
+- BasicTokenAuthentication has now a "set_token" methods that does nothing.
+
+This allows test like "isintance(o, BasicTokenAuthentication)" to be guaranted that the following attributes exists:
+- token
+- set_token()
+- signed_session()
+
+This means for users of "msrestazure", that they are guaranted that all AD classes somehow inherits from "BasicTokenAuthentication"
+
 2017-10-05 Version 0.4.16
 +++++++++++++++++++++++++
 
