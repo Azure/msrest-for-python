@@ -79,6 +79,14 @@ class BasicTokenAuthentication(Authentication):
         self.scheme = 'Bearer'
         self.token = token
 
+    def set_token(self):
+        """Should be used to define the self.token attribute.
+
+        In this implementation, does nothing since the token is statically provided
+        at creation.
+        """
+        pass
+
     def signed_session(self):
         """Create requests session with any required auth headers
         applied.
@@ -91,7 +99,7 @@ class BasicTokenAuthentication(Authentication):
         return session
 
 
-class OAuthTokenAuthentication(Authentication):
+class OAuthTokenAuthentication(BasicTokenAuthentication):
     """OAuth Token Authentication.
     Requires that supplied token contains an expires_in field.
 
