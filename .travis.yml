@@ -4,13 +4,7 @@ language: python
 cache: pip
 services:
   - docker
-jobs:
-  allow_failures:
-    - env: TOXENV=py27-autorest
-    - env: TOXENV=py33-autorest
-    - env: TOXENV=py34-autorest
-    - env: TOXENV=py35-autorest
-    - env: TOXENV=py36-autorest
+matrix:
   include:
     - python: 2.7
       env: TOXENV=py27
@@ -32,20 +26,12 @@ jobs:
       env: TOXENV=py35-autorest
     - python: 3.6
       env: TOXENV=py36-autorest
-    - stage: deploy
-      python: 3.6
-      if: type = push and tag =~ ^v0.4
-      before_install: skip
-      install: skip
-      script: skip
-      after_success: skip
-      deploy:
-         provider: pypi
-         user: Laurent.Mazuel
-         skip_upload_docs: true
-         # password: use $PYPI_PASSWORD
-         distributions: "sdist bdist_wheel"
-
+  allow_failures:
+    - env: TOXENV=py27-autorest
+    - env: TOXENV=py33-autorest
+    - env: TOXENV=py34-autorest
+    - env: TOXENV=py35-autorest
+    - env: TOXENV=py36-autorest
 before_install:
   - docker pull lmazuel/autorest-test-server
   - docker run -p 3000:3000 lmazuel/autorest-test-server &
@@ -60,3 +46,12 @@ script:
   - tox
 after_success:
   - bash <(curl -s https://codecov.io/bash) -e TOXENV -f $TRAVIS_BUILD_DIR/coverage.xml
+deploy:
+  provider: pypi
+  user: Laurent.Mazuel
+  skip_upload_docs: true
+  # password: use $PYPI_PASSWORD
+  distributions: "sdist bdist_wheel"
+  on:
+    tags: true
+    python: '3.6'
