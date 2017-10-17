@@ -135,3 +135,29 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
         :rtype: requests.Session.
         """
         return oauth.OAuth2Session(self.id, token=self.token)
+
+class CognitiveServicesAuthentication(Authentication):
+    """Cognitive Services authentication.
+
+    :param str subscription_key: The CS subscription key
+    """
+
+    _subscription_key_header = 'Ocp-Apim-Subscription-Key'
+
+    def __init__(self, subscription_key):
+        if not subscription_key:
+            raise ValueError("Subscription key cannot be None")
+        self.subscription_key = subscription_key
+
+    def signed_session(self):
+        """Create requests session with any required auth headers
+        applied.
+        :rtype: requests.Session.
+        """
+
+        session = super(CognitiveServicesAuthentication, self).signed_session()
+        session.headers.update({
+            self._subscription_key_header: self.subscription_key,
+            'X-BingApis-SDK-Client': 'Python-SDK'
+        })
+        return session
