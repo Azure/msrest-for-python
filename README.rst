@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2017-10-26 Version 0.4.18
++++++++++++++++++++++++++
+
+**Features**
+
+- Add ApiKeyCredentials class. This can be used to support OpenAPI ApiKey feature.
+- Add CognitiveServicesAuthentication class. Pre-declared ApiKeyCredentials class for Cognitive Services.
+
 2017-10-12 Version 0.4.17
 +++++++++++++++++++++++++
 
