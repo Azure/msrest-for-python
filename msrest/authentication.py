@@ -166,7 +166,7 @@ class ApiKeyCredentials(Authentication):
         session.params.update(self.in_query)
         return session
 
-class CognitiveServicesAuthentication(ApiKeyCredentials):
+class CognitiveServicesCredentials(ApiKeyCredentials):
     """Cognitive Services authentication.
 
     :param str subscription_key: The CS subscription key
@@ -177,7 +177,7 @@ class CognitiveServicesAuthentication(ApiKeyCredentials):
     def __init__(self, subscription_key):
         if not subscription_key:
             raise ValueError("Subscription key cannot be None")
-        super(CognitiveServicesAuthentication, self).__init__(
+        super(CognitiveServicesCredentials, self).__init__(
             in_headers={
                 self._subscription_key_header: subscription_key,
                 'X-BingApis-SDK-Client': 'Python-SDK'

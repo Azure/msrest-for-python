@@ -42,7 +42,7 @@ from msrest.authentication import (
     BasicTokenAuthentication,
     OAuthTokenAuthentication,
     ApiKeyCredentials,
-    CognitiveServicesAuthentication
+    CognitiveServicesCredentials
 )
 
 from requests import Request
@@ -116,7 +116,7 @@ class TestAuthentication(unittest.TestCase):
         self.assertIn("testquery=testparamvalue", prep_req.path_url)
 
     def test_cs_auth(self):
-        auth = CognitiveServicesAuthentication("mysubkey")
+        auth = CognitiveServicesCredentials("mysubkey")
         session = auth.signed_session()
         prep_req = session.prepare_request(self.request)
         self.assertDictContainsSubset({'Ocp-Apim-Subscription-Key' : 'mysubkey'}, prep_req.headers)
