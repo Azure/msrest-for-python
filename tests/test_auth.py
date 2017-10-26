@@ -40,7 +40,10 @@ except ImportError:
 from msrest.authentication import (
     BasicAuthentication,
     BasicTokenAuthentication,
-    OAuthTokenAuthentication)
+    OAuthTokenAuthentication,
+    ApiKeyCredentials,
+    CognitiveServicesCredentials
+)
 
 from requests import Request
 
@@ -93,7 +96,32 @@ class TestAuthentication(unittest.TestCase):
 
         self.assertEqual(session.token, token)
 
-        
+    def test_apikey_auth(self):
+        auth = ApiKeyCredentials(
+            in_headers={
+                'testheader' : 'testheadervalue'
+            }
+        )
+        session = auth.signed_session()
+        prep_req = session.prepare_request(self.request)
+        self.assertDictContainsSubset({'testheader' : 'testheadervalue'}, prep_req.headers)
+
+        auth = ApiKeyCredentials(
+            in_query={
+                'testquery' : 'testparamvalue'
+            }
+        )
+        session = auth.signed_session()
+        prep_req = session.prepare_request(self.request)
+        self.assertIn("testquery=testparamvalue", prep_req.path_url)
+
+    def test_cs_auth(self):
+        auth = CognitiveServicesCredentials("mysubkey")
+        session = auth.signed_session()
+        prep_req = session.prepare_request(self.request)
+        self.assertDictContainsSubset({'Ocp-Apim-Subscription-Key' : 'mysubkey'}, prep_req.headers)
+
+
 if __name__ == '__main__':
     unittest.main()
 
