@@ -1746,23 +1746,37 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertIsInstance(animal, Animal)
         self.assertEquals(animal.name, "Didier")
 
+    @unittest.skipIf(sys.version_info < (3,4), "assertLogs not supported before 3.4")
+    def test_polymorphic_missing_info(self):
+        class Animal(Model):
+
+            _attribute_map = {
+                "name":{"key":"Name", "type":"str"},
+                "d_type":{"key":"dType", "type":"str"}
+            }
+
+            _subtype_map = {
+                'd_type': {}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
+
         message = {
             "Name": "Didier"
         }
-        with self.assertRaises(DeserializationError) as err:
+        with self.assertLogs('msrest.serialization', level="WARNING"):
             animal = self.d(Animal, message)
-        exception = err.exception
-        self.assertIn(str(exception), "Discriminator d_type cannot be absent or null")
+        self.assertEquals(animal.name, "Didier")
 
         message = { 
             "dType": "Penguin", 
             "likesDogFood": True, 
             "Name": "Fido" 
         }
-        with self.assertRaises(DeserializationError) as err:
+        with self.assertLogs('msrest.serialization', level="WARNING"):
             animal = self.d(Animal, message)
-        exception = err.exception
-        self.assertIn(str(exception), "Subtype value Penguin has no mapping")
+        self.assertEquals(animal.name, "Fido")
 
     def test_polymorphic_deserialization_with_escape(self):
 
