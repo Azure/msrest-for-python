@@ -286,9 +286,19 @@ class Model(object):
                 try:
                     return objects[flatten_mapping_type[subtype_value]]
                 except KeyError:
-                    raise DeserializationError("Subtype value {} has no mapping".format(subtype_value))
+                    _LOGGER.warning(
+                        "Subtype value %s has no mapping, use base class %s.",
+                        subtype_value,
+                        cls.__name__,
+                    )
+                    break
             else:
-                raise DeserializationError("Discriminator {} cannot be absent or null".format(subtype_key))
+                _LOGGER.warning(
+                    "Discriminator %s is absent or null, use base class %s.",
+                    subtype_key,
+                    cls.__name__
+                )
+                break
         return cls
 
     @classmethod
