@@ -20,6 +20,30 @@ To install:
 Release History
 ---------------
 
+2017-11-20 Version 0.4.19
++++++++++++++++++++++++++
+
+**Features**
+
+- The interpretation of Swagger 2.0 "discriminator" is now lenient. This means for these two scenarios:
+
+  - Discriminator value is missing from the received payload
+  - Discriminator value is not defined in the Swagger
+
+  Instead of failing with an exception, this now returns the base type for this "discriminator".
+
+  Note that this is not a contradiction of the Swagger 2.0 spec, that specifies 
+  "validation SHOULD fail [...] there may exist valid reasons in particular circumstances to ignore a particular item,
+  but the full implications must be understood and carefully weighed before choosing a different course."
+
+  This cannot be configured for now and is the new default behvaior, but can be in the future if needed.
+
+**Bugfixes**
+
+- Optional formdata parameters were raising an exception (#65)
+- "application/x-www-form-urlencoded" form was sent using "multipart/form-data". 
+  This causes problems if the server does not support "multipart/form-data" (#66)
+
 2017-10-26 Version 0.4.18
 +++++++++++++++++++++++++
 
