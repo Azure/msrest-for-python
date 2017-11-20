@@ -164,10 +164,15 @@ class ServiceClient(object):
         """
         if content is None:
             content = {}
-        file_data = {f: self._format_data(d) for f, d in content.items()}
-        if headers:
-            headers.pop('Content-Type', None)
-        return self.send(request, headers, None, files=file_data, **config)
+        content_type = headers.pop('Content-Type', None) if headers else None
+
+        if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
+            # Do NOT use "add_content" that assumes input is JSON
+            request.data = {f: d for f, d in content.items() if d is not None}
+            return self.send(request, headers, None, **config)
+        else: # Assume "multipart/form-data"
+            file_data = {f: self._format_data(d) for f, d in content.items() if d is not None}
+            return self.send(request, headers, None, files=file_data, **config)
 
     def send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
