@@ -204,6 +204,17 @@ class TestServiceClient(unittest.TestCase):
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
         mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'})
 
+        ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
+        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted'})
+
+        ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
+        mock_client.send.assert_called_with(request, {}, None)
+        self.assertEqual(request.data, {'1':'1', '2':'2'})
+
+        ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
+        mock_client.send.assert_called_with(request, {}, None)
+        self.assertEqual(request.data, {'1':'1'})
+
     def test_format_data(self):
 
         mock_client = mock.create_autospec(ServiceClient)
