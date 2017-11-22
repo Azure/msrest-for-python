@@ -2,17 +2,15 @@ dist: trusty
 sudo: required
 language: python
 cache: pip
-services:
-  - docker
 _autorest_install: &_autorest_install
   before_install:
-  - docker pull lmazuel/autorest-test-server
-  - docker run -p 3000:3000 lmazuel/autorest-test-server &
   - git clone https://github.com/Azure/autorest.python.git
   - cd autorest.python
   - sudo apt-get install libunwind8-dev
   - nvm install 7
   - npm install # Install test server pre-requisites
+  - cd node_modules/@microsoft.azure/autorest.testserver
+  - npm start &
 matrix:
   include:
     - python: 2.7
