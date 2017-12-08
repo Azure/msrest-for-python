@@ -223,27 +223,28 @@ class TestServiceClient(unittest.TestCase):
 
     def test_client_formdata_send(self):
 
-        mock_client = mock.create_autospec(ServiceClient)
-        mock_client._format_data.return_value = "formatted"
+        mock_client = ServiceClient(None, None)
+        mock_client._format_data = mock.MagicMock(return_value="formatted")
+        mock_client.send = mock.MagicMock()
         request = ClientRequest('GET')
         ServiceClient.send_formdata(mock_client, request)
-        mock_client.send.assert_called_with(request, None, None, files={}, stream=True)
+        mock_client.send.assert_called_with(request, None, files={}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
-        mock_client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'}, stream=True)
+        mock_client.send.assert_called_with(request, {'id':'1234'}, files={'Test':'formatted'}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
-        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'}, stream=True)
+        mock_client.send.assert_called_with(request, {}, files={'1':'formatted', '2':'formatted'}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
-        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted'}, stream=True)
+        mock_client.send.assert_called_with(request, {}, files={'1':'formatted'}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
-        mock_client.send.assert_called_with(request, {}, None, stream=True)
+        mock_client.send.assert_called_with(request, {}, files=None, stream=True)
         self.assertEqual(request.data, {'1':'1', '2':'2'})
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
-        mock_client.send.assert_called_with(request, {}, None, stream=True)
+        mock_client.send.assert_called_with(request, {}, files=None, stream=True)
         self.assertEqual(request.data, {'1':'1'})
 
     def test_format_data(self):

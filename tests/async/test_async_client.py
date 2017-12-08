@@ -32,6 +32,9 @@ try:
     from unittest import mock
 except ImportError:
     import mock
+import sys
+
+import pytest
 
 import requests
 from oauthlib import oauth2
@@ -44,86 +47,89 @@ from msrest.exceptions import ClientRequestError, TokenExpiredError
 from msrest.pipeline import ClientRequest
 
 
-class TestServiceClient(unittest.TestCase):
+@unittest.skipIf(sys.version_info < (3, 5, 2), "Async tests only on 3.5.2 minimal")
+class TestServiceClient(object):
 
-    def setUp(self):
-        self.cfg = Configuration("https://my_endpoint.com")
-        self.creds = mock.create_autospec(OAuthTokenAuthentication)
-        self.loop = asyncio.get_event_loop()
-        return super(TestServiceClient, self).setUp()
-
-
-    def test_client_send(self):
+    @pytest.mark.asyncio
+    async def test_client_send(self):
 
         mock_client = mock.create_autospec(ServiceClient)
-        mock_client.config = self.cfg
-        mock_client.creds = self.creds
+        mock_client.config = Configuration("https://my_endpoint.com")
+        mock_client.creds = mock.create_autospec(OAuthTokenAuthentication)
         mock_client._configure_session.return_value = {}
         session = mock.create_autospec(requests.Session)
         mock_client.creds.signed_session.return_value = session
         mock_client.creds.refresh_session.return_value = session
 
         request = ClientRequest('GET')
-        future = ServiceClient.async_send(mock_client, request)
-        self.loop.run_until_complete(future)
+        await ServiceClient.async_send(mock_client, request)
         session.request.call_count = 0
         mock_client._configure_session.assert_called_with(session)
         session.request.assert_called_with('GET', None, [], {})
         session.close.assert_called_with()
 
-        future = ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'})
-        self.loop.run_until_complete(future)
+        await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'})
         mock_client._configure_session.assert_called_with(session)
         session.request.assert_called_with('GET', None, '{"Test": "Data"}', {'Content-Length': '16', 'id':'1234'})
-        self.assertEqual(session.request.call_count, 1)
+        assert session.request.call_count == 1
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = requests.RequestException("test")
-        with self.assertRaises(ClientRequestError):
-            future = ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
-            self.loop.run_until_complete(future)
+        with pytest.raises(ClientRequestError):
+            await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         mock_client._configure_session.assert_called_with(session, test='value')
         session.request.assert_called_with('GET', None, '{"Test": "Data"}', {'Content-Length': '16', 'id':'1234'})
-        self.assertEqual(session.request.call_count, 1)
+        assert session.request.call_count == 1
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
-        with self.assertRaises(TokenExpiredError):
-            future = ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
-            self.loop.run_until_complete(future)
-        self.assertEqual(session.request.call_count, 2)
+        with pytest.raises(TokenExpiredError):
+            await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
+        assert session.request.call_count == 2
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = ValueError("test")
-        with self.assertRaises(ValueError):
-            future = ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
-            self.loop.run_until_complete(future)
+        with pytest.raises(ValueError):
+            await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         session.close.assert_called_with()
 
-    def test_client_formdata_send(self):
+    @pytest.mark.asyncio
+    async def test_client_formdata_send(self):
+
         def make_coroutine(mock):
             async def coroutine(*args, **kwargs):
                 return mock(*args, **kwargs)
             return coroutine        
-        send_mock = mock.Mock() 
-        mock_client = mock.create_autospec(ServiceClient)
-        mock_client._format_data.return_value = "formatted"
-        mock_client.async_send = make_coroutine(send_mock)
+
+        mock_client = ServiceClient(None, None)
+        mock_client._format_data = mock.MagicMock(return_value="formatted")
+        async_send_mock = mock.Mock()
+        mock_client.async_send = make_coroutine(async_send_mock)
+
         request = ClientRequest('GET')
-        future = ServiceClient.async_send_formdata(mock_client, request)
-        self.loop.run_until_complete(future)
-        send_mock.assert_called_with(request, None, None, files={})
+        await ServiceClient.async_send_formdata(mock_client, request)
+        async_send_mock.assert_called_with(request, None, files={})
 
-        future = ServiceClient.async_send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
-        self.loop.run_until_complete(future)
-        send_mock.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'})
+        await ServiceClient.async_send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
+        async_send_mock.assert_called_with(request, {'id':'1234'}, files={'Test':'formatted'})
 
-        future = ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
-        self.loop.run_until_complete(future)
-        send_mock.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'})
+        await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
+        async_send_mock.assert_called_with(request, {}, files={'1':'formatted', '2':'formatted'})
+
+        await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
+        async_send_mock.assert_called_with(request, {}, files={'1':'formatted'})
+
+        await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
+        async_send_mock.assert_called_with(request, {}, files=None)
+        assert request.data == {'1':'1', '2':'2'}
+
+        await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
+        async_send_mock.assert_called_with(request, {}, files=None)
+        assert request.data == {'1':'1'}
+
 
 
 if __name__ == '__main__':

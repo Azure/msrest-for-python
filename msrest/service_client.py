@@ -163,6 +163,18 @@ class ServiceClient(AsyncServiceClientMixin):
 
         return kwargs
 
+    def _prepare_send_formdata(self, request, headers=None, content=None):
+        if content is None:
+            content = {}
+        content_type = headers.pop('Content-Type', None) if headers else None
+
+        if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
+            # Do NOT use "add_content" that assumes input is JSON
+            request.data = {f: d for f, d in content.items() if d is not None}
+            return None
+        else: # Assume "multipart/form-data"
+            return {f: self._format_data(d) for f, d in content.items() if d is not None}
+
     def send_formdata(self, request, headers=None, content=None, stream=True, **config):
         """Send data as a multipart form-data request.
 
@@ -172,20 +184,10 @@ class ServiceClient(AsyncServiceClientMixin):
         :param ClientRequest request: The request object to be sent.
         :param dict headers: Any headers to add to the request.
         :param dict content: Dictionary of the fields of the formdata.
-        :param bool stream: Is the session in stream mode. True by default for compat.
         :param config: Any specific config overrides.
         """
-        if content is None:
-            content = {}
-        content_type = headers.pop('Content-Type', None) if headers else None
-
-        if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
-            # Do NOT use "add_content" that assumes input is JSON
-            request.data = {f: d for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, stream=stream, **config)
-        else: # Assume "multipart/form-data"
-            file_data = {f: self._format_data(d) for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, files=file_data, stream=stream, **config)
+        files = self._prepare_send_formdata(request, headers, content)
+        return self.send(request, headers, files=files, stream=stream, **config)
 
     def send(self, request, headers=None, content=None, stream=True, **config):
         """Prepare and send request object according to configuration.

@@ -53,12 +53,8 @@ class AsyncServiceClientMixin:
         :param dict content: Dictionary of the fields of the formdata.
         :param config: Any specific config overrides.
         """
-        if content is None:
-            content = {}
-        file_data = {f: self._format_data(d) for f, d in content.items()}
-        if headers:
-            headers.pop('Content-Type', None)
-        return await self.async_send(request, headers, None, files=file_data, **config)
+        files = self._prepare_send_formdata(request, headers, content)
+        return await self.async_send(request, headers, files=files, **config)
 
     async def async_send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
