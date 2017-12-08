@@ -1,7 +1,10 @@
 __pycache__
-venv*
+env*
 *.egg-info
 .tox
-test/.coverage
+.coverage
+coverage.xml
 *.pyc
 .idea
+build/
+dist/
