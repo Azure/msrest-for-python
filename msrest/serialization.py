@@ -393,6 +393,9 @@ class Serializer(object):
             attributes = target_obj._attribute_map
             for attr, attr_desc in attributes.items():
                 attr_name = attr
+                if attr_name == "additional_properties" and target_obj.additional_properties:
+                    serialized.update(target_obj.additional_properties)
+                    continue
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
                     continue
                 try:
@@ -990,7 +993,9 @@ class Deserializer(object):
             attributes = response._attribute_map
             d_attrs = {}
             for attr, attr_desc in attributes.items():
-
+                if attr == "additional_properties":
+                    d_attrs["additional_properties"] = {}
+                    continue
                 raw_value = None
                 for key_extractor in self.key_extractors:
                     found_value = key_extractor(attr, attr_desc, data)
@@ -1005,7 +1010,15 @@ class Deserializer(object):
             msg = "Unable to deserialize to object: " + class_name
             raise_with_traceback(DeserializationError, msg, err)
         else:
+            if "additional_properties" in d_attrs:
+                d_attrs["additional_properties"] = self._build_additional_properties(response._attribute_map, data)
             return self._instantiate_model(response, d_attrs)
+
+    def _build_additional_properties(self, attribute_map, data):
+        known_json_keys = {desc['key'] for desc in attribute_map.values() if desc['key'] != ''}
+        present_json_keys = set(data.keys())
+        missing_keys = present_json_keys - known_json_keys
+        return {key: data[key] for key in missing_keys}
 
     def _classify_target(self, target, data):
         """Check to see whether the deserialization target object can
