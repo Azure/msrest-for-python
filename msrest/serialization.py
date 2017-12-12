@@ -1118,7 +1118,8 @@ class Deserializer(object):
                 response_obj = response(**kwargs)
                 for attr in readonly:
                     setattr(response_obj, attr, attrs.get(attr))
-                response_obj.additional_properties = additional_properties
+                if additional_properties:
+                    response_obj.additional_properties = additional_properties
                 return response_obj
             except TypeError as err:
                 msg = "Unable to deserialize {} into model {}. ".format(
