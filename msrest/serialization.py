@@ -136,6 +136,7 @@ class Model(object):
         """Allow attribute setting via kwargs on initialization."""
         for k in kwargs:
             setattr(self, k, kwargs[k])
+        self.additional_properties = {}
 
     def __eq__(self, other):
         """Compare objects by comparing all attributes."""
@@ -149,6 +150,10 @@ class Model(object):
 
     def __str__(self):
         return str(self.__dict__)
+
+    @classmethod
+    def enable_additional_properties_sending(cls):
+        cls._attribute_map['additional_properties'] = {'key': '', 'type': '{object}'}
 
     def validate(self):
         """Validate this model recursively and return a list of ValidationError.
@@ -1010,8 +1015,7 @@ class Deserializer(object):
             msg = "Unable to deserialize to object: " + class_name
             raise_with_traceback(DeserializationError, msg, err)
         else:
-            if "additional_properties" in d_attrs:
-                d_attrs["additional_properties"] = self._build_additional_properties(response._attribute_map, data)
+            d_attrs["additional_properties"] = self._build_additional_properties(response._attribute_map, data)
             return self._instantiate_model(response, d_attrs)
 
     def _build_additional_properties(self, attribute_map, data):
@@ -1110,9 +1114,11 @@ class Deserializer(object):
                          if v.get('constant')]
                 kwargs = {k: v for k, v in attrs.items()
                           if k not in subtype and k not in readonly + const}
+                additional_properties = kwargs.pop('additional_properties')
                 response_obj = response(**kwargs)
                 for attr in readonly:
                     setattr(response_obj, attr, attrs.get(attr))
+                response_obj.additional_properties = additional_properties
                 return response_obj
             except TypeError as err:
                 msg = "Unable to deserialize {} into model {}. ".format(
