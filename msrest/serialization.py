@@ -136,6 +136,7 @@ class Model(object):
         """Allow attribute setting via kwargs on initialization."""
         for k in kwargs:
             setattr(self, k, kwargs[k])
+        self.additional_properties = {}
 
     def __eq__(self, other):
         """Compare objects by comparing all attributes."""
@@ -149,6 +150,10 @@ class Model(object):
 
     def __str__(self):
         return str(self.__dict__)
+
+    @classmethod
+    def enable_additional_properties_sending(cls):
+        cls._attribute_map['additional_properties'] = {'key': '', 'type': '{object}'}
 
     def validate(self):
         """Validate this model recursively and return a list of ValidationError.
@@ -393,6 +398,9 @@ class Serializer(object):
             attributes = target_obj._attribute_map
             for attr, attr_desc in attributes.items():
                 attr_name = attr
+                if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
+                    serialized.update(target_obj.additional_properties)
+                    continue
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
                     continue
                 try:
@@ -990,7 +998,9 @@ class Deserializer(object):
             attributes = response._attribute_map
             d_attrs = {}
             for attr, attr_desc in attributes.items():
-
+                # Check empty string. If it's not empty, someone has a real "additionalProperties"...
+                if attr == "additional_properties" and attr_desc["key"] == '':
+                    continue
                 raw_value = None
                 for key_extractor in self.key_extractors:
                     found_value = key_extractor(attr, attr_desc, data)
@@ -1005,7 +1015,17 @@ class Deserializer(object):
             msg = "Unable to deserialize to object: " + class_name
             raise_with_traceback(DeserializationError, msg, err)
         else:
-            return self._instantiate_model(response, d_attrs)
+            additional_properties = self._build_additional_properties(response._attribute_map, data)
+            return self._instantiate_model(response, d_attrs, additional_properties)
+
+    def _build_additional_properties(self, attribute_map, data):
+        if "additional_properties" in attribute_map and attribute_map.get("additional_properties", {}).get("key") != '':
+            # Check empty string. If it's not empty, someone has a real "additionalProperties"
+            return None
+        known_json_keys = {desc['key'] for desc in attribute_map.values() if desc['key'] != ''}
+        present_json_keys = set(data.keys())
+        missing_keys = present_json_keys - known_json_keys
+        return {key: data[key] for key in missing_keys}
 
     def _classify_target(self, target, data):
         """Check to see whether the deserialization target object can
@@ -1082,7 +1102,7 @@ class Deserializer(object):
             raise DeserializationError("Do not support XML right now")
         return data
 
-    def _instantiate_model(self, response, attrs):
+    def _instantiate_model(self, response, attrs, additional_properties=None):
         """Instantiate a response model passing in deserialized args.
 
         :param response: The response model class.
@@ -1100,6 +1120,8 @@ class Deserializer(object):
                 response_obj = response(**kwargs)
                 for attr in readonly:
                     setattr(response_obj, attr, attrs.get(attr))
+                if additional_properties:
+                    response_obj.additional_properties = additional_properties
                 return response_obj
             except TypeError as err:
                 msg = "Unable to deserialize {} into model {}. ".format(

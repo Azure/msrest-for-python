@@ -1001,6 +1001,167 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         self.s.dependencies = old_dependencies
 
+    def test_additional_properties_no_send(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
+
+        o = AdditionalTest(
+            name='test'
+        )
+        o.additional_properties={
+            "PropInt": 2,
+            "PropStr": "AdditionalProperty",
+            "PropArray": [1,2,3],
+            "PropDict": {"a": "b"}
+        }
+
+        expected_message = {
+            "Name": "test"
+        }
+
+        s = Serializer({'AdditionalTest': AdditionalTest})
+
+        serialized = s.body(o, 'AdditionalTest')
+
+        self.assertEqual(serialized, expected_message)
+
+
+    def test_additional_properties_manual(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
+        AdditionalTest.enable_additional_properties_sending()
+
+        o = AdditionalTest(
+            name='test'
+        )
+        o.additional_properties={
+            "PropInt": 2,
+            "PropStr": "AdditionalProperty",
+            "PropArray": [1,2,3],
+            "PropDict": {"a": "b"}
+        }
+
+        expected_message = {
+            "Name": "test",
+            "PropInt": 2,
+            "PropStr": "AdditionalProperty",
+            "PropArray": [1,2,3],
+            "PropDict": {"a": "b"}
+        }
+
+        s = Serializer({'AdditionalTest': AdditionalTest})
+
+        serialized = s.body(o, 'AdditionalTest')
+
+        self.assertEqual(serialized, expected_message)
+
+
+    def test_additional_properties(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"},
+                'additional_properties': {'key': '', 'type': '{object}'}
+            }
+
+            def __init__(self, name=None, additional_properties=None):
+                self.name = name
+                self.additional_properties = additional_properties
+
+        o = AdditionalTest(
+            name='test',
+            additional_properties={
+                "PropInt": 2,
+                "PropStr": "AdditionalProperty",
+                "PropArray": [1,2,3],
+                "PropDict": {"a": "b"}
+            }
+        )
+
+        expected_message = {
+            "Name": "test",
+            "PropInt": 2,
+            "PropStr": "AdditionalProperty",
+            "PropArray": [1,2,3],
+            "PropDict": {"a": "b"}
+        }
+
+        s = Serializer({'AdditionalTest': AdditionalTest})
+
+        serialized = s.body(o, 'AdditionalTest')
+
+        self.assertEqual(serialized, expected_message)
+
+    def test_additional_properties_declared(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"},
+                'additional_properties': {'key': 'AddProp', 'type': '{object}'}
+            }
+
+            def __init__(self, name=None, additional_properties=None):
+                self.name = name
+                self.additional_properties = additional_properties
+
+        o = AdditionalTest(
+            name='test',
+            additional_properties={
+                "PropInt": 2,
+                "PropStr": "AdditionalProperty",
+                "PropArray": [1,2,3],
+                "PropDict": {"a": "b"}
+            }
+        )
+
+        expected_message = {
+            "Name": "test",
+            "AddProp": {
+                "PropInt": 2,
+                "PropStr": "AdditionalProperty",
+                "PropArray": [1,2,3],
+                "PropDict": {"a": "b"}
+            }
+        }
+
+        s = Serializer({'AdditionalTest': AdditionalTest})
+
+        serialized = s.body(o, 'AdditionalTest')
+
+        self.assertEqual(serialized, expected_message)
+
+        # Make it declared as a property AND readonly
+        AdditionalTest._validation = {
+            'additional_properties': {'readonly': True}
+        }
+
+        expected_message = {
+            "Name": "test"
+        }
+
+        s = Serializer({'AdditionalTest': AdditionalTest})
+
+        serialized = s.body(o, 'AdditionalTest')
+
+        self.assertEqual(serialized, expected_message)
+
+
 class TestRuntimeDeserialized(unittest.TestCase):
 
     class TestObj(Model):
@@ -1820,6 +1981,101 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         self.assertIsInstance(animal, Dog)
         self.assertTrue(animal.likes_dog_food)
+
+    def test_additional_properties(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"},
+                'additional_properties': {'key': '', 'type': '{object}'}
+            }
+
+            def __init__(self, name=None, additional_properties=None):
+                self.name = name
+                self.additional_properties = additional_properties
+
+        message = {
+            "Name": "test",
+            "PropInt": 2,
+            "PropStr": "AdditionalProperty",
+            "PropArray": [1,2,3],
+            "PropDict": {"a": "b"}
+        }
+
+        d = Deserializer({'AdditionalTest': AdditionalTest})
+
+        m = d('AdditionalTest', message)
+
+        self.assertEquals(m.name, "test")
+        self.assertEquals(m.additional_properties['PropInt'], 2)
+        self.assertEquals(m.additional_properties['PropStr'], "AdditionalProperty")
+        self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
+        self.assertEquals(m.additional_properties['PropDict'], {"a": "b"})
+
+    def test_additional_properties_declared(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"},
+                'additional_properties': {'key': 'AddProp', 'type': '{object}'}
+            }
+
+            def __init__(self, name=None, additional_properties=None):
+                self.name = name
+                self.additional_properties = additional_properties
+
+        message = {
+            "Name": "test",
+            "AddProp": {
+                "PropInt": 2,
+                "PropStr": "AdditionalProperty",
+                "PropArray": [1,2,3],
+                "PropDict": {"a": "b"}
+            }
+        }
+
+        d = Deserializer({'AdditionalTest': AdditionalTest})
+
+        m = d('AdditionalTest', message)
+
+        self.assertEquals(m.name, "test")
+        self.assertEquals(m.additional_properties['PropInt'], 2)
+        self.assertEquals(m.additional_properties['PropStr'], "AdditionalProperty")
+        self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
+        self.assertEquals(m.additional_properties['PropDict'], {"a": "b"})
+
+
+    def test_additional_properties_not_configured(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"}
+            }
+
+            def __init__(self, name=None):
+                self.name = name
+
+        message = {
+            "Name": "test",
+            "PropInt": 2,
+            "PropStr": "AdditionalProperty",
+            "PropArray": [1,2,3],
+            "PropDict": {"a": "b"}
+        }
+
+        d = Deserializer({'AdditionalTest': AdditionalTest})
+
+        m = d('AdditionalTest', message)
+
+        self.assertEquals(m.name, "test")
+        self.assertEquals(m.additional_properties['PropInt'], 2)
+        self.assertEquals(m.additional_properties['PropStr'], "AdditionalProperty")
+        self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
+        self.assertEquals(m.additional_properties['PropDict'], {"a": "b"})
+
 
 class TestModelInstanceEquality(unittest.TestCase):
 
