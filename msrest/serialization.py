@@ -998,8 +998,8 @@ class Deserializer(object):
             attributes = response._attribute_map
             d_attrs = {}
             for attr, attr_desc in attributes.items():
-                if attr == "additional_properties":
-                    d_attrs["additional_properties"] = {}
+                # Check empty string. If it's not empty, someone has a real "additionalProperties"...
+                if attr == "additional_properties" and attr_desc["key"] == '':
                     continue
                 raw_value = None
                 for key_extractor in self.key_extractors:
@@ -1015,10 +1015,13 @@ class Deserializer(object):
             msg = "Unable to deserialize to object: " + class_name
             raise_with_traceback(DeserializationError, msg, err)
         else:
-            d_attrs["additional_properties"] = self._build_additional_properties(response._attribute_map, data)
-            return self._instantiate_model(response, d_attrs)
+            additional_properties = self._build_additional_properties(response._attribute_map, data)
+            return self._instantiate_model(response, d_attrs, additional_properties)
 
     def _build_additional_properties(self, attribute_map, data):
+        if "additional_properties" in attribute_map and attribute_map.get("additional_properties", {}).get("key") != '':
+            # Check empty string. If it's not empty, someone has a real "additionalProperties"
+            return None
         known_json_keys = {desc['key'] for desc in attribute_map.values() if desc['key'] != ''}
         present_json_keys = set(data.keys())
         missing_keys = present_json_keys - known_json_keys
@@ -1099,7 +1102,7 @@ class Deserializer(object):
             raise DeserializationError("Do not support XML right now")
         return data
 
-    def _instantiate_model(self, response, attrs):
+    def _instantiate_model(self, response, attrs, additional_properties=None):
         """Instantiate a response model passing in deserialized args.
 
         :param response: The response model class.
@@ -1114,7 +1117,6 @@ class Deserializer(object):
                          if v.get('constant')]
                 kwargs = {k: v for k, v in attrs.items()
                           if k not in subtype and k not in readonly + const}
-                additional_properties = kwargs.pop('additional_properties')
                 response_obj = response(**kwargs)
                 for attr in readonly:
                     setattr(response_obj, attr, attrs.get(attr))
