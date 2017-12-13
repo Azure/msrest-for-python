@@ -20,6 +20,18 @@ To install:
 Release History
 ---------------
 
+2017-12-13 Version 0.4.20
++++++++++++++++++++++++++
+
+**Features**
+
+- Add support for additional_properties
+
+  - By default, all additional_properties are kept.
+  - Additional properties are sent to the server only if it was specified in the Swagger, 
+    or if "enable_additional_properties_sending" is called on the model we want it.
+    This is a class method that enables it for all instance of this model.
+
 2017-11-20 Version 0.4.19
 +++++++++++++++++++++++++
 
