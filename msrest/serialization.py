@@ -398,7 +398,7 @@ class Serializer(object):
             attributes = target_obj._attribute_map
             for attr, attr_desc in attributes.items():
                 attr_name = attr
-                if attr_name == "additional_properties" and target_obj.additional_properties:
+                if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
                     serialized.update(target_obj.additional_properties)
                     continue
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
