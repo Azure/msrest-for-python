@@ -2076,6 +2076,36 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
         self.assertEquals(m.additional_properties['PropDict'], {"a": "b"})
 
+    def test_additional_properties_flattening(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"},
+                "content" :{"key":"Properties.Content", "type":"str"}
+            }
+
+            def __init__(self, name=None, content=None):
+                super(AdditionalTest, self).__init__()
+                self.name = name
+                self.content = content
+
+        message = {
+            "Name": "test",
+            "Properties": {
+                "Content": "Content",
+                "Unknown": "Unknown"
+            }
+        }
+
+        d = Deserializer({'AdditionalTest': AdditionalTest})
+
+        m = d('AdditionalTest', message)
+
+        self.assertEquals(m.name, "test")
+        self.assertEquals(m.content, "Content")
+        self.assertEquals(m.additional_properties, {})
+
 
 class TestModelInstanceEquality(unittest.TestCase):
 
