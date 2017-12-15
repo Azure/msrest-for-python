@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2017-12-14 Version 0.4.21
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix additional_properties if Swagger was flatten #72
+
 2017-12-13 Version 0.4.20
 +++++++++++++++++++++++++
 
