@@ -165,7 +165,11 @@ class Model(object):
         """
         validation_result = []
         for attr_name, value in [(attr, getattr(self, attr)) for attr in self._attribute_map]:
-            attr_type = self._attribute_map[attr_name]['type']
+            attr_desc = self._attribute_map[attr_name]
+            if attr_name == "additional_properties" and attr_desc["key"] == '':
+                # Do NOT validate additional_properties
+                continue
+            attr_type = attr_desc['type']
 
             try:
                 debug_name = "{}.{}".format(self.__class__.__name__, attr_name)
