@@ -87,8 +87,9 @@ class ValidationError(ClientException):
         "pattern": "must conform to the following pattern: {!r}.",
         "unique": "must contain only unique items.",
         "multiple": "must be a multiple of {!r}.",
-        "required": "can not be None."
-        }
+        "required": "can not be None.",
+        "type": "must be of type {!r}"
+    }
 
     def __init__(self, rule, target, value, *args, **kwargs):
         self.rule = rule
