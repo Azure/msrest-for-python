@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2017-12-15 Version 0.4.22
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Do not validate additional_properties #73
+- Improve validation error if expected type is dict, but actual type is not #73
+
 2017-12-14 Version 0.4.21
 +++++++++++++++++++++++++
 
