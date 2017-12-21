@@ -68,13 +68,13 @@ class Resource(Model):
     }
 
     def __init__(self, location, id=None, name=None, type=None, tags=None, **kwargs):
+        super(Resource, self).__init__(**kwargs)
         self.id = id
         self.name = name
         self.type = type
         self.location = location
         self.tags = tags
 
-        super(Resource, self).__init__(**kwargs)
 
 class GenericResource(Resource):
     """
@@ -101,17 +101,66 @@ class GenericResource(Resource):
         'properties': {'key': 'properties', 'type': 'object'},
     }
 
-    def __init__(self, location, id=None, name=None, type=None, tags=None, plan=None, properties=None, **kwargs):
+    def __init__(self, location, id=None, name=None, type=None, tags=None, plan=None, properties=None):
+        super(GenericResource, self).__init__(location, id=id, name=name, type=type, tags=tags)
         self.plan = plan
         self.properties = properties
-
-        super(GenericResource, self).__init__(location, id=id, name=name, type=type, tags=tags, **kwargs)
 
 class TestModelDeserialization(unittest.TestCase):
 
     def setUp(self):
         self.d = Deserializer({'Resource':Resource, 'GenericResource':GenericResource})
         return super(TestModelDeserialization, self).setUp()
+
+    def test_model_kwargs(self):
+
+        class MyModel(Model):
+            _validation = {
+                'id': {'readonly': True},
+                'name': {'required': True},
+            }
+            _attribute_map = {
+                'id': {'key': 'id', 'type': 'str'},
+                'name': {'key': 'name', 'type': 'str'},
+                'location': {'key': 'location', 'type': 'str'},
+            }
+            def __init__(self, **kwargs):
+                super(MyModel, self).__init__(**kwargs)
+                self.id = None
+                self.name = kwargs.get('name', None)
+                self.location = kwargs.get('location', None)
+
+        validation = MyModel().validate()
+        self.assertEquals(str(validation[0]), "Parameter 'MyModel.name' can not be None.")
+
+        with self.assertRaises(TypeError):
+            MyModel(something="ioprez")
+
+    @unittest.skipIf(sys.version_info < (3,4), "assertLogs not supported before 3.4")
+    def test_model_kwargs_logs(self):
+
+        class MyModel(Model):
+            _validation = {
+                'id': {'readonly': True},
+                'name': {'required': True},
+            }
+            _attribute_map = {
+                'id': {'key': 'id', 'type': 'str'},
+                'name': {'key': 'name', 'type': 'str'},
+                'location': {'key': 'location', 'type': 'str'},
+            }
+            def __init__(self, **kwargs):
+                super(MyModel, self).__init__(**kwargs)
+                self.id = None
+                self.name = kwargs.get('name', None)
+                self.location = kwargs.get('location', None)
+
+        with self.assertLogs('msrest.serialization', level='WARNING') as cm:
+            MyModel(name="test", id="123") # Should log that id is readonly
+        self.assertEquals(len(cm.output), 1)
+        self.assertIn("attribute id", cm.output[0])
+        self.assertIn("Readonly", cm.output[0])
+
 
     def test_response(self):
 
