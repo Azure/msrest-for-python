@@ -1279,7 +1279,8 @@ class Deserializer(object):
             return self.deserialize_unicode(attr)
         return eval(data_type)(attr)
 
-    def deserialize_unicode(self, data):
+    @staticmethod
+    def deserialize_unicode(data):
         """Preserve unicode objects in Python 2, otherwise return data
         as a string.
 
@@ -1327,8 +1328,9 @@ class Deserializer(object):
             for enum_value in enum_obj:
                 if enum_value.value.lower() == str(data).lower():
                     return enum_value
-            error = "{!r} is not valid value for enum {!r}"
-            raise DeserializationError(error.format(data, enum_obj))
+            # We don't fail anymore for unknown value, we deserialize as a string
+            _LOGGER.warning("Deserializer is not able to find %s as valid enum in %s", data, enum_obj)
+            return Deserializer.deserialize_unicode(data)
 
     @staticmethod
     def deserialize_bytearray(attr):

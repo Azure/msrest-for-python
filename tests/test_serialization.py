@@ -2178,6 +2178,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         self.assertEquals(obj.abc, TestEnum.val)
 
+        obj = deserializer('TestEnumObj', {
+            'ABC': 'azerty'
+        })
+
+        self.assertEquals(obj.abc, 'azerty')
+
         class TestEnum2(Enum):
             val2 = "Value"
 
