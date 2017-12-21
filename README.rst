@@ -20,6 +20,18 @@ To install:
 Release History
 ---------------
 
+2017-12-21 Version 0.4.23
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Accept to deserialize enum of different type if content string match #75
+- Stop failing on deserialization if enum string is unkwon. Return the string instead.
+
+**Features**
+
+- Model now accept kwargs in constructor for future kwargs models
+
 2017-12-15 Version 0.4.22
 +++++++++++++++++++++++++
 
