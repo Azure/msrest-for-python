@@ -2155,6 +2155,42 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEquals(m.content, "Content")
         self.assertEquals(m.additional_properties, {})
 
+    def test_attr_enum(self):
+        """
+        Test deserializing with Enum.
+        """
+
+        test_obj = type("TestEnumObj", (Model,), {"_attribute_map":None})
+        test_obj._attribute_map = {
+            "abc":{"key":"ABC", "type":"TestEnum"}
+        }
+        class TestEnum(Enum):
+            val = "Value"
+
+        deserializer = Deserializer({
+            'TestEnumObj': test_obj,
+            'TestEnum': TestEnum
+        })
+
+        obj = deserializer('TestEnumObj', {
+            'ABC': 'Value'
+        })
+
+        self.assertEquals(obj.abc, TestEnum.val)
+
+        class TestEnum2(Enum):
+            val2 = "Value"
+
+        deserializer = Deserializer({
+            'TestEnumObj': test_obj,
+            'TestEnum': TestEnum,
+            'TestEnum2': TestEnum2
+        })
+
+        obj = deserializer('TestEnumObj', {
+            'ABC': TestEnum2.val2
+        })
+        self.assertEquals(obj.abc, TestEnum.val)
 
 class TestModelInstanceEquality(unittest.TestCase):
 
