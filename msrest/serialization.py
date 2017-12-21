@@ -1300,7 +1300,8 @@ class Deserializer(object):
         else:
             return str(data)
 
-    def deserialize_enum(self, data, enum_obj):
+    @staticmethod
+    def deserialize_enum(data, enum_obj):
         """Deserialize string into enum object.
 
         :param str data: response string to be deserialized.
@@ -1310,6 +1311,8 @@ class Deserializer(object):
         """
         if isinstance(data, enum_obj):
             return data
+        if isinstance(data, Enum):
+            data = data.value
         if isinstance(data, int):
             # Workaround. We might consider remove it in the future.
             # https://github.com/Azure/azure-rest-api-specs/issues/141
