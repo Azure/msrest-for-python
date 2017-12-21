@@ -134,11 +134,14 @@ class Model(object):
     _attribute_map = {}
     _validation = {}
 
-    def __init__(self, *args, **kwargs):
-        """Allow attribute setting via kwargs on initialization."""
-        for k in kwargs:
-            setattr(self, k, kwargs[k])
+    def __init__(self, **kwargs):
         self.additional_properties = {}
+        for k in kwargs:
+            if k not in self._attribute_map:
+                raise TypeError("{} is not a known attribute of class {}".format(k, self.__class__))
+            if k in self._validation and self._validation[k].get("readonly", False):
+                _LOGGER.warning("Readonly attribute {} will be ignored in class {}".format(k, self.__class__))
+            setattr(self, k, kwargs[k])
 
     def __eq__(self, other):
         """Compare objects by comparing all attributes."""
