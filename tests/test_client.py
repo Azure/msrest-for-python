@@ -156,24 +156,24 @@ class TestServiceClient(unittest.TestCase):
         mock_client.creds.refresh_session.return_value = session
 
         request = ClientRequest('GET')
-        ServiceClient.send(mock_client, request)
+        ServiceClient.send(mock_client, request, stream=False)
         session.request.call_count = 0
         mock_client._configure_session.assert_called_with(session)
-        session.request.assert_called_with('GET', None, data=[], headers={})
+        session.request.assert_called_with('GET', None, data=[], headers={}, stream=False)
         session.close.assert_called_with()
 
-        ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'})
+        ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, stream=False)
         mock_client._configure_session.assert_called_with(session)
-        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'})
+        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'}, stream=False)
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = requests.RequestException("test")
         with self.assertRaises(ClientRequestError):
-            ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
+            ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value', stream=False)
         mock_client._configure_session.assert_called_with(session, test='value')
-        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'})
+        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'}, stream=False)
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
         session.close.assert_called_with()
@@ -196,23 +196,23 @@ class TestServiceClient(unittest.TestCase):
         mock_client._format_data.return_value = "formatted"
         request = ClientRequest('GET')
         ServiceClient.send_formdata(mock_client, request)
-        mock_client.send.assert_called_with(request, None, None, files={})
+        mock_client.send.assert_called_with(request, None, None, files={}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
-        mock_client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'})
+        mock_client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
-        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'})
+        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
-        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted'})
+        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted'}, stream=True)
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
-        mock_client.send.assert_called_with(request, {}, None)
+        mock_client.send.assert_called_with(request, {}, None, stream=True)
         self.assertEqual(request.data, {'1':'1', '2':'2'})
 
         ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
-        mock_client.send.assert_called_with(request, {}, None)
+        mock_client.send.assert_called_with(request, {}, None, stream=True)
         self.assertEqual(request.data, {'1':'1'})
 
     def test_format_data(self):
