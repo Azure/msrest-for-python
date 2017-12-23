@@ -106,7 +106,6 @@ class ServiceClient(object):
             kwargs[opt] = config.get(opt, kwargs[opt])
         for opt in ['cookies', 'files']:
             kwargs[opt] = config.get(opt)
-        kwargs['stream'] = True
         kwargs['allow_redirects'] = config.get(
             'allow_redirects', bool(self.config.redirect_policy))
 
@@ -152,7 +151,7 @@ class ServiceClient(object):
 
         return kwargs
 
-    def send_formdata(self, request, headers=None, content=None, **config):
+    def send_formdata(self, request, headers=None, content=None, stream=True, **config):
         """Send data as a multipart form-data request.
         We only deal with file-like objects or strings at this point.
         The requests is not yet streamed.
@@ -160,6 +159,7 @@ class ServiceClient(object):
         :param ClientRequest request: The request object to be sent.
         :param dict headers: Any headers to add to the request.
         :param dict content: Dictionary of the fields of the formdata.
+        :param bool stream: Is the session in stream mode. True by default for compat.
         :param config: Any specific config overrides.
         """
         if content is None:
@@ -169,22 +169,24 @@ class ServiceClient(object):
         if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
             # Do NOT use "add_content" that assumes input is JSON
             request.data = {f: d for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, **config)
+            return self.send(request, headers, None, stream=stream, **config)
         else: # Assume "multipart/form-data"
             file_data = {f: self._format_data(d) for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, files=file_data, **config)
+            return self.send(request, headers, None, files=file_data, stream=stream, **config)
 
-    def send(self, request, headers=None, content=None, **config):
+    def send(self, request, headers=None, content=None, stream=True, **config):
         """Prepare and send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
         :param dict headers: Any headers to add to the request.
         :param content: Any body data to add to the request.
+        :param bool stream: Is the session in stream mode. True by default for compat.
         :param config: Any specific config overrides
         """
         response = None
         session = self.creds.signed_session()
         kwargs = self._configure_session(session, **config)
+        kwargs['stream'] = stream
 
         request.add_headers(headers if headers else {})
         if not kwargs.get('files'):
@@ -224,7 +226,7 @@ class ServiceClient(object):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:
-            if not response or response._content_consumed:
+            if not response or not stream:
                 session.close()
 
     def stream_download(self, data, callback):
