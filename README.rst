@@ -20,6 +20,19 @@ To install:
 Release History
 ---------------
 
+2018-01-03 Version 0.4.24
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Date parsing is not compliant with Autorest / Swagger 2.0 specification (less lenient)
+
+**Internal optimisation**
+
+- Call that does not return a streamable object are now executed in requests stream mode False (was True whatever the type of the call).
+  This should reduce the number of leaked opened session and allow urllib3 to manage connection pooling more efficiently.
+  Only clients generated with Autorest.Python >= 2.1.31 (not impacted otherwise, fully backward compatible)
+
 2017-12-21 Version 0.4.23
 +++++++++++++++++++++++++
 

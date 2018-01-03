@@ -28,7 +28,7 @@ from setuptools import setup
 
 setup(
     name='msrest',
-    version='0.4.23',
+    version='0.4.24',
     author='Microsoft Corporation',
     packages=['msrest'],
     url=("https://github.com/Azure/msrest-for-python"),
