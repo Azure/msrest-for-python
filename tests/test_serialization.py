@@ -29,7 +29,7 @@ import json
 import isodate
 import logging
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import unittest
 try:
     from unittest import mock
@@ -1749,6 +1749,14 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         h =  self.d('object', {"test":[1,2,3,4,5]})
         self.assertEqual(h, {"test":[1,2,3,4,5]})
+
+    def test_deserialize_date(self):
+        # https://github.com/OAI/OpenAPI-Specification/blob/4d5a749c365682e6718f5a78f113a64391911647/versions/2.0.md#data-types
+        a = Deserializer.deserialize_date('2018-12-27')
+        self.assertEquals(date(2018,12,27), a)
+
+        with self.assertRaises(DeserializationError):
+            a = Deserializer.deserialize_date('201O-18-90')
 
     def test_deserialize_datetime(self):
 

@@ -1406,7 +1406,10 @@ class Deserializer(object):
         :rtype: Date
         :raises: DeserializationError if string format invalid.
         """
-        return isodate.parse_date(attr)
+        if re.search(r"[^\W\d_]", attr, re.I + re.U):
+            raise DeserializationError("Date must have only digits and -. Received: %s" % attr)
+        # This must NOT use defaultmonth/defaultday. Using None ensure this raises an exception.
+        return isodate.parse_date(attr, defaultmonth=None, defaultday=None)
 
     @staticmethod
     def deserialize_rfc(attr):
