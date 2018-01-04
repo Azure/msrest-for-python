@@ -66,6 +66,39 @@ def test_no_polling():
     assert no_polling.finished()
     assert no_polling.resource() == "Treated: "+initial_response
 
+
+class PollingTwoSteps(PollingMethod):
+    """An empty poller that returns the deserialized initial response.
+    """
+    def __init__(self):
+        self._initial_response = None
+        self._deserialization_callback = None
+
+    def initialize(self, _, initial_response, deserialization_callback):
+        self._initial_response = initial_response
+        self._deserialization_callback = deserialization_callback
+        self._finished = False
+
+    def run(self):
+        """Empty run, no polling.
+        """
+        self._finished = True
+
+    def status(self):
+        """Return the current status as a string.
+        :rtype: str
+        """
+        return "succeeded" if self._finished else "running"
+
+    def finished(self):
+        """Is this polling finished?
+        :rtype: bool
+        """
+        return self._finished
+
+    def resource(self):
+        return self._deserialization_callback(self._initial_response)
+
 def test_poller():
 
     # We need a ServiceClient instance, but the poller itself don't use it, so we don't need
@@ -89,4 +122,13 @@ def test_poller():
 
     result = poller.result()
     assert result == "Treated: "+initial_response
+    assert poller.status() == "succeeded"
     done_cb.assert_called_once_with(method)
+
+    # Test poller that method do a run
+    method = PollingTwoSteps()
+    poller = LROPoller(client, initial_response, deserialization_callback, method)
+
+    result = poller.result()
+    assert result == "Treated: "+initial_response
+    assert poller.status() == "succeeded"
