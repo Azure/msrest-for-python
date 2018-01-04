@@ -141,11 +141,7 @@ class LROPoller(object):
         finally:
             self._done.set()
 
-        callbacks, self._callbacks = self._callbacks, []
-        while callbacks:
-            for call in callbacks:
-                call(self._polling_method)
-            callbacks, self._callbacks = self._callbacks, []
+        self.execute_callbacks()
 
     def status(self):
         """Returns the current status string.
@@ -169,6 +165,11 @@ class LROPoller(object):
     def wait(self, timeout=None):
         """Wait on the long running operation for a specified length
         of time.
+        You can check if this call as ended with timeout with the
+        "done()" method.
+        Note that if you reveive an exception and the polling was not done,
+        the callbacks are not executed. You can force execution of the callbacks
+        by calling "execute_callbacks".
 
         :param int timeout: Perion of time to wait for the long running
          operation to complete.
@@ -189,17 +190,31 @@ class LROPoller(object):
         """
         return self._thread is None or not self._thread.is_alive()
 
+    def execute_callbacks(self):
+        """Force execution of the callbacks.
+
+        You should call this method ONLY if you received an exception from "wait()"
+        with timeout while the polling was not done and you want to force execution
+        of the callbacks.
+        Note that there is no protection against several calls to this method.
+        """
+        callbacks, self._callbacks = self._callbacks, []
+        while callbacks:
+            for call in callbacks:
+                call(self._polling_method)
+            callbacks, self._callbacks = self._callbacks, []
+
     def add_done_callback(self, func):
         """Add callback function to be run once the long running operation
         has completed - regardless of the status of the operation.
 
         :param callable func: Callback function that takes at least one
          argument, a completed LongRunningOperation.
-        :raises: ValueError if the long running operation has already
-         completed.
         """
+        # Still use "_done" and not "done", since CBs are executed inside the thread.
         if self._done is None or self._done.is_set():
-            raise ValueError("Process is complete.")
+            func(self._polling_method)
+        # Let's add them still, for consistency (if you wish to access to it for some reasons)
         self._callbacks.append(func)
 
     def remove_done_callback(self, func):
