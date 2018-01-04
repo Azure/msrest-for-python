@@ -105,7 +105,6 @@ class LROPoller(object):
             raise ValueError("Poller client parameter must be a low-level msrest Service Client or a SDK client.")
         self._response = initial_response.response if isinstance(initial_response, ClientRawResponse) else initial_response
         self._callbacks = []
-        # polling_method attribute is public (to be accessed from the callback)
         self._polling_method = polling_method
 
         if isinstance(deserialization_callback, type) and issubclass(deserialization_callback, Model):
