@@ -23,6 +23,7 @@
 # THE SOFTWARE.
 #
 #--------------------------------------------------------------------------
+import time
 try:
     from unittest import mock
 except ImportError:
@@ -32,6 +33,7 @@ import pytest
 
 from msrest.polling import *
 from msrest.service_client import ServiceClient
+from msrest.serialization import Model
 
 
 def test_abc_polling():
@@ -70,9 +72,10 @@ def test_no_polling():
 class PollingTwoSteps(PollingMethod):
     """An empty poller that returns the deserialized initial response.
     """
-    def __init__(self):
+    def __init__(self, sleep=0):
         self._initial_response = None
         self._deserialization_callback = None
+        self._sleep = sleep
 
     def initialize(self, _, initial_response, deserialization_callback):
         self._initial_response = initial_response
@@ -83,6 +86,7 @@ class PollingTwoSteps(PollingMethod):
         """Empty run, no polling.
         """
         self._finished = True
+        time.sleep(self._sleep) # Give me time to add callbacks!
 
     def status(self):
         """Return the current status as a string.
@@ -121,14 +125,48 @@ def test_poller():
     poller.add_done_callback(done_cb)
 
     result = poller.result()
+    assert poller.done()
     assert result == "Treated: "+initial_response
     assert poller.status() == "succeeded"
     done_cb.assert_called_once_with(method)
 
+    # Test with a basic Model
+    poller = LROPoller(client, initial_response, Model, method)
+    assert poller._polling_method._deserialization_callback == Model.deserialize
+
     # Test poller that method do a run
-    method = PollingTwoSteps()
+    method = PollingTwoSteps(sleep=2)
     poller = LROPoller(client, initial_response, deserialization_callback, method)
+
+    done_cb = mock.MagicMock()
+    done_cb2 = mock.MagicMock()
+    poller.add_done_callback(done_cb)
+    poller.remove_done_callback(done_cb2)
 
     result = poller.result()
     assert result == "Treated: "+initial_response
     assert poller.status() == "succeeded"
+    done_cb.assert_called_once_with(method)
+    done_cb2.assert_not_called()
+
+def test_broken_poller():
+
+    with pytest.raises(ValueError):
+        LROPoller(None, None, None, None)
+
+    class NoPollingError(PollingTwoSteps):
+        def run(self):
+            raise ValueError("Something bad happened")
+
+    client = ServiceClient(None, None)
+    initial_response = "Initial response"
+    def deserialization_callback(response):
+        return "Treated: "+response        
+
+    method = NoPollingError()
+    poller = LROPoller(client, initial_response, deserialization_callback, method)
+
+    with pytest.raises(ValueError) as excinfo:
+        poller.result()
+    assert "Something bad happened" in str(excinfo.value)
+    
