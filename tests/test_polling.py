@@ -149,6 +149,10 @@ def test_poller():
     done_cb.assert_called_once_with(method)
     done_cb2.assert_not_called()
 
+    with pytest.raises(ValueError) as excinfo:
+        poller.remove_done_callback(done_cb)
+    assert "Process is complete" in str(excinfo.value)
+
 def test_broken_poller():
 
     with pytest.raises(ValueError):
