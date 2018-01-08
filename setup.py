@@ -24,13 +24,13 @@
 #
 # --------------------------------------------------------------------------
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(
     name='msrest',
     version='0.4.25',
     author='Microsoft Corporation',
-    packages=['msrest'],
+    packages=find_packages(exclude=["tests", "tests.*"]),
     url=("https://github.com/Azure/msrest-for-python"),
     license='MIT License',
     description='AutoRest swagger generator Python client runtime.',
