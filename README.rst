@@ -25,7 +25,7 @@ Release History
 
 **Bugfixes**
 
-- Date parsing is not compliant with Autorest / Swagger 2.0 specification (less lenient)
+- Date parsing is now compliant with Autorest / Swagger 2.0 specification (less lenient)
 
 **Internal optimisation**
 
