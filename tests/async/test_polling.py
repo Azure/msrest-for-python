@@ -47,6 +47,12 @@ async def test_abc_polling():
         await abc_polling.run()
 
     with pytest.raises(NotImplementedError):
+        abc_polling.status()
+
+    with pytest.raises(NotImplementedError):
+        abc_polling.finished()
+
+    with pytest.raises(NotImplementedError):
         abc_polling.resource()
 
 

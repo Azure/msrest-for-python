@@ -38,6 +38,12 @@ class AsyncPollingMethod(object):
     async def run(self):
         raise NotImplementedError("This method needs to be implemented")
 
+    def status(self):
+        raise NotImplementedError("This method needs to be implemented")
+
+    def finished(self):
+        raise NotImplementedError("This method needs to be implemented")
+
     def resource(self):
         raise NotImplementedError("This method needs to be implemented")
 
