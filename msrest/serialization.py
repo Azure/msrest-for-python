@@ -138,10 +138,11 @@ class Model(object):
         self.additional_properties = {}
         for k in kwargs:
             if k not in self._attribute_map:
-                raise TypeError("{} is not a known attribute of class {}".format(k, self.__class__))
-            if k in self._validation and self._validation[k].get("readonly", False):
-                _LOGGER.warning("Readonly attribute {} will be ignored in class {}".format(k, self.__class__))
-            setattr(self, k, kwargs[k])
+                _LOGGER.warning("%s is not a known attribute of class %s and will be ignored", k, self.__class__)
+            elif k in self._validation and self._validation[k].get("readonly", False):
+                _LOGGER.warning("Readonly attribute %s will be ignored in class %s", k, self.__class__)
+            else:
+                setattr(self, k, kwargs[k])
 
     def __eq__(self, other):
         """Compare objects by comparing all attributes."""
