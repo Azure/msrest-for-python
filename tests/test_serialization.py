@@ -133,9 +133,6 @@ class TestModelDeserialization(unittest.TestCase):
         validation = MyModel().validate()
         self.assertEquals(str(validation[0]), "Parameter 'MyModel.name' can not be None.")
 
-        with self.assertRaises(TypeError):
-            MyModel(something="ioprez")
-
     @unittest.skipIf(sys.version_info < (3,4), "assertLogs not supported before 3.4")
     def test_model_kwargs_logs(self):
 
@@ -161,6 +158,10 @@ class TestModelDeserialization(unittest.TestCase):
         self.assertIn("attribute id", cm.output[0])
         self.assertIn("Readonly", cm.output[0])
 
+        with self.assertLogs('msrest.serialization', level='WARNING') as cm:
+            MyModel(something="ioprez") # Should log that this is unknown
+        self.assertEquals(len(cm.output), 1)
+        self.assertIn("not a known attribute", cm.output[0])
 
     def test_response(self):
 
