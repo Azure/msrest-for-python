@@ -1796,6 +1796,18 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEqual(utc.tm_sec, 0)
         self.assertEqual(a.microsecond, 0)
 
+        # Only supports microsecond precision up to 6 digits, and chop off the rest
+        a = Deserializer.deserialize_iso('2018-01-20T18:35:24.666666312345Z')
+        utc = a.utctimetuple()
+
+        self.assertEqual(utc.tm_year, 2018)
+        self.assertEqual(utc.tm_mon, 1)
+        self.assertEqual(utc.tm_mday, 20)
+        self.assertEqual(utc.tm_hour, 18)
+        self.assertEqual(utc.tm_min, 35)
+        self.assertEqual(utc.tm_sec, 24)
+        self.assertEqual(a.microsecond, 666666)
+
         #with self.assertRaises(DeserializationError):
         #    a = Deserializer.deserialize_iso('1996-01-01T23:01:54-22:66') #TODO
 

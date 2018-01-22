@@ -1454,7 +1454,7 @@ class Deserializer(object):
                     else:
                         break
                 if len(decimal_str) > 6:
-                    attr = attr.replace(decimal_str, decimal_str[0:-1])
+                    attr = attr.replace(decimal_str, decimal_str[0:6])
 
             date_obj = isodate.parse_datetime(attr)
             test_utc = date_obj.utctimetuple()
