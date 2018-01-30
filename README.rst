@@ -20,6 +20,17 @@ To install:
 Release History
 ---------------
 
+2018-01-30 Version 0.4.26
++++++++++++++++++++++++++
+
+**Features**
+
+- Add TopicCredentials for EventGrid client
+
+**Bugfixes**
+
+- Fix minimal dependency of isodate
+
 2018-01-08 Version 0.4.25
 +++++++++++++++++++++++++
 
