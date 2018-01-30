@@ -42,7 +42,8 @@ from msrest.authentication import (
     BasicTokenAuthentication,
     OAuthTokenAuthentication,
     ApiKeyCredentials,
-    CognitiveServicesCredentials
+    CognitiveServicesCredentials,
+    TopicCredentials
 )
 
 from requests import Request
@@ -121,6 +122,11 @@ class TestAuthentication(unittest.TestCase):
         prep_req = session.prepare_request(self.request)
         self.assertDictContainsSubset({'Ocp-Apim-Subscription-Key' : 'mysubkey'}, prep_req.headers)
 
+    def test_eventgrid_auth(self):
+        auth = TopicCredentials("mytopickey")
+        session = auth.signed_session()
+        prep_req = session.prepare_request(self.request)
+        self.assertDictContainsSubset({'aeg-sas-key' : 'mytopickey'}, prep_req.headers)
 
 if __name__ == '__main__':
     unittest.main()
