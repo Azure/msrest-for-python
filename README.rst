@@ -30,6 +30,7 @@ Release History
 **Bugfixes**
 
 - Fix minimal dependency of isodate
+- Fix serialisation from dict if datetime provided
 
 2018-01-08 Version 0.4.25
 +++++++++++++++++++++++++
