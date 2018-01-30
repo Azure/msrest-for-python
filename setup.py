@@ -49,7 +49,7 @@ setup(
     install_requires=[
         "requests~=2.14",
         "requests_oauthlib>=0.5.0",
-        "isodate>=0.5.4",
+        "isodate>=0.6.0",
         "certifi>=2017.4.17",
     ],
     extras_require={
