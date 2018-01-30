@@ -183,3 +183,21 @@ class CognitiveServicesCredentials(ApiKeyCredentials):
                 'X-BingApis-SDK-Client': 'Python-SDK'
             }
         )
+
+class TopicCredentials(ApiKeyCredentials):
+    """Event Grid authentication.
+
+    :param str topic_key: The Event Grid topic key
+    """
+
+    _topic_key_header = 'aeg-sas-key'
+
+    def __init__(self, topic_key):
+        if not topic_key:
+            raise ValueError("Topic key cannot be None")
+        super(TopicCredentials, self).__init__(
+            in_headers={
+                self._topic_key_header: topic_key,
+            }
+        )
+    
