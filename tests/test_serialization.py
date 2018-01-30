@@ -790,6 +790,24 @@ class TestRuntimeSerialized(unittest.TestCase):
         with self.assertRaises(SerializationError):
             self.s.serialize_iter("I am a string", 'str')
 
+    def test_serialize_from_dict_datetime(self):
+        class DateTimeTest(Model):
+            _attribute_map = {
+                'birthday':{'key':'birthday','type':'iso-8601'},
+            }
+            def __init__(self, birthday):
+                self.birthday = birthday
+
+        serializer = Serializer({
+            'DateTimeTest': DateTimeTest
+        })
+
+        mydate = serializer.body(
+            {'birthday': datetime(1980, 12, 27)},
+            'DateTimeTest'
+        )
+        assert mydate["birthday"] == "1980-12-27T00:00:00.000Z"
+
     def test_serialize_json_obj(self):
 
         class ComplexId(Model):

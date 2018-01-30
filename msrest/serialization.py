@@ -954,7 +954,8 @@ class Deserializer(object):
             '{}': self.deserialize_dict
             }
         self.deserialize_expected_types = {
-            'duration': (isodate.Duration, datetime.timedelta)
+            'duration': (isodate.Duration, datetime.timedelta),
+            'iso-8601': (datetime.datetime)
         }
         self.dependencies = dict(classes) if classes else {}
         self.key_extractors = [
