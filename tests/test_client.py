@@ -66,6 +66,37 @@ class TestServiceClient(unittest.TestCase):
         output_kwargs = client._configure_session(local_session, **{"test": True})
         self.assertTrue(output_kwargs['used_callback'])
 
+    def test_no_log(self):
+
+        client = ServiceClient(self.creds, self.cfg)
+        
+        # By default, no log handler for HTTP
+        local_session = requests.Session()
+        client._configure_session(local_session)
+        self.assertEqual(len(local_session.hooks["response"]), 0)
+
+        # I can enable it per request
+        local_session = requests.Session()
+        client._configure_session(local_session, **{"enable_http_logger": True})
+        self.assertEqual(len(local_session.hooks["response"]), 1)
+
+        # I can enable it per request (bool value should be honored)
+        local_session = requests.Session()
+        client._configure_session(local_session, **{"enable_http_logger": False})
+        self.assertEqual(len(local_session.hooks["response"]), 0)
+
+        # I can enable it globally
+        client.config.enable_http_logger = True
+        local_session = requests.Session()
+        client._configure_session(local_session)
+        self.assertEqual(len(local_session.hooks["response"]), 1)
+
+        # I can enable it globally and override it locally
+        client.config.enable_http_logger = True
+        local_session = requests.Session()
+        client._configure_session(local_session, **{"enable_http_logger": False})
+        self.assertEqual(len(local_session.hooks["response"]), 0)
+
     def test_client_request(self):
 
         client = ServiceClient(self.creds, self.cfg)

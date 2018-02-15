@@ -87,6 +87,9 @@ class Configuration(object):
             requests.__version__,
             msrest_version)
 
+        # Should we log HTTP requests/response?
+        self.enable_http_logger = False
+
         # Requests hooks. Must respect requests hook callback signature
         # Note that we will inject the following parameters:
         # - kwargs['msrest']['session'] with the current session

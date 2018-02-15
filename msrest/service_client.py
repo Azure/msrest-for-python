@@ -125,10 +125,14 @@ class ServiceClient(object):
             return redirect_logic(resp, req, **kwargs) if attempt else []
 
         session.resolve_redirects = wrapped_redirect
-        def log_hook(r, *args, **kwargs):
-            log_request(None, r.request)
-            log_response(None, r.request, r, result=r)
-        session.hooks['response'].append(log_hook)
+        # if "enable_http_logger" is defined at the operation level, take the value.
+        # if not, take the one in the client config
+        # if not, disable http_logger
+        if config.get("enable_http_logger", self.config.enable_http_logger):
+            def log_hook(r, *args, **kwargs):
+                log_request(None, r.request)
+                log_response(None, r.request, r, result=r)
+            session.hooks['response'].append(log_hook)
 
         def make_user_hook_cb(user_hook, session):
             def user_hook_cb(r, *args, **kwargs):
