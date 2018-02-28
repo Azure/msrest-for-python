@@ -82,8 +82,8 @@ class AsyncServiceClientMixin:
                         session.request,
                         request.method,
                         request.url,
-                        request.data,
-                        request.headers,
+                        data=request.data,
+                        headers=request.headers,
                         **kwargs
                     )
                 )
@@ -104,8 +104,8 @@ class AsyncServiceClientMixin:
                         session.request,
                         request.method,
                         request.url,
-                        request.data,
-                        request.headers,
+                        data=request.data,
+                        headers=request.headers,
                         **kwargs
                     )
                 )
