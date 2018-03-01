@@ -65,6 +65,10 @@ class Paged(Iterator):
 
     @property
     def raw(self):
+        """Get current page as ClientRawResponse.
+
+        :rtype: ClientRawResponse
+        """
         raw = ClientRawResponse(self.current_page, self._response)
         if self._raw_headers:
             raw.add_headers(self._raw_headers)
@@ -89,6 +93,14 @@ class Paged(Iterator):
         self._current_page_iter_index = 0
 
     def advance_page(self):
+        """Force moving the cursor to the next azure call.
+
+        This method is for advanced usage, iterator protocol is prefered.
+
+        :raises: StopIteration if no further page
+        :return: The current page list
+        :rtype: list
+        """
         if self.next_link is None:
             raise StopIteration("End of paging")
         self._current_page_iter_index = 0

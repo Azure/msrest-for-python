@@ -40,13 +40,13 @@ class Authentication(object):
         """Create requests session with any required auth headers
         applied.
 
-        :rtype: requests.Session.
+        :rtype: requests.Session
         """
         return requests.Session()
 
 
 class BasicAuthentication(Authentication):
-    """Implmentation of Basic Authentication.
+    """Implementation of Basic Authentication.
 
     :param str username: Authentication username.
     :param str password: Authentication password.
@@ -61,7 +61,7 @@ class BasicAuthentication(Authentication):
         """Create requests session with any required auth headers
         applied.
 
-        :rtype: requests.Session.
+        :rtype: requests.Session
         """
         session = super(BasicAuthentication, self).signed_session()
         session.auth = HTTPBasicAuth(self.username, self.password)
@@ -72,7 +72,7 @@ class BasicTokenAuthentication(Authentication):
     """Simple Token Authentication.
     Does not adhere to OAuth, simply adds provided token as a header.
 
-    :param dict token: Authentication token, must have 'access_token' key.
+    :param dict[str,str] token: Authentication token, must have 'access_token' key.
     """
 
     def __init__(self, token):
@@ -91,7 +91,7 @@ class BasicTokenAuthentication(Authentication):
         """Create requests session with any required auth headers
         applied.
 
-        :rtype: requests.Session.
+        :rtype: requests.Session
         """
         session = super(BasicTokenAuthentication, self).signed_session()
         header = "{} {}".format(self.scheme, self.token['access_token'])
@@ -104,7 +104,7 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
     Requires that supplied token contains an expires_in field.
 
     :param str client_id: Account Client ID.
-    :param dict token: OAuth2 token.
+    :param dict[str,str] token: OAuth2 token.
     """
 
     def __init__(self, client_id, token):
@@ -116,7 +116,7 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
     def construct_auth(self):
         """Format token header.
 
-        :rtype: str.
+        :rtype: str
         """
         return "{} {}".format(self.scheme, self.token)
 
@@ -124,25 +124,24 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
         """Return updated session if token has expired, attempts to
         refresh using refresh token.
 
-        :rtype: requests.Session.
+        :rtype: requests.Session
         """
         return self.signed_session()
 
     def signed_session(self):
-        """Create requests session with any required auth headers
-        applied.
+        """Create requests session with any required auth headers applied.
 
-        :rtype: requests.Session.
+        :rtype: requests.Session
         """
         return oauth.OAuth2Session(self.id, token=self.token)
 
 class ApiKeyCredentials(Authentication):
     """Represent the ApiKey feature of Swagger.
 
-    Dict should be dict[str, str] to be accepted by requests.
+    Dict should be dict[str,str] to be accepted by requests.
 
-    :param dict[str, str] in_headers: Headers part of the ApiKey
-    :param dict[str, str] in_query: ApiKey in the query as parameters.
+    :param dict[str,str] in_headers: Headers part of the ApiKey
+    :param dict[str,str] in_query: ApiKey in the query as parameters
     """
     def __init__(self, in_headers=None, in_query=None):
         if in_headers is None:
@@ -159,7 +158,7 @@ class ApiKeyCredentials(Authentication):
     def signed_session(self):
         """Create requests session with ApiKey.
 
-        :rtype: requests.Session.
+        :rtype: requests.Session
         """
         session = super(ApiKeyCredentials, self).signed_session()
         session.headers.update(self.in_headers)

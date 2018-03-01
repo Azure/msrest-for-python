@@ -49,10 +49,10 @@ def default_session_configuration_callback(session, global_config, local_config,
 
     :param requests.Session session: The session.
     :param Configuration global_config: The global configuration.
-    :param dict local_config: The on-the-fly configuration passed on the call.
-    :param dict kwargs: The current computed values for session.request method.
+    :param dict[str,str] local_config: The on-the-fly configuration passed on the call.
+    :param dict[str,str] kwargs: The current computed values for session.request method.
     :return: Must return kwargs, to be passed to session.request. If None is return, initial kwargs will be used.
-    :rtype: dict
+    :rtype: dict[str,str]
     """
     return kwargs
 
@@ -102,9 +102,14 @@ class Configuration(object):
 
     @property
     def user_agent(self):
+        """The current user agent value."""
         return self._user_agent
 
     def add_user_agent(self, value):
+        """Add value to current user agent with a space.
+
+        :param str value: value to add to user agent.
+        """
         self._user_agent = "{} {}".format(self._user_agent, value)
 
     def _clear_config(self):
@@ -117,7 +122,6 @@ class Configuration(object):
 
         :param str filepath: Path to file where settings will be saved.
         :raises: ValueError if supplied filepath cannot be written to.
-        :rtype: None
         """
         sections = [
             "Connection",
@@ -159,7 +163,6 @@ class Configuration(object):
 
         :param str filepath: Path to existing config file.
         :raises: ValueError if supplied config file is invalid.
-        :rtype: None
         """
         try:
             self._config.read(filepath)
