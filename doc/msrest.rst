@@ -68,15 +68,6 @@ msrest.service_client module
     :undoc-members:
     :show-inheritance:
 
-msrest.version module
----------------------
-
-.. automodule:: msrest.version
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 Module contents
 ---------------
 
