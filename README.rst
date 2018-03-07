@@ -1,5 +1,5 @@
 AutoRest: Python Client Runtime
-================================
+===============================
 
 .. image:: https://travis-ci.org/Azure/msrest-for-python.svg?branch=master
  :target: https://travis-ci.org/Azure/msrest-for-python
