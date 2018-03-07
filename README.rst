@@ -20,6 +20,17 @@ To install:
 Release History
 ---------------
 
+2018-03-07 Version 0.4.27
++++++++++++++++++++++++++
+
+**Features**
+
+- Disable HTTP log by default (security), add `enable_http_log` to restore it #86
+
+**BugFixes**
+
+- Fix incorrect date parsing if ms precision is over 6 digits #82
+
 2018-01-30 Version 0.4.26
 +++++++++++++++++++++++++
 
