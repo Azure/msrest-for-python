@@ -41,6 +41,7 @@ from oauthlib import oauth2
 
 from msrest import ServiceClient
 from msrest.authentication import OAuthTokenAuthentication
+from msrest.configuration import Configuration
 
 from msrest import Configuration
 from msrest.exceptions import ClientRequestError, TokenExpiredError
@@ -130,6 +131,28 @@ class TestServiceClient(object):
         async_send_mock.assert_called_with(request, {}, files=None, stream=True)
         assert request.data == {'1':'1'}
 
+    @pytest.mark.asyncio
+    async def test_client_stream_download(self):
+
+        mock_client = ServiceClient(None, Configuration(None))
+        mock_client.config.connection.data_block_size = 1
+
+        response = requests.Response()
+        response._content = "abc"
+        response._content_consumed = True
+        response.status_code = 200
+        async def request_callback():
+            return response
+
+        def user_callback(chunk, local_response):
+            assert local_response is response
+            assert chunk in ["a", "b", "c"]
+
+        async_iterator = mock_client.stream_download_async(request_callback, user_callback)
+        result = ""
+        async for value in async_iterator:
+            result += value
+        assert result == "abc"
 
 
 if __name__ == '__main__':

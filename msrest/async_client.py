@@ -25,6 +25,7 @@
 # --------------------------------------------------------------------------
 
 import asyncio
+from collections.abc import AsyncIterator
 import functools
 import logging
 
@@ -122,3 +123,57 @@ class AsyncServiceClientMixin:
         finally:
             if not response or not stream:
                 session.close()
+
+    def stream_download_async(self, request_callback, user_callback):
+        """Async Generator for streaming request body data.
+
+        :param request_data: An async func callback to do the initial call.
+        :param user_callback: Custom callback for monitoring progress.
+        """
+        block = self.config.connection.data_block_size
+        return StreamDownloadGenerator(request_callback, user_callback, block)
+
+class _MsrestStopIteration(Exception):
+    pass
+
+def _msrest_next(iterator):
+    """"To avoid:
+    TypeError: StopIteration interacts badly with generators and cannot be raised into a Future 
+    """
+    try:
+        return next(iterator)
+    except StopIteration:
+        raise _MsrestStopIteration()
+
+class StreamDownloadGenerator(AsyncIterator):
+
+    def __init__(self, request_callback, user_callback, block):
+        self.request_callback = request_callback
+        self.response = None
+        self.block = block
+        self.user_callback = user_callback
+        self.iter_content_func = None
+
+    async def __anext__(self):
+        loop = asyncio.get_event_loop()
+        if not self.response:
+            self.response = await self.request_callback()
+            self.iter_content_func = self.response.iter_content(self.block)
+        try:
+            chunk = await loop.run_in_executor(
+                None,
+                _msrest_next,
+                self.iter_content_func,
+            )
+            if not chunk:
+                raise _MsrestStopIteration()
+            if self.user_callback and callable(self.user_callback):
+                self.user_callback(chunk, self.response)
+            return chunk
+        except _MsrestStopIteration:
+            self.response.close()
+            raise StopAsyncIteration()
+        except Exception as err:
+            _LOGGER.warning("Unable to stream download: %s", err)
+            self.response.close()
+            raise
