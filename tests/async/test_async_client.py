@@ -141,14 +141,12 @@ class TestServiceClient(object):
         response._content = "abc"
         response._content_consumed = True
         response.status_code = 200
-        async def request_callback():
-            return response
 
         def user_callback(chunk, local_response):
             assert local_response is response
             assert chunk in ["a", "b", "c"]
 
-        async_iterator = mock_client.stream_download_async(request_callback, user_callback)
+        async_iterator = mock_client.stream_download_async(response, user_callback)
         result = ""
         async for value in async_iterator:
             result += value

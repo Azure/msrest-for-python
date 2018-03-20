@@ -124,14 +124,14 @@ class AsyncServiceClientMixin:
             if not response or not stream:
                 session.close()
 
-    def stream_download_async(self, request_callback, user_callback):
+    def stream_download_async(self, response, user_callback):
         """Async Generator for streaming request body data.
 
-        :param request_data: An async func callback to do the initial call.
+        :param response: The initial response
         :param user_callback: Custom callback for monitoring progress.
         """
         block = self.config.connection.data_block_size
-        return StreamDownloadGenerator(request_callback, user_callback, block)
+        return StreamDownloadGenerator(response, user_callback, block)
 
 class _MsrestStopIteration(Exception):
     pass
@@ -147,18 +147,14 @@ def _msrest_next(iterator):
 
 class StreamDownloadGenerator(AsyncIterator):
 
-    def __init__(self, request_callback, user_callback, block):
-        self.request_callback = request_callback
-        self.response = None
+    def __init__(self, response, user_callback, block):
+        self.response = response
         self.block = block
         self.user_callback = user_callback
-        self.iter_content_func = None
+        self.iter_content_func = self.response.iter_content(self.block)
 
     async def __anext__(self):
         loop = asyncio.get_event_loop()
-        if not self.response:
-            self.response = await self.request_callback()
-            self.iter_content_func = self.response.iter_content(self.block)
         try:
             chunk = await loop.run_in_executor(
                 None,
