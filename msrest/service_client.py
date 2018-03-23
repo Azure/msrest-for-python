@@ -100,24 +100,25 @@ class ServiceClient(object):
 
         :param requests.Session session: Current request session.
         :param config: Specific configuration overrides.
+        :rtype: dict
+        :return: A dict that will be kwarg-send to session.request
         """
         kwargs = self.config.connection()
         for opt in ['timeout', 'verify', 'cert']:
             kwargs[opt] = config.get(opt, kwargs[opt])
-        for opt in ['cookies', 'files']:
-            kwargs[opt] = config.get(opt)
+        kwargs.update({k:config[k] for k in ['cookies', 'files'] if k in config})
         kwargs['allow_redirects'] = config.get(
             'allow_redirects', bool(self.config.redirect_policy))
 
-        session.headers.update(self._headers)
-        session.headers['User-Agent'] = self.config.user_agent
-        session.headers['Accept'] = 'application/json'
-        session.max_redirects = config.get(
-            'max_redirects', self.config.redirect_policy())
-        session.proxies = config.get(
-            'proxies', self.config.proxies())
-        session.trust_env = config.get(
-            'use_env_proxies', self.config.proxies.use_env_settings)
+        kwargs['headers'] = dict(self._headers)
+        kwargs['headers']['User-Agent'] = self.config.user_agent
+        kwargs['headers']['Accept'] = 'application/json'
+        proxies = config.get('proxies', self.config.proxies())
+        if proxies:
+            kwargs['proxies'] = proxies
+
+        session.max_redirects = config.get('max_redirects', self.config.redirect_policy())
+        session.trust_env = config.get('use_env_proxies', self.config.proxies.use_env_settings)
         redirect_logic = session.resolve_redirects
 
         def wrapped_redirect(resp, req, **kwargs):
@@ -128,11 +129,12 @@ class ServiceClient(object):
         # if "enable_http_logger" is defined at the operation level, take the value.
         # if not, take the one in the client config
         # if not, disable http_logger
+        hooks = []
         if config.get("enable_http_logger", self.config.enable_http_logger):
             def log_hook(r, *args, **kwargs):
                 log_request(None, r.request)
                 log_response(None, r.request, r, result=r)
-            session.hooks['response'].append(log_hook)
+            hooks.append(log_hook)
 
         def make_user_hook_cb(user_hook, session):
             def user_hook_cb(r, *args, **kwargs):
@@ -141,7 +143,10 @@ class ServiceClient(object):
             return user_hook_cb
 
         for user_hook in self.config.hooks:
-            session.hooks['response'].append(make_user_hook_cb(user_hook, session))
+            hooks.append(make_user_hook_cb(user_hook, session))
+
+        if hooks:
+            kwargs['hooks'] = {'response': hooks}
 
         max_retries = config.get(
             'retries', self.config.retry_policy())
@@ -191,17 +196,20 @@ class ServiceClient(object):
         session = self.creds.signed_session()
         kwargs = self._configure_session(session, **config)
         kwargs['stream'] = stream
+        if headers:
+            request.headers.update(headers)
 
-        request.add_headers(headers if headers else {})
         if not kwargs.get('files'):
             request.add_content(content)
+        if request.data:
+            kwargs['data']=request.data
+        kwargs['headers'].update(request.headers)
         try:
 
             try:
                 response = session.request(
-                    request.method, request.url,
-                    data=request.data,
-                    headers=request.headers,
+                    request.method,
+                    request.url,
                     **kwargs)
                 return response
 
@@ -212,12 +220,15 @@ class ServiceClient(object):
 
             try:
                 session = self.creds.refresh_session()
-                kwargs = self._configure_session(session)
+                kwargs = self._configure_session(session, **config)
+                kwargs['stream'] = stream
+                if request.data:
+                    kwargs['data']=request.data
+                kwargs['headers'].update(request.headers)
 
                 response = session.request(
-                    request.method, request.url,
-                    request.data,
-                    request.headers,
+                    request.method,
+                    request.url,
                     **kwargs)
                 return response
             except (oauth2.rfc6749.errors.InvalidGrantError,

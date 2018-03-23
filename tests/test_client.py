@@ -72,30 +72,30 @@ class TestServiceClient(unittest.TestCase):
         
         # By default, no log handler for HTTP
         local_session = requests.Session()
-        client._configure_session(local_session)
-        self.assertEqual(len(local_session.hooks["response"]), 0)
+        kwargs = client._configure_session(local_session)
+        assert 'hooks' not in kwargs
 
         # I can enable it per request
         local_session = requests.Session()
-        client._configure_session(local_session, **{"enable_http_logger": True})
-        self.assertEqual(len(local_session.hooks["response"]), 1)
+        kwargs = client._configure_session(local_session, **{"enable_http_logger": True})
+        assert 'hooks' in kwargs
 
         # I can enable it per request (bool value should be honored)
         local_session = requests.Session()
-        client._configure_session(local_session, **{"enable_http_logger": False})
-        self.assertEqual(len(local_session.hooks["response"]), 0)
+        kwargs = client._configure_session(local_session, **{"enable_http_logger": False})
+        assert 'hooks' not in kwargs
 
         # I can enable it globally
         client.config.enable_http_logger = True
         local_session = requests.Session()
-        client._configure_session(local_session)
-        self.assertEqual(len(local_session.hooks["response"]), 1)
+        kwargs = client._configure_session(local_session)
+        assert 'hooks' in kwargs
 
         # I can enable it globally and override it locally
         client.config.enable_http_logger = True
         local_session = requests.Session()
-        client._configure_session(local_session, **{"enable_http_logger": False})
-        self.assertEqual(len(local_session.hooks["response"]), 0)
+        kwargs = client._configure_session(local_session, **{"enable_http_logger": False})
+        assert 'hooks' not in kwargs
 
     def test_client_request(self):
 
@@ -147,103 +147,139 @@ class TestServiceClient(unittest.TestCase):
 
         url = "/bool/test true"
 
-        mock_client = mock.create_autospec(ServiceClient)
-        mock_client.config = mock.Mock(base_url="http://localhost:3000")
+        client = mock.create_autospec(ServiceClient)
+        client.config = mock.Mock(base_url="http://localhost:3000")
 
-        formatted = ServiceClient.format_url(mock_client, url)
+        formatted = ServiceClient.format_url(client, url)
         self.assertEqual(formatted, "http://localhost:3000/bool/test true")
 
-        mock_client.config = mock.Mock(base_url="http://localhost:3000/")
-        formatted = ServiceClient.format_url(mock_client, url, foo=123, bar="value")
+        client.config = mock.Mock(base_url="http://localhost:3000/")
+        formatted = ServiceClient.format_url(client, url, foo=123, bar="value")
         self.assertEqual(formatted, "http://localhost:3000/bool/test true")
 
         url = "https://absolute_url.com/my/test/path"
-        formatted = ServiceClient.format_url(mock_client, url)
+        formatted = ServiceClient.format_url(client, url)
         self.assertEqual(formatted, "https://absolute_url.com/my/test/path")
-        formatted = ServiceClient.format_url(mock_client, url, foo=123, bar="value")
+        formatted = ServiceClient.format_url(client, url, foo=123, bar="value")
         self.assertEqual(formatted, "https://absolute_url.com/my/test/path")
 
         url = "test"
-        formatted = ServiceClient.format_url(mock_client, url)
+        formatted = ServiceClient.format_url(client, url)
         self.assertEqual(formatted, "http://localhost:3000/test")
 
-        mock_client.config = mock.Mock(base_url="http://{hostname}:{port}/{foo}/{bar}")
-        formatted = ServiceClient.format_url(mock_client, url, hostname="localhost", port="3000", foo=123, bar="value")
+        client.config = mock.Mock(base_url="http://{hostname}:{port}/{foo}/{bar}")
+        formatted = ServiceClient.format_url(client, url, hostname="localhost", port="3000", foo=123, bar="value")
         self.assertEqual(formatted, "http://localhost:3000/123/value/test")
 
-        mock_client.config = mock.Mock(base_url="https://my_endpoint.com/")
-        formatted = ServiceClient.format_url(mock_client, url, foo=123, bar="value")
+        client.config = mock.Mock(base_url="https://my_endpoint.com/")
+        formatted = ServiceClient.format_url(client, url, foo=123, bar="value")
         self.assertEqual(formatted, "https://my_endpoint.com/test")
         
 
     def test_client_send(self):
 
-        mock_client = mock.create_autospec(ServiceClient)
-        mock_client.config = self.cfg
-        mock_client.creds = self.creds
-        mock_client._configure_session.return_value = {}
+        client = ServiceClient(self.creds, self.cfg)
         session = mock.create_autospec(requests.Session)
-        mock_client.creds.signed_session.return_value = session
-        mock_client.creds.refresh_session.return_value = session
+        client.creds.signed_session.return_value = session
+        client.creds.refresh_session.return_value = session
 
         request = ClientRequest('GET')
-        ServiceClient.send(mock_client, request, stream=False)
+        client.send(request, stream=False)
         session.request.call_count = 0
-        mock_client._configure_session.assert_called_with(session)
-        session.request.assert_called_with('GET', None, data=[], headers={}, stream=False)
+        session.request.assert_called_with(
+            'GET',
+            None,
+            allow_redirects=True,
+            cert=None,
+            headers={
+                'User-Agent': self.cfg.user_agent,
+                'Accept': 'application/json'
+            },
+            stream=False,
+            timeout=100,
+            verify=True
+        )
         session.close.assert_called_with()
 
-        ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, stream=False)
-        mock_client._configure_session.assert_called_with(session)
-        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'}, stream=False)
+        client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, stream=False)
+        session.request.assert_called_with(
+            'GET',
+            None,
+            data='{"Test": "Data"}',
+            allow_redirects=True,
+            cert=None,
+            headers={
+                'User-Agent': self.cfg.user_agent,
+                'Accept': 'application/json',
+                'Content-Length': '16',
+                'id':'1234'
+            },
+            stream=False,
+            timeout=100,
+            verify=True
+        )
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = requests.RequestException("test")
         with self.assertRaises(ClientRequestError):
-            ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value', stream=False)
-        mock_client._configure_session.assert_called_with(session, test='value')
-        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'}, stream=False)
+            client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value', stream=False)
+        session.request.assert_called_with(
+            'GET',
+            None,
+            data='{"Test": "Data"}',
+            allow_redirects=True,
+            cert=None,
+            headers={
+                'User-Agent': self.cfg.user_agent,
+                'Accept': 'application/json',
+                'Content-Length': '16',
+                'id':'1234'
+            },
+            stream=False,
+            timeout=100,
+            verify=True
+        )
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
         with self.assertRaises(TokenExpiredError):
-            ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
+            client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         self.assertEqual(session.request.call_count, 2)
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = ValueError("test")
         with self.assertRaises(ValueError):
-            ServiceClient.send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
+            client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         session.close.assert_called_with()
 
     def test_client_formdata_send(self):
 
-        mock_client = mock.create_autospec(ServiceClient)
-        mock_client._format_data.return_value = "formatted"
+        client = mock.create_autospec(ServiceClient)
+        client._format_data.return_value = "formatted"
         request = ClientRequest('GET')
-        ServiceClient.send_formdata(mock_client, request)
-        mock_client.send.assert_called_with(request, None, None, files={}, stream=True)
+        ServiceClient.send_formdata(client, request)
+        client.send.assert_called_with(request, None, None, files={}, stream=True)
 
-        ServiceClient.send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
-        mock_client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'}, stream=True)
+        ServiceClient.send_formdata(client, request, {'id':'1234'}, {'Test':'Data'})
+        client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'}, stream=True)
 
-        ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
-        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'}, stream=True)
+        ServiceClient.send_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
+        client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'}, stream=True)
 
-        ServiceClient.send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
-        mock_client.send.assert_called_with(request, {}, None, files={'1':'formatted'}, stream=True)
+        ServiceClient.send_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
+        client.send.assert_called_with(request, {}, None, files={'1':'formatted'}, stream=True)
 
-        ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
-        mock_client.send.assert_called_with(request, {}, None, stream=True)
+        ServiceClient.send_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
+        client.send.assert_called_with(request, {}, None, stream=True)
         self.assertEqual(request.data, {'1':'1', '2':'2'})
 
-        ServiceClient.send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
-        mock_client.send.assert_called_with(request, {}, None, stream=True)
+        ServiceClient.send_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
+        client.send.assert_called_with(request, {}, None, stream=True)
         self.assertEqual(request.data, {'1':'1'})
 
     def test_format_data(self):
