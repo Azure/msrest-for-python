@@ -119,13 +119,18 @@ class ServiceClient(object):
 
         session.max_redirects = config.get('max_redirects', self.config.redirect_policy())
         session.trust_env = config.get('use_env_proxies', self.config.proxies.use_env_settings)
-        redirect_logic = session.resolve_redirects
 
-        def wrapped_redirect(resp, req, **kwargs):
-            attempt = self.config.redirect_policy.check_redirect(resp, req)
-            return redirect_logic(resp, req, **kwargs) if attempt else []
+        # Patch the redirect method directly *if not done already*
+        if not getattr(session.resolve_redirects, 'is_mrest_patched', False):
+            redirect_logic = session.resolve_redirects
 
-        session.resolve_redirects = wrapped_redirect
+            def wrapped_redirect(resp, req, **kwargs):
+                attempt = self.config.redirect_policy.check_redirect(resp, req)
+                return redirect_logic(resp, req, **kwargs) if attempt else []
+            wrapped_redirect.is_mrest_patched = True
+
+            session.resolve_redirects = wrapped_redirect
+
         # if "enable_http_logger" is defined at the operation level, take the value.
         # if not, take the one in the client config
         # if not, disable http_logger

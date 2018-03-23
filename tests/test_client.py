@@ -183,6 +183,8 @@ class TestServiceClient(unittest.TestCase):
         session.adapters = {}
         client.creds.signed_session.return_value = session
         client.creds.refresh_session.return_value = session
+        # Be sure the mock does not trick me
+        assert not hasattr(session.resolve_redirects, 'is_mrest_patched')
 
         request = ClientRequest('GET')
         client.send(request, stream=False)
@@ -200,6 +202,7 @@ class TestServiceClient(unittest.TestCase):
             timeout=100,
             verify=True
         )
+        assert session.resolve_redirects.is_mrest_patched
         session.close.assert_called_with()
 
         client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, stream=False)
@@ -221,6 +224,7 @@ class TestServiceClient(unittest.TestCase):
         )
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
+        assert session.resolve_redirects.is_mrest_patched
         session.close.assert_called_with()
 
         session.request.side_effect = requests.RequestException("test")
@@ -244,6 +248,7 @@ class TestServiceClient(unittest.TestCase):
         )
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
+        assert session.resolve_redirects.is_mrest_patched
         session.close.assert_called_with()
 
         session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
