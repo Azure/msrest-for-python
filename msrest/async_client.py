@@ -31,6 +31,7 @@ import logging
 
 from oauthlib import oauth2
 import requests
+import aiohttp
 
 from .exceptions import (
     TokenExpiredError,
@@ -58,6 +59,57 @@ class AsyncServiceClientMixin:
         return await self.async_send(request, headers, files=files, **config)
 
     async def async_send(self, request, headers=None, content=None, **config):
+        return await self.async_send_aiohttp(request, headers, content, **config)
+
+    def configure_aiohttp_session(self, **config):
+        kwargs = {}
+        kwargs['allow_redirects'] = config.get(
+            'allow_redirects', bool(self.config.redirect_policy))
+
+        kwargs['headers'] = dict(self._headers)
+        kwargs['headers']['User-Agent'] = self.config.user_agent
+        kwargs['headers']['Accept'] = 'application/json'        
+
+        return kwargs
+
+    async def async_send_aiohttp(self, request, headers=None, content=None, **config):
+        kwargs = self.configure_aiohttp_session(**config)
+        if headers:
+            request.headers.update(headers)        
+
+        if not kwargs.get('files'):
+            request.add_content(content)
+        if request.data:
+            kwargs['data']=request.data
+        kwargs['headers'].update(request.headers)            
+
+        stream_required = config.get('stream', True)
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.request(
+                    request.method,
+                    request.url,
+                    **kwargs
+                ) as response:
+                    if stream_required:
+                        # If stream, return the real response
+                        # but create some fake attribute before
+                        response.status_code = response.status
+                        return response
+                    else:
+                        # If not, this is going straight to the serializer: mock requests.Response
+                        req_response = requests.Response()
+                        req_response._content = await response.read()
+                        req_response._content_consumed = True
+                        req_response.status_code = response.status
+                        req_response.headers = response.headers
+                        return req_response
+        except aiohttp.ClientError as err:
+            msg = "Error occurred in request."
+            raise_with_traceback(ClientRequestError, msg, err)            
+
+    async def async_send_requests(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
@@ -161,25 +213,29 @@ class StreamDownloadGenerator(AsyncIterator):
         self.response = response
         self.block = block
         self.user_callback = user_callback
-        self.iter_content_func = self.response.iter_content(self.block)
 
     async def __anext__(self):
-        loop = asyncio.get_event_loop()
-        try:
-            chunk = await loop.run_in_executor(
-                None,
-                _msrest_next,
-                self.iter_content_func,
-            )
-            if not chunk:
-                raise _MsrestStopIteration()
-            if self.user_callback and callable(self.user_callback):
-                self.user_callback(chunk, self.response)
-            return chunk
-        except _MsrestStopIteration:
-            self.response.close()
+        chunk = await self.response.read(self.block)
+        if not chunk:
             raise StopAsyncIteration()
-        except Exception as err:
-            _LOGGER.warning("Unable to stream download: %s", err)
-            self.response.close()
-            raise
+        self.user_callback(chunk, self.response)
+        return chunk
+        # loop = asyncio.get_event_loop()
+        # try:
+        #     chunk = await loop.run_in_executor(
+        #         None,
+        #         _msrest_next,
+        #         self.iter_content_func,
+        #     )
+        #     if not chunk:
+        #         raise _MsrestStopIteration()
+        #     if self.user_callback and callable(self.user_callback):
+        #         self.user_callback(chunk, self.response)
+        #     return chunk
+        # except _MsrestStopIteration:
+        #     self.response.close()
+        #     raise StopAsyncIteration()
+        # except Exception as err:
+        #     _LOGGER.warning("Unable to stream download: %s", err)
+        #     self.response.close()
+        #     raise
