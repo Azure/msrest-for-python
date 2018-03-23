@@ -148,11 +148,10 @@ class ServiceClient(object):
         if hooks:
             kwargs['hooks'] = {'response': hooks}
 
-        max_retries = config.get(
-            'retries', self.config.retry_policy())
-        for protocol in self._protocols:
-            session.mount(protocol,
-                          requests.adapters.HTTPAdapter(max_retries=max_retries))
+        # Change max_retries in current all installed adapters
+        max_retries = config.get('retries', self.config.retry_policy())
+        for adapter in session.adapters.values():
+            adapter.max_retries=max_retries
 
         output_kwargs = self.config.session_configuration_callback(session, self.config, config, **kwargs)
         if output_kwargs is not None:

@@ -180,6 +180,7 @@ class TestServiceClient(unittest.TestCase):
 
         client = ServiceClient(self.creds, self.cfg)
         session = mock.create_autospec(requests.Session)
+        session.adapters = {}
         client.creds.signed_session.return_value = session
         client.creds.refresh_session.return_value = session
 
