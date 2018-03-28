@@ -61,6 +61,22 @@ class ServiceClient(object):
         self.config = config
         self.creds = creds if creds else Authentication()
         self._headers = {}
+        self._session = None
+
+    def __enter__(self):
+        self.config.keep_alive = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        self.config.keep_alive = False
+
+    def close(self):
+        """Close the session if keep_alive is True.
+        """
+        if self._session:
+            self._session.close()
+        self._session = None
 
     def _format_data(self, data):
         """Format field data according to whether it is a stream or
@@ -196,8 +212,15 @@ class ServiceClient(object):
         :param bool stream: Is the session in stream mode. True by default for compat.
         :param config: Any specific config overrides
         """
-        response = None
-        session = self.creds.signed_session()
+        if self.config.keep_alive and self._session is None:
+            self._session = requests.Session()
+        try:
+            session = self.creds.signed_session(self._session)
+        except TypeError: # Credentials does not support session injection
+            session = self.creds.signed_session()
+            if self._session is not None:
+                _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
+
         kwargs = self._configure_session(session, **config)
         kwargs['stream'] = stream
         if headers:
@@ -208,8 +231,9 @@ class ServiceClient(object):
         if request.data:
             kwargs['data']=request.data
         kwargs['headers'].update(request.headers)
-        try:
 
+        response = None
+        try:
             try:
                 response = session.request(
                     request.method,

@@ -36,7 +36,7 @@ import requests
 from oauthlib import oauth2
 
 from msrest import ServiceClient
-from msrest.authentication import OAuthTokenAuthentication
+from msrest.authentication import OAuthTokenAuthentication, Authentication
 
 from msrest import Configuration
 from msrest.exceptions import ClientRequestError, TokenExpiredError
@@ -65,6 +65,74 @@ class TestServiceClient(unittest.TestCase):
 
         output_kwargs = client._configure_session(local_session, **{"test": True})
         self.assertTrue(output_kwargs['used_callback'])
+
+    def test_context_manager(self):
+
+        cfg = Configuration("http://127.0.0.1/")
+
+        class Creds(Authentication):
+            def __init__(self):
+                self.first_session = None
+                self.called = 0
+
+            def signed_session(self, session=None):
+                self.called += 1
+                assert session is not None
+                if self.first_session:
+                    assert self.first_session is session
+                else:
+                    self.first_session = session
+        creds = Creds()
+
+        with ServiceClient(creds, cfg) as client:
+            assert cfg.keep_alive
+
+            req = client.get()
+            try:
+                client.send(req)  # Will fail, I don't care, that's not the point of the test
+            except Exception:
+                pass
+
+            try:
+                client.send(req)  # Will fail, I don't care, that's not the point of the test
+            except Exception:
+                pass
+
+        assert not cfg.keep_alive
+        assert creds.called == 2
+
+    def test_keep_alive(self):
+
+        cfg = Configuration("http://127.0.0.1/")
+        cfg.keep_alive = True
+
+        class Creds(Authentication):
+            def __init__(self):
+                self.first_session = None
+                self.called = 0
+
+            def signed_session(self, session=None):
+                self.called += 1
+                assert session is not None
+                if self.first_session:
+                    assert self.first_session is session
+                else:
+                    self.first_session = session
+        creds = Creds()
+
+        client = ServiceClient(creds, cfg)
+        req = client.get()
+        try:
+            client.send(req)  # Will fail, I don't care, that's not the point of the test
+        except Exception:
+            pass
+
+        try:
+            client.send(req)  # Will fail, I don't care, that's not the point of the test
+        except Exception:
+            pass
+
+        assert creds.called == 2
 
     def test_no_log(self):
 
