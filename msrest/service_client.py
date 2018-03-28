@@ -46,6 +46,23 @@ from .exceptions import (
 
 _LOGGER = logging.getLogger(__name__)
 
+class SDKClient(object):
+    """The base class of all generated SDK client.
+    """
+    def __init__(self, creds, config):
+        self._client = ServiceClient(creds, config)
+    
+    def close(self):
+        """Close the client if keep_alive is True.
+        """
+        self._client.close()
+
+    def __enter__(self):
+        self._client.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._client.__exit__(exc_type, exc_val, exc_tb)
 
 class ServiceClient(object):
     """REST Service Client.

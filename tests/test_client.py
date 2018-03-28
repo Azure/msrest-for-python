@@ -35,7 +35,7 @@ except ImportError:
 import requests
 from oauthlib import oauth2
 
-from msrest import ServiceClient
+from msrest import ServiceClient, SDKClient
 from msrest.authentication import OAuthTokenAuthentication, Authentication
 
 from msrest import Configuration
@@ -65,6 +65,40 @@ class TestServiceClient(unittest.TestCase):
 
         output_kwargs = client._configure_session(local_session, **{"test": True})
         self.assertTrue(output_kwargs['used_callback'])
+
+    def test_sdk_context_manager(self):
+        cfg = Configuration("http://127.0.0.1/")
+
+        class Creds(Authentication):
+            def __init__(self):
+                self.first_session = None
+                self.called = 0
+
+            def signed_session(self, session=None):
+                self.called += 1
+                assert session is not None
+                if self.first_session:
+                    assert self.first_session is session
+                else:
+                    self.first_session = session
+        creds = Creds()
+
+        with SDKClient(creds, cfg) as client:
+            assert cfg.keep_alive
+
+            req = client._client.get()
+            try:
+                client._client.send(req)  # Will fail, I don't care, that's not the point of the test
+            except Exception:
+                pass
+
+            try:
+                client._client.send(req)  # Will fail, I don't care, that's not the point of the test
+            except Exception:
+                pass
+
+        assert not cfg.keep_alive
+        assert creds.called == 2        
 
     def test_context_manager(self):
 
