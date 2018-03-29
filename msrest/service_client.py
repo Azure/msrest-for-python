@@ -188,8 +188,8 @@ class ServiceClient(object):
 
         # Change max_retries in current all installed adapters
         max_retries = config.get('retries', self.config.retry_policy())
-        for adapter in session.adapters.values():
-            adapter.max_retries=max_retries
+        for protocol in self._protocols:
+            session.adapters[protocol].max_retries=max_retries
 
         output_kwargs = self.config.session_configuration_callback(session, self.config, config, **kwargs)
         if output_kwargs is not None:

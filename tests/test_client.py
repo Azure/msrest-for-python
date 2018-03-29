@@ -33,6 +33,7 @@ except ImportError:
     import mock
 
 import requests
+from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
 from msrest import ServiceClient, SDKClient
@@ -168,6 +169,21 @@ class TestServiceClient(unittest.TestCase):
 
         assert creds.called == 2
 
+    def test_max_retries_on_default_adapter(self):
+        # max_retries must be applied only on the default adapters of requests
+        # If the user adds its own adapter, don't touch it
+        client = ServiceClient(self.creds, self.cfg)
+        
+        max_retries = self.cfg.retry_policy()
+
+        local_session = requests.Session()
+        local_session.mount('http://example.org', HTTPAdapter())
+        client._configure_session(local_session)
+        assert local_session.adapters["http://"].max_retries is max_retries
+        assert local_session.adapters["https://"].max_retries is max_retries
+        assert local_session.adapters['http://example.org'].max_retries is not max_retries
+        
+
     def test_no_log(self):
 
         client = ServiceClient(self.creds, self.cfg)
@@ -282,7 +298,10 @@ class TestServiceClient(unittest.TestCase):
 
         client = ServiceClient(self.creds, self.cfg)
         session = mock.create_autospec(requests.Session)
-        session.adapters = {}
+        session.adapters = {
+            "http://": HTTPAdapter(),
+            "https://": HTTPAdapter(),
+        }
         client.creds.signed_session.return_value = session
         client.creds.refresh_session.return_value = session
         # Be sure the mock does not trick me
