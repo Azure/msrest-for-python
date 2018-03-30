@@ -132,9 +132,11 @@ class TestServiceClient(unittest.TestCase):
                 client.send(req)  # Will fail, I don't care, that's not the point of the test
             except Exception:
                 pass
+            assert client._session  # Still alive
 
         assert not cfg.keep_alive
         assert creds.called == 2
+        assert client._session is None  # Dead
 
     def test_keep_alive(self):
 
@@ -168,6 +170,10 @@ class TestServiceClient(unittest.TestCase):
             pass
 
         assert creds.called == 2
+        assert client._session  # Still alive
+        # Manually close the client in "keep_alive" mode
+        client.close()
+        assert client._session is None  # Dead
 
     def test_max_retries_on_default_adapter(self):
         # max_retries must be applied only on the default adapters of requests

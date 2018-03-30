@@ -284,8 +284,15 @@ class ServiceClient(object):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:
-            if not response or not kwargs['stream']:
-                session.close()
+            self._close_local_session_if_necessary(response, session, kwargs['stream'])
+
+    def _close_local_session_if_necessary(self, response, session, stream):
+        # Do NOT close session if session is self._session. No exception.
+        if self._session is session:
+            return
+        # Here, it's a local session, I might close it.
+        if not response or not stream:
+            session.close()
 
     def stream_download(self, data, callback):
         """Generator for streaming request body data.
