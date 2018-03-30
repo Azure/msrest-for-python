@@ -150,6 +150,8 @@ class ServiceClient(object):
         if proxies:
             kwargs['proxies'] = proxies
 
+        kwargs['stream'] = config.get('stream', True)
+
         session.max_redirects = config.get('max_redirects', self.config.redirect_policy())
         session.trust_env = config.get('use_env_proxies', self.config.proxies.use_env_settings)
 
@@ -197,7 +199,7 @@ class ServiceClient(object):
 
         return kwargs
 
-    def send_formdata(self, request, headers=None, content=None, stream=True, **config):
+    def send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.
         We only deal with file-like objects or strings at this point.
         The requests is not yet streamed.
@@ -205,7 +207,6 @@ class ServiceClient(object):
         :param ClientRequest request: The request object to be sent.
         :param dict headers: Any headers to add to the request.
         :param dict content: Dictionary of the fields of the formdata.
-        :param bool stream: Is the session in stream mode. True by default for compat.
         :param config: Any specific config overrides.
         """
         if content is None:
@@ -215,18 +216,17 @@ class ServiceClient(object):
         if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
             # Do NOT use "add_content" that assumes input is JSON
             request.data = {f: d for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, stream=stream, **config)
+            return self.send(request, headers, None, **config)
         else: # Assume "multipart/form-data"
             file_data = {f: self._format_data(d) for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, files=file_data, stream=stream, **config)
+            return self.send(request, headers, None, files=file_data, **config)
 
-    def send(self, request, headers=None, content=None, stream=True, **config):
+    def send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
         :param dict headers: Any headers to add to the request.
         :param content: Any body data to add to the request.
-        :param bool stream: Is the session in stream mode. True by default for compat.
         :param config: Any specific config overrides
         """
         if self.config.keep_alive and self._session is None:
@@ -239,7 +239,6 @@ class ServiceClient(object):
                 _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
 
         kwargs = self._configure_session(session, **config)
-        kwargs['stream'] = stream
         if headers:
             request.headers.update(headers)
 
@@ -266,7 +265,6 @@ class ServiceClient(object):
             try:
                 session = self.creds.refresh_session()
                 kwargs = self._configure_session(session, **config)
-                kwargs['stream'] = stream
                 if request.data:
                     kwargs['data']=request.data
                 kwargs['headers'].update(request.headers)
@@ -286,7 +284,7 @@ class ServiceClient(object):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:
-            if not response or not stream:
+            if not response or not kwargs['stream']:
                 session.close()
 
     def stream_download(self, data, callback):

@@ -390,23 +390,23 @@ class TestServiceClient(unittest.TestCase):
         client._format_data.return_value = "formatted"
         request = ClientRequest('GET')
         ServiceClient.send_formdata(client, request)
-        client.send.assert_called_with(request, None, None, files={}, stream=True)
+        client.send.assert_called_with(request, None, None, files={})
 
         ServiceClient.send_formdata(client, request, {'id':'1234'}, {'Test':'Data'})
-        client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'}, stream=True)
+        client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'})
 
         ServiceClient.send_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
-        client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'}, stream=True)
+        client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'})
 
         ServiceClient.send_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
-        client.send.assert_called_with(request, {}, None, files={'1':'formatted'}, stream=True)
+        client.send.assert_called_with(request, {}, None, files={'1':'formatted'})
 
         ServiceClient.send_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
-        client.send.assert_called_with(request, {}, None, stream=True)
+        client.send.assert_called_with(request, {}, None)
         self.assertEqual(request.data, {'1':'1', '2':'2'})
 
         ServiceClient.send_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
-        client.send.assert_called_with(request, {}, None, stream=True)
+        client.send.assert_called_with(request, {}, None)
         self.assertEqual(request.data, {'1':'1'})
 
     def test_format_data(self):
