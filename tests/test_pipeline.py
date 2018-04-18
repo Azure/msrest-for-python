@@ -44,14 +44,6 @@ from msrest import Configuration
 
 class TestClientRequest(unittest.TestCase):
 
-    def test_request_headers(self):
-
-        request = ClientRequest()
-        request.add_header("a", 1)
-        request.add_headers({'b':2, 'c':3})
-
-        self.assertEqual(request.headers, {'a':1, 'b':2, 'c':3})
-
     def test_request_data(self):
 
         request = ClientRequest()
