@@ -20,6 +20,26 @@ To install:
 Release History
 ---------------
 
+2018-04-18 Version 0.4.28
++++++++++++++++++++++++++
+
+**Features**
+
+- msrest is now able to keep the "requests.Session" alive for performance. To activate this behavior:
+
+  - Use the final Client as a context manager (requires generation with Autorest.Python 3.0.50 at least)
+  - Use `client.config.keep_alive = True` and `client.close()` (requires generation with Autorest.Python 3.0.50 at least)
+  - Use `client.config.keep_alive = True` and client._client.close() (not recommended, but available in old releases of SDK)
+
+- All Authentication classes now define `signed_session` and `refresh_session` with an optional `session` parameter.
+  To take benefits of the session improvement, a subclass of Authentication *MUST* add this optional parameter
+  and use it if it's not `None`:
+
+     def signed_session(self, session=None):
+         session = session or requests.Session()
+
+         # As usual from here.
+
 2018-03-07 Version 0.4.27
 +++++++++++++++++++++++++
 

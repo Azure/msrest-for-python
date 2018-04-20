@@ -37,6 +37,7 @@ import sys
 import pytest
 
 import requests
+from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
 from msrest import ServiceClient
@@ -54,47 +55,95 @@ class TestServiceClient(object):
     @pytest.mark.asyncio
     async def test_client_send(self):
 
-        mock_client = mock.create_autospec(ServiceClient)
-        mock_client.config = Configuration("https://my_endpoint.com")
-        mock_client.creds = mock.create_autospec(OAuthTokenAuthentication)
-        mock_client._configure_session.return_value = {}
+        cfg = Configuration("https://my_endpoint.com")
+        creds = mock.create_autospec(OAuthTokenAuthentication)
+
+        client = ServiceClient(creds, cfg)
         session = mock.create_autospec(requests.Session)
-        mock_client.creds.signed_session.return_value = session
-        mock_client.creds.refresh_session.return_value = session
+        session.adapters = {
+            "http://": HTTPAdapter(),
+            "https://": HTTPAdapter(),
+        }
+        client.creds.signed_session.return_value = session
+        client.creds.refresh_session.return_value = session
+        # Be sure the mock does not trick me
+        assert not hasattr(session.resolve_redirects, 'is_mrest_patched')
 
         request = ClientRequest('GET')
-        await ServiceClient.async_send(mock_client, request)
+        await client.async_send(request, stream=False)
         session.request.call_count = 0
-        mock_client._configure_session.assert_called_with(session)
-        session.request.assert_called_with('GET', None, data=[], headers={}, stream=True)
+        session.request.assert_called_with(
+            'GET',
+            None,
+            allow_redirects=True,
+            cert=None,
+            headers={
+                'User-Agent': cfg.user_agent,
+                'Accept': 'application/json'
+            },
+            stream=False,
+            timeout=100,
+            verify=True
+        )
+        assert session.resolve_redirects.is_mrest_patched
         session.close.assert_called_with()
 
-        await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'})
-        mock_client._configure_session.assert_called_with(session)
-        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'}, stream=True)
+        await client.async_send(request, headers={'id':'1234'}, content={'Test':'Data'}, stream=False)
+        session.request.assert_called_with(
+            'GET',
+            None,
+            data='{"Test": "Data"}',
+            allow_redirects=True,
+            cert=None,
+            headers={
+                'User-Agent': cfg.user_agent,
+                'Accept': 'application/json',
+                'Content-Length': '16',
+                'id':'1234'
+            },
+            stream=False,
+            timeout=100,
+            verify=True
+        )
         assert session.request.call_count == 1
         session.request.call_count = 0
+        assert session.resolve_redirects.is_mrest_patched
         session.close.assert_called_with()
 
         session.request.side_effect = requests.RequestException("test")
         with pytest.raises(ClientRequestError):
-            await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
-        mock_client._configure_session.assert_called_with(session, test='value')
-        session.request.assert_called_with('GET', None, data='{"Test": "Data"}', headers={'Content-Length': '16', 'id':'1234'}, stream=True)
+            await client.async_send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value', stream=False)
+        session.request.assert_called_with(
+            'GET',
+            None,
+            data='{"Test": "Data"}',
+            allow_redirects=True,
+            cert=None,
+            headers={
+                'User-Agent': cfg.user_agent,
+                'Accept': 'application/json',
+                'Content-Length': '16',
+                'id':'1234'
+            },
+            stream=False,
+            timeout=100,
+            verify=True
+        )
         assert session.request.call_count == 1
         session.request.call_count = 0
+        assert session.resolve_redirects.is_mrest_patched
         session.close.assert_called_with()
 
         session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
         with pytest.raises(TokenExpiredError):
-            await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
+            await client.async_send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         assert session.request.call_count == 2
         session.request.call_count = 0
         session.close.assert_called_with()
 
         session.request.side_effect = ValueError("test")
         with pytest.raises(ValueError):
-            await ServiceClient.async_send(mock_client, request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
+            await client.async_send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         session.close.assert_called_with()
 
     @pytest.mark.asyncio
@@ -112,23 +161,23 @@ class TestServiceClient(object):
 
         request = ClientRequest('GET')
         await ServiceClient.async_send_formdata(mock_client, request)
-        async_send_mock.assert_called_with(request, None, files={}, stream=True)
+        async_send_mock.assert_called_with(request, None, files={})
 
         await ServiceClient.async_send_formdata(mock_client, request, {'id':'1234'}, {'Test':'Data'})
-        async_send_mock.assert_called_with(request, {'id':'1234'}, files={'Test':'formatted'}, stream=True)
+        async_send_mock.assert_called_with(request, {'id':'1234'}, files={'Test':'formatted'})
 
         await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
-        async_send_mock.assert_called_with(request, {}, files={'1':'formatted', '2':'formatted'}, stream=True)
+        async_send_mock.assert_called_with(request, {}, files={'1':'formatted', '2':'formatted'})
 
         await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
-        async_send_mock.assert_called_with(request, {}, files={'1':'formatted'}, stream=True)
+        async_send_mock.assert_called_with(request, {}, files={'1':'formatted'})
 
         await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
-        async_send_mock.assert_called_with(request, {}, files=None, stream=True)
+        async_send_mock.assert_called_with(request, {}, files=None)
         assert request.data == {'1':'1', '2':'2'}
 
         await ServiceClient.async_send_formdata(mock_client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
-        async_send_mock.assert_called_with(request, {}, files=None, stream=True)
+        async_send_mock.assert_called_with(request, {}, files=None)
         assert request.data == {'1':'1'}
 
     @pytest.mark.asyncio

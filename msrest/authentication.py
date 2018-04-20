@@ -36,13 +36,17 @@ class Authentication(object):
 
     header = "Authorization"
 
-    def signed_session(self):
-        """Create requests session with any required auth headers
-        applied.
+    def signed_session(self, session=None):
+        """Create requests session with any required auth headers applied.
 
+        If a session object is provided, configure it directly. Otherwise,
+        create a new session and return it.
+
+        :param session: The session to configure for authentication
+        :type session: requests.Session
         :rtype: requests.Session
         """
-        return requests.Session()
+        return session or requests.Session()
 
 
 class BasicAuthentication(Authentication):
@@ -57,13 +61,18 @@ class BasicAuthentication(Authentication):
         self.username = username
         self.password = password
 
-    def signed_session(self):
+    def signed_session(self, session=None):
         """Create requests session with any required auth headers
         applied.
 
+        If a session object is provided, configure it directly. Otherwise,
+        create a new session and return it.
+
+        :param session: The session to configure for authentication
+        :type session: requests.Session
         :rtype: requests.Session
         """
-        session = super(BasicAuthentication, self).signed_session()
+        session = super(BasicAuthentication, self).signed_session(session)
         session.auth = HTTPBasicAuth(self.username, self.password)
         return session
 
@@ -87,13 +96,18 @@ class BasicTokenAuthentication(Authentication):
         """
         pass
 
-    def signed_session(self):
+    def signed_session(self, session=None):
         """Create requests session with any required auth headers
         applied.
 
+        If a session object is provided, configure it directly. Otherwise,
+        create a new session and return it.
+
+        :param session: The session to configure for authentication
+        :type session: requests.Session
         :rtype: requests.Session
         """
-        session = super(BasicTokenAuthentication, self).signed_session()
+        session = super(BasicTokenAuthentication, self).signed_session(session)
         header = "{} {}".format(self.scheme, self.token['access_token'])
         session.headers['Authorization'] = header
         return session
@@ -101,6 +115,7 @@ class BasicTokenAuthentication(Authentication):
 
 class OAuthTokenAuthentication(BasicTokenAuthentication):
     """OAuth Token Authentication.
+
     Requires that supplied token contains an expires_in field.
 
     :param str client_id: Account Client ID.
@@ -108,9 +123,8 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
     """
 
     def __init__(self, client_id, token):
-        self.scheme = 'Bearer'
+        super(OAuthTokenAuthentication, self).__init__(token)
         self.id = client_id
-        self.token = token
         self.store_key = self.id
 
     def construct_auth(self):
@@ -120,20 +134,32 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
         """
         return "{} {}".format(self.scheme, self.token)
 
-    def refresh_session(self):
+    def refresh_session(self, session=None):
         """Return updated session if token has expired, attempts to
         refresh using refresh token.
 
+        If a session object is provided, configure it directly. Otherwise,
+        create a new session and return it.
+
+        :param session: The session to configure for authentication
+        :type session: requests.Session
         :rtype: requests.Session
         """
-        return self.signed_session()
+        return self.signed_session(session)
 
-    def signed_session(self):
+    def signed_session(self, session=None):
         """Create requests session with any required auth headers applied.
 
+        If a session object is provided, configure it directly. Otherwise,
+        create a new session and return it.
+
+        :param session: The session to configure for authentication
+        :type session: requests.Session
         :rtype: requests.Session
         """
-        return oauth.OAuth2Session(self.id, token=self.token)
+        session = session or requests.Session()  # Don't call super on purpose, let's "auth" manage the headers.
+        session.auth = oauth.OAuth2(self.id, token=self.token)
+        return session
 
 class ApiKeyCredentials(Authentication):
     """Represent the ApiKey feature of Swagger.
@@ -144,6 +170,7 @@ class ApiKeyCredentials(Authentication):
     :param dict[str,str] in_query: ApiKey in the query as parameters
     """
     def __init__(self, in_headers=None, in_query=None):
+        super(ApiKeyCredentials, self).__init__()
         if in_headers is None:
             in_headers = {}
         if in_query is None:
@@ -155,12 +182,17 @@ class ApiKeyCredentials(Authentication):
         self.in_headers = in_headers
         self.in_query = in_query
 
-    def signed_session(self):
+    def signed_session(self, session=None):
         """Create requests session with ApiKey.
 
+        If a session object is provided, configure it directly. Otherwise,
+        create a new session and return it.
+
+        :param session: The session to configure for authentication
+        :type session: requests.Session
         :rtype: requests.Session
         """
-        session = super(ApiKeyCredentials, self).signed_session()
+        session = super(ApiKeyCredentials, self).signed_session(session)
         session.headers.update(self.in_headers)
         session.params.update(self.in_query)
         return session

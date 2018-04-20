@@ -43,7 +43,7 @@ _LOGGER = logging.getLogger(__name__)
 
 class AsyncServiceClientMixin:
 
-    async def async_send_formdata(self, request, headers=None, content=None, stream=True, **config):
+    async def async_send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.
 
         We only deal with file-like objects or strings at this point.
@@ -55,9 +55,9 @@ class AsyncServiceClientMixin:
         :param config: Any specific config overrides.
         """
         files = self._prepare_send_formdata(request, headers, content)
-        return await self.async_send(request, headers, files=files, stream=stream, **config)
+        return await self.async_send(request, headers, files=files, **config)
 
-    async def async_send(self, request, headers=None, content=None, stream=True, **config):
+    async def async_send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
@@ -65,15 +65,27 @@ class AsyncServiceClientMixin:
         :param content: Any body data to add to the request.
         :param config: Any specific config overrides
         """
-        response = None
-        session = self.creds.signed_session()
-        kwargs = self._configure_session(session, **config)
-        kwargs['stream'] = stream
         loop = asyncio.get_event_loop()
+        if self.config.keep_alive and self._session is None:
+            self._session = requests.Session()
+        try:
+            session = self.creds.signed_session(self._session)
+        except TypeError: # Credentials does not support session injection
+            session = self.creds.signed_session()
+            if self._session is not None:
+                _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
 
-        request.add_headers(headers if headers else {})
+        kwargs = self._configure_session(session, **config)
+        if headers:
+            request.headers.update(headers)
+
         if not kwargs.get('files'):
             request.add_content(content)
+        if request.data:
+            kwargs['data']=request.data
+        kwargs['headers'].update(request.headers)
+
+        response = None
         try:
 
             try:
@@ -83,8 +95,6 @@ class AsyncServiceClientMixin:
                         session.request,
                         request.method,
                         request.url,
-                        data=request.data,
-                        headers=request.headers,
                         **kwargs
                     )
                 )
@@ -98,6 +108,9 @@ class AsyncServiceClientMixin:
             try:
                 session = self.creds.refresh_session()
                 kwargs = self._configure_session(session)
+                if request.data:
+                    kwargs['data']=request.data
+                kwargs['headers'].update(request.headers)                
 
                 future = loop.run_in_executor(
                     None,
@@ -105,8 +118,6 @@ class AsyncServiceClientMixin:
                         session.request,
                         request.method,
                         request.url,
-                        data=request.data,
-                        headers=request.headers,
                         **kwargs
                     )
                 )
@@ -121,8 +132,7 @@ class AsyncServiceClientMixin:
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:
-            if not response or not stream:
-                session.close()
+            self._close_local_session_if_necessary(response, session, kwargs['stream'])
 
     def stream_download_async(self, response, user_callback):
         """Async Generator for streaming request body data.

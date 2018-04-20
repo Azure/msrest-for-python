@@ -46,22 +46,6 @@ _LOGGER = logging.getLogger(__name__)
 class ClientRequest(requests.Request):
     """Wrapper for requests.Request object."""
 
-    def add_header(self, header, value):
-        """Add a header to the single request.
-
-        :param str header: The header name.
-        :param str value: The header value.
-        """
-        self.headers[header] = value
-
-    def add_headers(self, headers):
-        """Add multiple headers to the single request.
-
-        :param dict headers: A dictionary of headers.
-        """
-        for key, value in headers.items():
-            self.add_header(key, value)
-
     def format_parameters(self, params):
         """Format parameters into a valid query string.
         It's assumed all parameters have already been quoted as

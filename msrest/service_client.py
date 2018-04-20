@@ -54,6 +54,23 @@ else:
 
 _LOGGER = logging.getLogger(__name__)
 
+class SDKClient(object):
+    """The base class of all generated SDK client.
+    """
+    def __init__(self, creds, config):
+        self._client = ServiceClient(creds, config)
+    
+    def close(self):
+        """Close the client if keep_alive is True.
+        """
+        self._client.close()
+
+    def __enter__(self):
+        self._client.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._client.__exit__(exc_type, exc_val, exc_tb)
 
 class ServiceClient(AsyncServiceClientMixin):
     """REST Service Client.
@@ -69,6 +86,22 @@ class ServiceClient(AsyncServiceClientMixin):
         self.config = config
         self.creds = creds if creds else Authentication()
         self._headers = {}
+        self._session = None
+
+    def __enter__(self):
+        self.config.keep_alive = True
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        self.config.keep_alive = False
+
+    def close(self):
+        """Close the session if keep_alive is True.
+        """
+        if self._session:
+            self._session.close()
+        self._session = None
 
     def _format_data(self, data):
         """Format field data according to whether it is a stream or
@@ -108,39 +141,48 @@ class ServiceClient(AsyncServiceClientMixin):
 
         :param requests.Session session: Current request session.
         :param config: Specific configuration overrides.
+        :rtype: dict
+        :return: A dict that will be kwarg-send to session.request
         """
         kwargs = self.config.connection()
         for opt in ['timeout', 'verify', 'cert']:
             kwargs[opt] = config.get(opt, kwargs[opt])
-        for opt in ['cookies', 'files']:
-            kwargs[opt] = config.get(opt)
+        kwargs.update({k:config[k] for k in ['cookies', 'files'] if k in config})
         kwargs['allow_redirects'] = config.get(
             'allow_redirects', bool(self.config.redirect_policy))
 
-        session.headers.update(self._headers)
-        session.headers['User-Agent'] = self.config.user_agent
-        session.headers['Accept'] = 'application/json'
-        session.max_redirects = config.get(
-            'max_redirects', self.config.redirect_policy())
-        session.proxies = config.get(
-            'proxies', self.config.proxies())
-        session.trust_env = config.get(
-            'use_env_proxies', self.config.proxies.use_env_settings)
-        redirect_logic = session.resolve_redirects
+        kwargs['headers'] = dict(self._headers)
+        kwargs['headers']['User-Agent'] = self.config.user_agent
+        kwargs['headers']['Accept'] = 'application/json'
+        proxies = config.get('proxies', self.config.proxies())
+        if proxies:
+            kwargs['proxies'] = proxies
 
-        def wrapped_redirect(resp, req, **kwargs):
-            attempt = self.config.redirect_policy.check_redirect(resp, req)
-            return redirect_logic(resp, req, **kwargs) if attempt else []
+        kwargs['stream'] = config.get('stream', True)
 
-        session.resolve_redirects = wrapped_redirect
+        session.max_redirects = config.get('max_redirects', self.config.redirect_policy())
+        session.trust_env = config.get('use_env_proxies', self.config.proxies.use_env_settings)
+
+        # Patch the redirect method directly *if not done already*
+        if not getattr(session.resolve_redirects, 'is_mrest_patched', False):
+            redirect_logic = session.resolve_redirects
+
+            def wrapped_redirect(resp, req, **kwargs):
+                attempt = self.config.redirect_policy.check_redirect(resp, req)
+                return redirect_logic(resp, req, **kwargs) if attempt else []
+            wrapped_redirect.is_mrest_patched = True
+
+            session.resolve_redirects = wrapped_redirect
+
         # if "enable_http_logger" is defined at the operation level, take the value.
         # if not, take the one in the client config
         # if not, disable http_logger
+        hooks = []
         if config.get("enable_http_logger", self.config.enable_http_logger):
             def log_hook(r, *args, **kwargs):
                 log_request(None, r.request)
                 log_response(None, r.request, r, result=r)
-            session.hooks['response'].append(log_hook)
+            hooks.append(log_hook)
 
         def make_user_hook_cb(user_hook, session):
             def user_hook_cb(r, *args, **kwargs):
@@ -149,13 +191,15 @@ class ServiceClient(AsyncServiceClientMixin):
             return user_hook_cb
 
         for user_hook in self.config.hooks:
-            session.hooks['response'].append(make_user_hook_cb(user_hook, session))
+            hooks.append(make_user_hook_cb(user_hook, session))
 
-        max_retries = config.get(
-            'retries', self.config.retry_policy())
+        if hooks:
+            kwargs['hooks'] = {'response': hooks}
+
+        # Change max_retries in current all installed adapters
+        max_retries = config.get('retries', self.config.retry_policy())
         for protocol in self._protocols:
-            session.mount(protocol,
-                          requests.adapters.HTTPAdapter(max_retries=max_retries))
+            session.adapters[protocol].max_retries=max_retries
 
         output_kwargs = self.config.session_configuration_callback(session, self.config, config, **kwargs)
         if output_kwargs is not None:
@@ -175,9 +219,8 @@ class ServiceClient(AsyncServiceClientMixin):
         else: # Assume "multipart/form-data"
             return {f: self._format_data(d) for f, d in content.items() if d is not None}
 
-    def send_formdata(self, request, headers=None, content=None, stream=True, **config):
+    def send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.
-
         We only deal with file-like objects or strings at this point.
         The requests is not yet streamed.
 
@@ -187,32 +230,41 @@ class ServiceClient(AsyncServiceClientMixin):
         :param config: Any specific config overrides.
         """
         files = self._prepare_send_formdata(request, headers, content)
-        return self.send(request, headers, files=files, stream=stream, **config)
+        return self.send(request, headers, files=files, **config)
 
-    def send(self, request, headers=None, content=None, stream=True, **config):
+    def send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
         :param dict headers: Any headers to add to the request.
         :param content: Any body data to add to the request.
-        :param bool stream: Is the session in stream mode. True by default for compat.
         :param config: Any specific config overrides
         """
-        response = None
-        session = self.creds.signed_session()
-        kwargs = self._configure_session(session, **config)
-        kwargs['stream'] = stream
+        if self.config.keep_alive and self._session is None:
+            self._session = requests.Session()
+        try:
+            session = self.creds.signed_session(self._session)
+        except TypeError: # Credentials does not support session injection
+            session = self.creds.signed_session()
+            if self._session is not None:
+                _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
 
-        request.add_headers(headers if headers else {})
+        kwargs = self._configure_session(session, **config)
+        if headers:
+            request.headers.update(headers)
+
         if not kwargs.get('files'):
             request.add_content(content)
-        try:
+        if request.data:
+            kwargs['data']=request.data
+        kwargs['headers'].update(request.headers)
 
+        response = None
+        try:
             try:
                 response = session.request(
-                    request.method, request.url,
-                    data=request.data,
-                    headers=request.headers,
+                    request.method,
+                    request.url,
                     **kwargs)
                 return response
 
@@ -223,12 +275,14 @@ class ServiceClient(AsyncServiceClientMixin):
 
             try:
                 session = self.creds.refresh_session()
-                kwargs = self._configure_session(session)
+                kwargs = self._configure_session(session, **config)
+                if request.data:
+                    kwargs['data']=request.data
+                kwargs['headers'].update(request.headers)
 
                 response = session.request(
-                    request.method, request.url,
-                    request.data,
-                    request.headers,
+                    request.method,
+                    request.url,
                     **kwargs)
                 return response
             except (oauth2.rfc6749.errors.InvalidGrantError,
@@ -241,8 +295,15 @@ class ServiceClient(AsyncServiceClientMixin):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:
-            if not response or not stream:
-                session.close()
+            self._close_local_session_if_necessary(response, session, kwargs['stream'])
+
+    def _close_local_session_if_necessary(self, response, session, stream):
+        # Do NOT close session if session is self._session. No exception.
+        if self._session is session:
+            return
+        # Here, it's a local session, I might close it.
+        if not response or not stream:
+            session.close()
 
     def stream_download(self, data, callback):
         """Generator for streaming request body data.

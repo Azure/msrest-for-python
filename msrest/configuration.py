@@ -97,6 +97,9 @@ class Configuration(object):
 
         self.session_configuration_callback = default_session_configuration_callback
 
+        # If set to True, ServiceClient will own the sessionn
+        self.keep_alive = False
+
         self._config = configparser.ConfigParser()
         self._config.optionxform = str
 
