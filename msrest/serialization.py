@@ -135,7 +135,6 @@ class Model(object):
     _validation = {}
 
     def __init__(self, **kwargs):
-        self.additional_properties = {}
         for k in kwargs:
             if k not in self._attribute_map:
                 _LOGGER.warning("%s is not a known attribute of class %s and will be ignored", k, self.__class__)
@@ -408,7 +407,7 @@ class Serializer(object):
             attributes = target_obj._attribute_map
             for attr, attr_desc in attributes.items():
                 attr_name = attr
-                if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
+                if attr_name == "additional_properties" and attr_desc["key"] == '' and getattr(target_obj, "additional_properties", {}):
                     serialized.update(target_obj.additional_properties)
                     continue
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
@@ -1133,7 +1132,7 @@ class Deserializer(object):
                 for attr in readonly:
                     setattr(response_obj, attr, attrs.get(attr))
                 if additional_properties:
-                    response_obj.additional_properties = additional_properties
+                    setattr(response_obj, "additional_properties", additional_properties)
                 return response_obj
             except TypeError as err:
                 msg = "Unable to deserialize {} into model {}. ".format(
