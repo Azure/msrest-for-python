@@ -37,6 +37,7 @@ try:
     from urllib import quote
 except ImportError:
     from urllib.parse import quote
+import xml.etree.ElementTree as ET
 
 import isodate
 
@@ -928,6 +929,52 @@ def attribute_key_case_insensitive_extractor(attr, _, data):
 
     return data.get(found_key)
 
+def xml_key_extractor(attr, attr_desc, data):
+    # Test if this model is XML ready first
+    if 'xml' not in attr_desc:
+        return None
+
+    xml_desc = attr_desc['xml']
+    xml_name = xml_desc['name']
+    xml_ns = xml_desc.get('ns', None)
+
+    # If it's an attribute, that's simple
+    if "attr" in xml_desc and xml_desc["attr"]:
+        return data.attrib[xml_name]
+
+    # Integrate namespace if necessary
+    if xml_ns:
+        ns = {'prefix': xml_ns}
+        xml_name = "prefix:"+xml_name
+    else:
+        ns = {} # And keep same xml_name
+
+    # Look for a children
+    children = data.findall(xml_name, ns)
+
+    # Interpret children differently depending of type and wrapped
+    is_iter_type = attr_desc['type'].startswith("[")
+    is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+
+    # If is_iter_type and not wrapped, return all found children
+    if is_iter_type:
+        if not is_wrapped:
+            return children
+        else: # Iter and wrapped, should have found one node only (the wrap one)
+            if len(children) != 1:
+                raise DeserializationError(
+                    "Tried to deserialize an array not wrapped, and found several nodes '{}'. Maybe you should declare this array as wrapped?".format(
+                        xml_name
+                    ))
+            return children[0].getchildren()  # Might be empty list and that's ok.
+
+    # Here it's not a itertype, we should have found one element only or empty
+    if len(children) > 1:
+        raise DeserializationError("Find several XML '{}' where it was not expected".format(xml_name))
+    elif len(children) == 0:
+        return None  # Assume it's not there, maybe an optional node.
+    return children[0]
+
 class Deserializer(object):
     """Response object model deserializer.
 
@@ -961,7 +1008,8 @@ class Deserializer(object):
         }
         self.dependencies = dict(classes) if classes else {}
         self.key_extractors = [
-            rest_key_extractor
+            rest_key_extractor,
+            xml_key_extractor
         ]
 
     def __call__(self, target_obj, response_data, content_type=None):
@@ -1113,7 +1161,7 @@ class Deserializer(object):
             except ValueError as err:
                 raise DeserializationError("JSON is invalid: {}".format(err), err)
         elif "xml" in (content_type or []):
-            raise DeserializationError("Do not support XML right now")
+            return ET.fromstring(data)
         return data
 
     def _instantiate_model(self, response, attrs, additional_properties=None):
@@ -1269,6 +1317,11 @@ class Deserializer(object):
         :rtype: str, int, float or bool
         :raises: TypeError if string format is not valid.
         """
+        # If we're here, data is supposed to be a basic type.
+        # If it's still an XML node, take the text
+        if ET.iselement(attr):
+            attr = attr.text
+
         if data_type == 'bool':
             if attr in [True, False, 1, 0]:
                 return bool(attr)
