@@ -2192,7 +2192,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         self.assertEquals(m.name, "test")
         self.assertEquals(m.content, "Content")
-        self.assertEquals(m.additional_properties, {})
+        self.assertFalse(hasattr(m, 'additional_properties'))
 
     def test_attr_enum(self):
         """
