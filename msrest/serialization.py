@@ -54,7 +54,6 @@ except NameError:
 
 _LOGGER = logging.getLogger(__name__)
 
-
 class UTC(datetime.tzinfo):
     """Time Zone info for handling UTC"""
 
@@ -103,13 +102,13 @@ def full_restapi_key_transformer(key, attr_desc, value):
 def last_restapi_key_transformer(key, attr_desc, value):
     """A key transfomer that returns the last RestAPI key.
 
-    :param str _: The attribute name
+    :param str key: The attribute name
     :param dict attr_desc: The attribute metadata
     :param object value: The value
     :returns: The last RestAPI key.
     """
     key, value = full_restapi_key_transformer(key, attr_desc, value)
-    return (key[-1], value)
+    return (key[-1], value)    
 
 def _recursive_validate(attr_name, attr_type, data):
     result = []
@@ -125,6 +124,14 @@ def _recursive_validate(attr_name, attr_type, data):
         return data.validate()
     return result
 
+def _create_xml_node(tag, prefix=None, ns=None):
+    """Create a XML node."""
+    if prefix and ns:
+        ET.register_namespace(prefix, ns)
+    if ns:
+        return ET.Element("{"+ns+"}"+tag)
+    else:
+        return ET.Element(tag)
 
 class Model(object):
     """Mixin for all client request body/response body models to support
@@ -136,7 +143,8 @@ class Model(object):
     _validation = {}
 
     def __init__(self, **kwargs):
-        self.additional_properties = {}
+        if not self.is_xml_model():
+            self.additional_properties = {}
         for k in kwargs:
             if k not in self._attribute_map:
                 _LOGGER.warning("%s is not a known attribute of class %s and will be ignored", k, self.__class__)
@@ -160,7 +168,32 @@ class Model(object):
 
     @classmethod
     def enable_additional_properties_sending(cls):
+        if cls.is_xml_model():
+            raise ValueError("XML model are not compatible with additionalProperties")
         cls._attribute_map['additional_properties'] = {'key': '', 'type': '{object}'}
+
+    @classmethod
+    def is_xml_model(cls):
+        try:
+            cls._xml_map
+        except AttributeError:
+            return False
+        return True
+
+    @classmethod
+    def _create_xml_node(cls):
+        """Create XML node from "_xml_map".
+        """
+        try:
+            xml_map = cls._xml_map
+        except AttributeError:
+            raise ValueError("This model has no XML definition")
+
+        return _create_xml_node(
+            xml_map['name'],
+            xml_map.get("prefix", None),
+            xml_map.get("ns", None)
+        )
 
     def validate(self):
         """Validate this model recursively and return a list of ValidationError.
@@ -378,6 +411,15 @@ class Serializer(object):
         self.key_transformer = full_restapi_key_transformer
         self.client_side_validation = True
 
+    @staticmethod
+    def _create_serialized_base(target_obj):
+        """Create the base for this serialization.
+
+        - For JSON, it's a simple empty dict
+        - For XML, it's an element (with namespace if needed)
+        """
+        return {} if not target_obj.is_xml_model() else target_obj._create_xml_node()
+
     def _serialize(self, target_obj, data_type=None, **kwargs):
         """Serialize data into a string according to type.
 
@@ -391,7 +433,6 @@ class Serializer(object):
         if target_obj is None:
             return None
 
-        serialized = {}
         attr_name = None
         class_name = target_obj.__class__.__name__
 
@@ -405,34 +446,86 @@ class Serializer(object):
                 return self.serialize_data(
                     target_obj, data_type, **kwargs)
 
+        serialized = self._create_serialized_base(target_obj)  # Could be JSON or XML
         try:
             attributes = target_obj._attribute_map
             for attr, attr_desc in attributes.items():
                 attr_name = attr
+                if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
+                    continue
+                
                 if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
                     serialized.update(target_obj.additional_properties)
                     continue
-                if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
-                    continue
                 try:
+                    ### Extract sub-data to serialize from model ###
                     orig_attr = getattr(target_obj, attr)
-                    keys, orig_attr = key_transformer(attr, attr_desc.copy(), orig_attr)
-                    keys = keys if isinstance(keys, list) else [keys]
-                    attr_type = attr_desc['type']
-                    new_attr = self.serialize_data(
-                        orig_attr, attr_type, **kwargs)
+                    if target_obj.is_xml_model():
+                        pass # Don't provide "transformer" for XML for now. Keep "orig_attr"
+                    else: # JSON
+                        keys, orig_attr = key_transformer(attr, attr_desc.copy(), orig_attr)
+                        keys = keys if isinstance(keys, list) else [keys]
 
-                    for k in reversed(keys):
-                        unflattened = {k: new_attr}
-                        new_attr = unflattened
+                    ### Serialize this data ###
+                    new_attr = self.serialize_data(orig_attr, attr_desc['type'], **kwargs)
 
-                    _new_attr = new_attr
-                    _serialized = serialized
-                    for k in keys:
-                        if k not in _serialized:
-                            _serialized.update(_new_attr)
-                        _new_attr = _new_attr[k]
-                        _serialized = _serialized[k]
+                    ### Incorporate this data in the right place ###
+                    if target_obj.is_xml_model():
+                        xml_desc = attr_desc['xml']
+                        xml_name = xml_desc['name']
+                        if "attr" in xml_desc and xml_desc["attr"]:
+                            serialized.set(xml_name, new_attr)
+                            continue
+                        if isinstance(new_attr, list):
+                            if ET.iselement(new_attr[0]):
+                                serialized.extend(new_attr)
+                            else:
+                                # Create a wrap node if necessary
+                                is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+                                node_name = xml_desc.get("wrappedName", xml_name)
+                                if is_wrapped:
+                                    local_node = _create_xml_node(
+                                        xml_name,
+                                        xml_desc.get('prefix', None),
+                                        xml_desc.get('ns', None)
+                                    )
+                                else:
+                                    local_node = serialized
+                                # All list elements to "local_node"
+                                for el in new_attr:
+                                    el_node = _create_xml_node(
+                                        node_name,
+                                        xml_desc.get('prefix', None),
+                                        xml_desc.get('ns', None)
+                                    )
+                                    if ET.iselement(el):
+                                        el_node.append(el)
+                                    else:
+                                        el_node.text = str(new_attr)
+                                    local_node.append(el_node)
+                        elif ET.iselement(new_attr):
+                            serialized.append(new_attr)
+                        else:  # That's a basic type
+                            # Integrate namespace if necessary
+                            local_node = _create_xml_node(
+                                xml_name,
+                                xml_desc.get('prefix', None),
+                                xml_desc.get('ns', None)
+                            )
+                            local_node.text = str(new_attr)
+                            serialized.append(local_node)
+                    else: # JSON
+                        for k in reversed(keys):
+                            unflattened = {k: new_attr}
+                            new_attr = unflattened
+
+                        _new_attr = new_attr
+                        _serialized = serialized
+                        for k in keys:
+                            if k not in _serialized:
+                                _serialized.update(_new_attr)
+                            _new_attr = _new_attr[k]
+                            _serialized = _serialized[k]
                 except ValueError:
                     continue
 
@@ -441,7 +534,7 @@ class Serializer(object):
                 attr_name, class_name, str(target_obj))
             raise_with_traceback(SerializationError, msg, err)
         else:
-            return serialized
+            return serialized        
 
     def body(self, data, data_type, **kwargs):
         """Serialize data intended for a request body.

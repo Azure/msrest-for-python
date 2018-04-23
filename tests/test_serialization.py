@@ -379,15 +379,6 @@ class TestRuntimeSerialized(unittest.TestCase):
         obj = self.s.serialize_object({'test': None})
         self.assertIsNone(obj['test'])
 
-    def test_obj_without_attr_map(self):
-        """
-        Test serializing an object with no attribute_map.
-        """
-        test_obj = type("BadTestObj", (), {})
-
-        with self.assertRaises(SerializationError):
-            self.s._serialize(test_obj)
-
     def test_obj_with_malformed_map(self):
         """
         Test serializing an object with a malformed attribute_map.

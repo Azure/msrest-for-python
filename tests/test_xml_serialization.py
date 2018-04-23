@@ -23,8 +23,12 @@
 # THE SOFTWARE.
 #
 #--------------------------------------------------------------------------
+import xml.etree.ElementTree as ET
 
 from msrest.serialization import Serializer, Deserializer, Model, xml_key_extractor
+
+def assert_xml_equals(x1, x2):
+    assert ET.dump(x1) == ET.dump(x2)
 
 class TestXmlDeserialization:
 
@@ -116,3 +120,109 @@ class TestXmlDeserialization:
         result = s(XmlModel, basic_xml, "application/xml")
             
         assert result.age == 37
+
+class TestXmlSerialization:
+
+    def test_basic(self):
+        """Test an ultra basic XML."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data country="france">
+                <Age>37</Age>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age'}},
+                'country': {'key': 'country', 'type': 'str', 'xml':{'name': 'country', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            age=37,
+            country="france"
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_wrapped(self):
+        """Test XML list and wrap."""
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <Apple>granny</Apple>
+                  <Apple>fuji</Apple>
+                </GoodApples>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'wrappedName': 'Apple'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=['granny', 'fuji']
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel})
+        rawxml = s.body(mymodel, 'AppleBarrel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_not_wrapped(self):
+        """Test XML list and wrap."""
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <Apple>granny</Apple>
+                <Apple>fuji</Apple>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'apples': {'key': 'Apple', 'type': '[str]', 'xml': {'name': 'Apple'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        mymodel = AppleBarrel(
+            apples=['granny', 'fuji']
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel})
+        rawxml = s.body(mymodel, 'AppleBarrel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_basic_namespace(self):
+        """Test an ultra basic XML."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data xmlns:fictional="http://characters.example.com">
+                <fictional:Age>37</fictional:Age>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age', 'prefix':'fictional','ns':'http://characters.example.com'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            age=37,
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel')
+
+        assert_xml_equals(rawxml, basic_xml)
