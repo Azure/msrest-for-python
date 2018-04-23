@@ -31,6 +31,7 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
+import xml.etree.ElementTree as ET
 
 import requests
 from requests.packages.urllib3 import Retry
@@ -74,6 +75,12 @@ class ClientRequest(requests.Request):
         if data is None:
             return
 
+        if ET.iselement(data):
+            self.data = ET.tostring(data, encoding="utf8")
+            self.headers['Content-Length'] = str(len(self.data))
+            return
+
+        # By default, assume JSON
         try:
             self.data = json.dumps(data)
             self.headers['Content-Length'] = str(len(self.data))
