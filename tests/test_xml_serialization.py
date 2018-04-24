@@ -141,6 +141,7 @@ class TestXmlDeserialization:
         s = Deserializer({"Slideshow": Slideshow, "Slide": Slide})
         result = s(Slideshow, slideshow_xml, "application/xml")
         assert len(result.slides) == 2
+        assert result.slides[1].items[1] is None
 
     def test_basic_namespace(self):
         """Test an ultra basic XML."""

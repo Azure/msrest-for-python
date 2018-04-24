@@ -1429,6 +1429,8 @@ class Deserializer(object):
         # If it's still an XML node, take the text
         if ET.iselement(attr):
             attr = attr.text
+            if not attr: # Empty node in XML should be considered None
+                return None
 
         if data_type == 'bool':
             if attr in [True, False, 1, 0]:
