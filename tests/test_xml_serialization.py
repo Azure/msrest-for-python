@@ -28,7 +28,18 @@ import xml.etree.ElementTree as ET
 from msrest.serialization import Serializer, Deserializer, Model, xml_key_extractor
 
 def assert_xml_equals(x1, x2):
-    assert ET.dump(x1) == ET.dump(x2)
+    print("--------X1--------")
+    ET.dump(x1)
+    print("--------X2--------")
+    ET.dump(x2)
+
+    assert x1.tag == x2.tag
+    assert (x1.text or "").strip() == (x2.text or "").strip()
+    # assert x1.tail == x2.tail # Swagger does not change tail
+    assert x1.attrib == x2.attrib
+    assert len(x1) == len(x2)
+    for c1, c2 in zip(x1, x2):
+        assert_xml_equals(c1, c2)
 
 class TestXmlDeserialization:
 
@@ -268,3 +279,68 @@ class TestXmlSerialization:
         rawxml = s.body(mymodel, 'XmlModel')
 
         assert_xml_equals(rawxml, basic_xml)
+
+    def test_slideshow(self):
+        class Slideshow(Model):
+            _attribute_map = {
+                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title', 'attr': True}},
+                'date_property': {'key': 'date', 'type': 'str', 'xml': {'name': 'date', 'attr': True}},
+                'author': {'key': 'author', 'type': 'str', 'xml': {'name': 'author', 'attr': True}},
+                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slides'}},
+            }
+            _xml_map = {
+                'name': 'slideshow'
+            }
+
+        class Slide(Model):
+            _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'name': 'type', 'attr': True}},
+                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title'}},
+                'items': {'key': 'items', 'type': '[str]', 'xml': {'name': 'items', 'itemsName': 'item'}},
+            }
+            _xml_map = {
+                'name': 'slide'
+            }
+
+        slideshow_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<slideshow
+        title="Sample Slide Show"
+        date="Date of publication"
+        author="Yours Truly">
+    <slide type="all">
+        <title>Wake up to WonderWidgets!</title>
+    </slide>
+    <slide type="all">
+        <title>Overview</title>
+        <item>Why WonderWidgets are great</item>
+        <item></item>
+        <item>Who buys WonderWidgets</item>
+    </slide>
+</slideshow>"""
+
+        input_model = Slideshow(
+            title="Sample Slide Show",
+            date_property="Date of publication",
+            author="Yours Truly",
+            slides=[
+                Slide(
+                    type="all",
+                    title="Wake up to WonderWidgets!",
+                    items=[]
+                ),
+                Slide(
+                    type="all",
+                    title="Overview",
+                    items=[
+                        "Why WonderWidgets are great",
+                        None,
+                        "Who buys WonderWidgets"
+                    ]
+                )
+            ]
+        )
+
+        s = Serializer({"Slideshow": Slideshow, "Slide": Slide})
+        rawxml = s.body(input_model, 'Slideshow')
+        assert_xml_equals(rawxml, ET.fromstring(slideshow_xml))
+        

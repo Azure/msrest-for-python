@@ -477,7 +477,7 @@ class Serializer(object):
                             serialized.set(xml_name, new_attr)
                             continue
                         if isinstance(new_attr, list):
-                            if ET.iselement(new_attr[0]):
+                            if new_attr and ET.iselement(new_attr[0]):
                                 serialized.extend(new_attr)
                             else:
                                 # Create a wrap node if necessary
@@ -489,19 +489,21 @@ class Serializer(object):
                                         xml_desc.get('prefix', None),
                                         xml_desc.get('ns', None)
                                     )
+                                    serialized.append(local_node)
                                 else:
                                     local_node = serialized
                                 # All list elements to "local_node"
                                 for el in new_attr:
-                                    el_node = _create_xml_node(
-                                        node_name,
-                                        xml_desc.get('prefix', None),
-                                        xml_desc.get('ns', None)
-                                    )
                                     if ET.iselement(el):
-                                        el_node.append(el)
+                                        local_node.append(el)
                                     else:
-                                        el_node.text = str(new_attr)
+                                        el_node = _create_xml_node(
+                                            node_name,
+                                            xml_desc.get('prefix', None),
+                                            xml_desc.get('ns', None)
+                                        )
+                                        if el is not None:  # Otherwise it writes "None" :-p
+                                            el_node.text = str(el)
                                     local_node.append(el_node)
                         elif ET.iselement(new_attr):
                             serialized.append(new_attr)
@@ -553,12 +555,17 @@ class Serializer(object):
         if internal_data_type in self.dependencies and not isinstance(internal_data_type, Enum):
             try:
                 deserializer = Deserializer(self.dependencies)
-                deserializer.key_extractors = [
-                    rest_key_case_insensitive_extractor,
-                    attribute_key_case_insensitive_extractor,
-                    last_rest_key_case_insensitive_extractor
-                ]
-                data = deserializer(data_type, data)
+                if self.dependencies[internal_data_type].is_xml_model():
+                    deserializer.key_extractors = [
+                        attribute_key_case_insensitive_extractor,
+                    ]
+                else:
+                    deserializer.key_extractors = [
+                        rest_key_case_insensitive_extractor,
+                        attribute_key_case_insensitive_extractor,
+                        last_rest_key_case_insensitive_extractor
+                    ]
+                data = deserializer._deserialize(data_type, data)
             except DeserializationError as err:
                 raise_with_traceback(
                     SerializationError, "Unable to build a model: "+str(err), err)
@@ -1049,7 +1056,7 @@ def xml_key_extractor(attr, attr_desc, data):
     if is_wrapped or not is_iter_type:
         children = data.findall(xml_name, ns)
     else:
-        items_name = xml_desc["itemsName"]
+        items_name = xml_desc.get("itemsName", xml_name)
         children = data.findall(items_name, ns)
 
     # If is_iter_type and not wrapped, return all found children
@@ -1117,30 +1124,6 @@ class Deserializer(object):
         :raises: DeserializationError if deserialization fails.
         :return: Deserialized object.
         """
-        # This is already a model, go recursive just in case
-        if hasattr(response_data, "_attribute_map"):
-            constants = [name for name, config in getattr(response_data, '_validation', {}).items()
-                         if config.get('constant')]
-            try:
-                for attr, mapconfig in response_data._attribute_map.items():
-                    if attr in constants:
-                        continue
-                    value = getattr(response_data, attr)
-                    if value is None:
-                        continue
-                    local_type = mapconfig['type']
-                    internal_data_type = local_type.strip('[]{}')
-                    if internal_data_type not in self.dependencies or isinstance(internal_data_type, Enum):
-                        continue
-                    setattr(
-                        response_data,
-                        attr,
-                        self(local_type, value)
-                    )
-                return response_data
-            except AttributeError:
-                return
-
         data = self._unpack_content(response_data, content_type)
         return self._deserialize(target_obj, data)
 
@@ -1154,6 +1137,30 @@ class Deserializer(object):
         :raises: DeserializationError if deserialization fails.
         :return: Deserialized object.
         """
+        # This is already a model, go recursive just in case
+        if hasattr(data, "_attribute_map"):
+            constants = [name for name, config in getattr(data, '_validation', {}).items()
+                         if config.get('constant')]
+            try:
+                for attr, mapconfig in data._attribute_map.items():
+                    if attr in constants:
+                        continue
+                    value = getattr(data, attr)
+                    if value is None:
+                        continue
+                    local_type = mapconfig['type']
+                    internal_data_type = local_type.strip('[]{}')
+                    if internal_data_type not in self.dependencies or isinstance(internal_data_type, Enum):
+                        continue
+                    setattr(
+                        data,
+                        attr,
+                        self._deserialize(local_type, value)
+                    )
+                return data
+            except AttributeError:
+                return
+
         response, class_name = self._classify_target(target_obj, data)
 
         if isinstance(response, basestring):
