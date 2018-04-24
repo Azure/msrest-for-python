@@ -482,7 +482,7 @@ class Serializer(object):
                             else:
                                 # Create a wrap node if necessary
                                 is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
-                                node_name = xml_desc.get("wrappedName", xml_name)
+                                node_name = xml_desc.get("itemsName", xml_name)
                                 if is_wrapped:
                                     local_node = _create_xml_node(
                                         xml_name,
@@ -1043,11 +1043,14 @@ def xml_key_extractor(attr, attr_desc, data):
         ns = {} # And keep same xml_name
 
     # Look for a children
-    children = data.findall(xml_name, ns)
-
-    # Interpret children differently depending of type and wrapped
     is_iter_type = attr_desc['type'].startswith("[")
     is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+
+    if is_wrapped or not is_iter_type:
+        children = data.findall(xml_name, ns)
+    else:
+        items_name = xml_desc["itemsName"]
+        children = data.findall(items_name, ns)
 
     # If is_iter_type and not wrapped, return all found children
     if is_iter_type:
@@ -1139,6 +1142,18 @@ class Deserializer(object):
                 return
 
         data = self._unpack_content(response_data, content_type)
+        return self._deserialize(target_obj, data)
+
+    def _deserialize(self, target_obj, data):
+        """Call the deserializer on a model.
+
+        Data needs to be already deserialized as JSON or XML ElementTree
+
+        :param str target_obj: Target data type to deserialize to.
+        :param object data: Object to deserialize.
+        :raises: DeserializationError if deserialization fails.
+        :return: Deserialized object.
+        """
         response, class_name = self._classify_target(target_obj, data)
 
         if isinstance(response, basestring):
@@ -1327,7 +1342,7 @@ class Deserializer(object):
             msg += " Data: {}, {}".format(data, data_type)
             raise_with_traceback(DeserializationError, msg, err)
         else:
-            return self(obj_type, data)
+            return self._deserialize(obj_type, data)
 
     def deserialize_iter(self, attr, iter_type):
         """Deserialize an iterable.

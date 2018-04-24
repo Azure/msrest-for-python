@@ -67,7 +67,7 @@ class TestXmlDeserialization:
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'wrappedName': 'Apple'}},
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'itemsName': 'Apple'}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
@@ -90,7 +90,7 @@ class TestXmlDeserialization:
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'apples': {'key': 'Apple', 'type': '[str]', 'xml': {'name': 'Apple'}},
+                'apples': {'key': 'Apple', 'type': '[str]', 'xml': {'name': 'apples', 'itemsName': 'Apple'}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
@@ -100,6 +100,47 @@ class TestXmlDeserialization:
         result = s(AppleBarrel, basic_xml, "application/xml")
 
         assert result.apples == ["granny", "fuji"]
+
+        class Slideshow(Model):
+            _attribute_map = {
+                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title', 'attr': True}},
+                'date_property': {'key': 'date', 'type': 'str', 'xml': {'name': 'date', 'attr': True}},
+                'author': {'key': 'author', 'type': 'str', 'xml': {'name': 'author', 'attr': True}},
+                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slides', 'itemsName': 'slide'}},
+            }
+            _xml_map = {
+                'name': 'slideshow'
+            }
+
+        class Slide(Model):
+            _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'name': 'type', 'attr': True}},
+                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title'}},
+                'items': {'key': 'items', 'type': '[str]', 'xml': {'name': 'items', 'itemsName': 'item'}},
+            }
+            _xml_map = {
+                'name': 'Slide'
+            }
+
+        slideshow_xml = """<?xml version='1.0' encoding='UTF-8'?>
+<slideshow
+        title="Sample Slide Show"
+        date="Date of publication"
+        author="Yours Truly">
+    <slide type="all">
+        <title>Wake up to WonderWidgets!</title>
+    </slide>
+    <slide type="all">
+        <title>Overview</title>
+        <item>Why WonderWidgets are great</item>
+        <item></item>
+        <item>Who buys WonderWidgets</item>
+    </slide>
+</slideshow>"""
+
+        s = Deserializer({"Slideshow": Slideshow, "Slide": Slide})
+        result = s(Slideshow, slideshow_xml, "application/xml")
+        assert len(result.slides) == 2
 
     def test_basic_namespace(self):
         """Test an ultra basic XML."""
@@ -162,7 +203,7 @@ class TestXmlSerialization:
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'wrappedName': 'Apple'}},
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'itemsName': 'Apple'}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
@@ -188,7 +229,7 @@ class TestXmlSerialization:
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'apples': {'key': 'Apple', 'type': '[str]', 'xml': {'name': 'Apple'}},
+                'apples': {'key': 'Apple', 'type': '[str]', 'xml': {'name': 'apples', 'itemsName': 'Apple'}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
