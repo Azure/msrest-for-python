@@ -117,7 +117,7 @@ class TestXmlDeserialization:
                 'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title', 'attr': True}},
                 'date_property': {'key': 'date', 'type': 'str', 'xml': {'name': 'date', 'attr': True}},
                 'author': {'key': 'author', 'type': 'str', 'xml': {'name': 'author', 'attr': True}},
-                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slides', 'itemsName': 'slide'}},
+                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slide'}},
             }
             _xml_map = {
                 'name': 'slideshow'
@@ -130,7 +130,7 @@ class TestXmlDeserialization:
                 'items': {'key': 'items', 'type': '[str]', 'xml': {'name': 'items', 'itemsName': 'item'}},
             }
             _xml_map = {
-                'name': 'Slide'
+                'name': 'slide'
             }
 
         slideshow_xml = """<?xml version='1.0' encoding='UTF-8'?>
@@ -286,7 +286,7 @@ class TestXmlSerialization:
                 'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title', 'attr': True}},
                 'date_property': {'key': 'date', 'type': 'str', 'xml': {'name': 'date', 'attr': True}},
                 'author': {'key': 'author', 'type': 'str', 'xml': {'name': 'author', 'attr': True}},
-                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slides'}},
+                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slide'}},
             }
             _xml_map = {
                 'name': 'slideshow'
