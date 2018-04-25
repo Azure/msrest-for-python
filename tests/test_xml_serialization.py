@@ -65,8 +65,9 @@ class TestXmlDeserialization:
         assert result.age == 37
         assert result.country == "france"
 
-    def test_list_wrapped(self):
-        """Test XML list and wrap."""
+    def test_list_wrapped_items_name_basic_types(self):
+        """Test XML list and wrap, items is basic type and there is itemsName.
+        """
 
         basic_xml = """<?xml version="1.0"?>
             <AppleBarrel>
@@ -89,19 +90,19 @@ class TestXmlDeserialization:
 
         assert result.good_apples == ["granny", "fuji"]
 
-    def test_list_not_wrapped(self):
-        """Test XML list and wrap."""
+    def test_list_not_wrapped_items_name_basic_types(self):
+        """Test XML list and no wrap, items is basic type and there is itemsName.
+        """
 
         basic_xml = """<?xml version="1.0"?>
             <AppleBarrel>
-                <UnrelatedNode>17</UnrelatedNode>
                 <Apple>granny</Apple>
                 <Apple>fuji</Apple>
             </AppleBarrel>"""
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'apples': {'key': 'Apple', 'type': '[str]', 'xml': {'name': 'apples', 'itemsName': 'Apple'}},
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'itemsName': 'Apple'}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
@@ -110,49 +111,184 @@ class TestXmlDeserialization:
         s = Deserializer({"AppleBarrel": AppleBarrel})
         result = s(AppleBarrel, basic_xml, "application/xml")
 
-        assert result.apples == ["granny", "fuji"]
+        assert result.good_apples == ["granny", "fuji"]
 
-        class Slideshow(Model):
+    def test_list_wrapped_basic_types(self):
+        """Test XML list and wrap, items is basic type and there is no itemsName.
+        """
+
+        basic_xml = """<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <GoodApples>granny</GoodApples>
+                  <GoodApples>fuji</GoodApples>
+                </GoodApples>
+            </AppleBarrel>"""
+
+        class AppleBarrel(Model):
             _attribute_map = {
-                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title', 'attr': True}},
-                'date_property': {'key': 'date', 'type': 'str', 'xml': {'name': 'date', 'attr': True}},
-                'author': {'key': 'author', 'type': 'str', 'xml': {'name': 'author', 'attr': True}},
-                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slide'}},
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True}},
             }
             _xml_map = {
-                'name': 'slideshow'
+                'name': 'AppleBarrel'
             }
 
-        class Slide(Model):
+        s = Deserializer({"AppleBarrel": AppleBarrel})
+        result = s(AppleBarrel, basic_xml, "application/xml")
+
+        assert result.good_apples == ["granny", "fuji"]
+
+    def test_list_not_wrapped_basic_types(self):
+        """Test XML list and no wrap, items is basic type and there is no itemsName.
+        """
+
+        basic_xml = """<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>granny</GoodApples>
+                <GoodApples>fuji</GoodApples>
+            </AppleBarrel>"""
+
+        class AppleBarrel(Model):
             _attribute_map = {
-                'type': {'key': 'type', 'type': 'str', 'xml': {'name': 'type', 'attr': True}},
-                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title'}},
-                'items': {'key': 'items', 'type': '[str]', 'xml': {'name': 'items', 'itemsName': 'item'}},
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples'}},
             }
             _xml_map = {
-                'name': 'slide'
+                'name': 'AppleBarrel'
             }
 
-        slideshow_xml = """<?xml version='1.0' encoding='UTF-8'?>
-<slideshow
-        title="Sample Slide Show"
-        date="Date of publication"
-        author="Yours Truly">
-    <slide type="all">
-        <title>Wake up to WonderWidgets!</title>
-    </slide>
-    <slide type="all">
-        <title>Overview</title>
-        <item>Why WonderWidgets are great</item>
-        <item></item>
-        <item>Who buys WonderWidgets</item>
-    </slide>
-</slideshow>"""
+        s = Deserializer({"AppleBarrel": AppleBarrel})
+        result = s(AppleBarrel, basic_xml, "application/xml")
 
-        s = Deserializer({"Slideshow": Slideshow, "Slide": Slide})
-        result = s(Slideshow, slideshow_xml, "application/xml")
-        assert len(result.slides) == 2
-        assert result.slides[1].items[1] is None
+        assert result.good_apples == ["granny", "fuji"]
+
+
+    def test_list_wrapped_items_name_complex_types(self):
+        """Test XML list and wrap, items is ref and there is itemsName.
+        """
+
+        basic_xml = """<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <Apple name="granny"/>
+                  <Apple name="fuji"/>
+                </GoodApples>
+            </AppleBarrel>"""
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'itemsName': 'Apple'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Pomme' # Should be ignored, since "itemsName" is defined
+            }
+
+        s = Deserializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        result = s(AppleBarrel, basic_xml, "application/xml")
+
+        assert [apple.name for apple in result.good_apples] == ["granny", "fuji"]
+
+    def test_list_not_wrapped_items_name_complex_types(self):
+        """Test XML list and wrap, items is ref and there is itemsName.
+        """
+
+        basic_xml = """<?xml version="1.0"?>
+            <AppleBarrel>
+                <Apple name="granny"/>
+                <Apple name="fuji"/>
+            </AppleBarrel>"""
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'itemsName': 'Apple'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Pomme' # Should be ignored, since "itemsName" is defined
+            }
+
+        s = Deserializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        result = s(AppleBarrel, basic_xml, "application/xml")
+
+        assert [apple.name for apple in result.good_apples] == ["granny", "fuji"]
+
+    def test_list_wrapped_complex_types(self):
+        """Test XML list and wrap, items is ref and there is no itemsName.
+        """
+
+        basic_xml = """<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <Apple name="granny"/>
+                  <Apple name="fuji"/>
+                </GoodApples>
+            </AppleBarrel>"""
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'wrapped': True}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        s = Deserializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        result = s(AppleBarrel, basic_xml, "application/xml")
+
+        assert [apple.name for apple in result.good_apples] == ["granny", "fuji"]
+
+    def test_list_not_wrapped_complex_types(self):
+        """Test XML list and wrap, items is ref and there is no itemsName.
+        """
+
+        basic_xml = """<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples name="granny"/>
+                <GoodApples name="fuji"/>
+            </AppleBarrel>"""
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        s = Deserializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        result = s(AppleBarrel, basic_xml, "application/xml")
+
+        assert [apple.name for apple in result.good_apples] == ["granny", "fuji"]
 
     def test_basic_namespace(self):
         """Test an ultra basic XML."""
