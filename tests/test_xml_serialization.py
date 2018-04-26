@@ -27,6 +27,7 @@ import xml.etree.ElementTree as ET
 
 from msrest.serialization import Serializer, Deserializer, Model, xml_key_extractor
 
+
 def assert_xml_equals(x1, x2):
     print("--------X1--------")
     ET.dump(x1)
@@ -265,12 +266,13 @@ class TestXmlDeserialization:
 
         basic_xml = """<?xml version="1.0"?>
             <AppleBarrel>
-                <GoodApples name="granny"/>
-                <GoodApples name="fuji"/>
+                <Apple name="granny"/>
+                <Apple name="fuji"/>
             </AppleBarrel>"""
 
         class AppleBarrel(Model):
             _attribute_map = {
+                # Name is ignored if wrapped is False
                 'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples'}},
             }
             _xml_map = {
@@ -338,20 +340,21 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
-    def test_list_wrapped(self):
-        """Test XML list and wrap."""
+    def test_list_wrapped_basic_types(self):
+        """Test XML list and wrap, items is basic type and there is no itemsName.
+        """
 
         basic_xml = ET.fromstring("""<?xml version="1.0"?>
             <AppleBarrel>
                 <GoodApples>
-                  <Apple>granny</Apple>
-                  <Apple>fuji</Apple>
+                  <GoodApples>granny</GoodApples>
+                  <GoodApples>fuji</GoodApples>
                 </GoodApples>
             </AppleBarrel>""")
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'itemsName': 'Apple'}},
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
@@ -366,28 +369,188 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
-    def test_list_not_wrapped(self):
-        """Test XML list and wrap."""
+    def test_list_not_wrapped_basic_types(self):
+        """Test XML list and no wrap, items is basic type and there is no itemsName.
+        """
 
         basic_xml = ET.fromstring("""<?xml version="1.0"?>
             <AppleBarrel>
-                <Apple>granny</Apple>
-                <Apple>fuji</Apple>
+                <GoodApples>granny</GoodApples>
+                <GoodApples>fuji</GoodApples>
             </AppleBarrel>""")
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'apples': {'key': 'Apple', 'type': '[str]', 'xml': {'name': 'apples', 'itemsName': 'Apple'}},
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples'}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
             }
 
         mymodel = AppleBarrel(
-            apples=['granny', 'fuji']
+            good_apples=['granny', 'fuji']
         )
 
         s = Serializer({"AppleBarrel": AppleBarrel})
+        rawxml = s.body(mymodel, 'AppleBarrel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_wrapped_items_name_complex_types(self):
+        """Test XML list and wrap, items is ref and there is itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <Apple name="granny"/>
+                  <Apple name="fuji"/>
+                </GoodApples>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                # Pomme should be ignored, since it's invalid to define itemsName for a $ref type
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'itemsName': 'Pomme'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_not_wrapped_items_name_complex_types(self):
+        """Test XML list and wrap, items is ref and there is itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <Apple name="granny"/>
+                <Apple name="fuji"/>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                # Pomme should be ignored, since it's invalid to define itemsName for a $ref type
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'itemsName': 'Pomme'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_wrapped_complex_types(self):
+        """Test XML list and wrap, items is ref and there is no itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <Apple name="granny"/>
+                  <Apple name="fuji"/>
+                </GoodApples>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'wrapped': True}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_not_wrapped_complex_types(self):
+        """Test XML list and wrap, items is ref and there is no itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <Apple name="granny"/>
+                <Apple name="fuji"/>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                # Name is ignored if "wrapped" is False
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
         rawxml = s.body(mymodel, 'AppleBarrel')
 
         assert_xml_equals(rawxml, basic_xml)
@@ -415,68 +578,4 @@ class TestXmlSerialization:
         rawxml = s.body(mymodel, 'XmlModel')
 
         assert_xml_equals(rawxml, basic_xml)
-
-    def test_slideshow(self):
-        class Slideshow(Model):
-            _attribute_map = {
-                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title', 'attr': True}},
-                'date_property': {'key': 'date', 'type': 'str', 'xml': {'name': 'date', 'attr': True}},
-                'author': {'key': 'author', 'type': 'str', 'xml': {'name': 'author', 'attr': True}},
-                'slides': {'key': 'slides', 'type': '[Slide]', 'xml': {'name': 'slide'}},
-            }
-            _xml_map = {
-                'name': 'slideshow'
-            }
-
-        class Slide(Model):
-            _attribute_map = {
-                'type': {'key': 'type', 'type': 'str', 'xml': {'name': 'type', 'attr': True}},
-                'title': {'key': 'title', 'type': 'str', 'xml': {'name': 'title'}},
-                'items': {'key': 'items', 'type': '[str]', 'xml': {'name': 'items', 'itemsName': 'item'}},
-            }
-            _xml_map = {
-                'name': 'slide'
-            }
-
-        slideshow_xml = """<?xml version='1.0' encoding='UTF-8'?>
-<slideshow
-        title="Sample Slide Show"
-        date="Date of publication"
-        author="Yours Truly">
-    <slide type="all">
-        <title>Wake up to WonderWidgets!</title>
-    </slide>
-    <slide type="all">
-        <title>Overview</title>
-        <item>Why WonderWidgets are great</item>
-        <item></item>
-        <item>Who buys WonderWidgets</item>
-    </slide>
-</slideshow>"""
-
-        input_model = Slideshow(
-            title="Sample Slide Show",
-            date_property="Date of publication",
-            author="Yours Truly",
-            slides=[
-                Slide(
-                    type="all",
-                    title="Wake up to WonderWidgets!",
-                    items=[]
-                ),
-                Slide(
-                    type="all",
-                    title="Overview",
-                    items=[
-                        "Why WonderWidgets are great",
-                        None,
-                        "Who buys WonderWidgets"
-                    ]
-                )
-            ]
-        )
-
-        s = Serializer({"Slideshow": Slideshow, "Slide": Slide})
-        rawxml = s.body(input_model, 'Slideshow')
-        assert_xml_equals(rawxml, ET.fromstring(slideshow_xml))
         

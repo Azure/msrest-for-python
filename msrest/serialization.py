@@ -477,34 +477,31 @@ class Serializer(object):
                             serialized.set(xml_name, new_attr)
                             continue
                         if isinstance(new_attr, list):
-                            if new_attr and ET.iselement(new_attr[0]):
-                                serialized.extend(new_attr)
+                            # Create a wrap node if necessary
+                            is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+                            node_name = xml_desc.get("itemsName", xml_name)
+                            if is_wrapped:
+                                local_node = _create_xml_node(
+                                    xml_name,
+                                    xml_desc.get('prefix', None),
+                                    xml_desc.get('ns', None)
+                                )
+                                serialized.append(local_node)
                             else:
-                                # Create a wrap node if necessary
-                                is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
-                                node_name = xml_desc.get("itemsName", xml_name)
-                                if is_wrapped:
-                                    local_node = _create_xml_node(
-                                        xml_name,
+                                local_node = serialized
+                            # All list elements to "local_node"
+                            for el in new_attr:
+                                if ET.iselement(el):
+                                    el_node = el
+                                else:
+                                    el_node = _create_xml_node(
+                                        node_name,
                                         xml_desc.get('prefix', None),
                                         xml_desc.get('ns', None)
                                     )
-                                    serialized.append(local_node)
-                                else:
-                                    local_node = serialized
-                                # All list elements to "local_node"
-                                for el in new_attr:
-                                    if ET.iselement(el):
-                                        local_node.append(el)
-                                    else:
-                                        el_node = _create_xml_node(
-                                            node_name,
-                                            xml_desc.get('prefix', None),
-                                            xml_desc.get('ns', None)
-                                        )
-                                        if el is not None:  # Otherwise it writes "None" :-p
-                                            el_node.text = str(el)
-                                    local_node.append(el_node)
+                                    if el is not None:  # Otherwise it writes "None" :-p
+                                        el_node.text = str(el)
+                                local_node.append(el_node)
                         elif ET.iselement(new_attr):
                             serialized.append(new_attr)
                         else:  # That's a basic type
