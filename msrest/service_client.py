@@ -263,7 +263,12 @@ class ServiceClient(object):
                 _LOGGER.warning(error)
 
             try:
-                session = self.creds.refresh_session()
+                try:
+                    session = self.creds.refresh_session(self._session)
+                except TypeError: # Credentials does not support session injection
+                    session = self.creds.refresh_session()
+                    if self._session is not None:
+                        _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
                 kwargs = self._configure_session(session, **config)
                 if request.data:
                     kwargs['data']=request.data
