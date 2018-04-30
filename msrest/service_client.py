@@ -61,8 +61,8 @@ class SDKClient(object):
         self._client.__enter__()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._client.__exit__(exc_type, exc_val, exc_tb)
+    def __exit__(self, *exc_details):
+        self._client.__exit__(*exc_details)
 
 class ServiceClient(object):
     """REST Service Client.
@@ -84,7 +84,7 @@ class ServiceClient(object):
         self.config.keep_alive = True
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *exc_details):
         self.close()
         self.config.keep_alive = False
 
