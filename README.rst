@@ -23,7 +23,10 @@ Release History
 2018-04-30 Version 0.4.29
 +++++++++++++++++++++++++
 
-- Improve `SDKClient.__exit__` to take exc_details as optional parameters and not required
+**Bugfixes**
+
+- Improve `SDKClient.__exit__` to take exc_details as optional parameters and not required #93
+- refresh_session should also use the permanent HTTP session if available #91
 
 2018-04-18 Version 0.4.28
 +++++++++++++++++++++++++
