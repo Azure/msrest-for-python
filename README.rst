@@ -20,6 +20,11 @@ To install:
 Release History
 ---------------
 
+2018-04-30 Version 0.4.29
++++++++++++++++++++++++++
+
+- Improve `SDKClient.__exit__` to take exc_details as optional parameters and not required
+
 2018-04-18 Version 0.4.28
 +++++++++++++++++++++++++
 
