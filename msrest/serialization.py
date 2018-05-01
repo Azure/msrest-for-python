@@ -1342,6 +1342,8 @@ class Deserializer(object):
             if data_type in self.deserialize_type:
                 if isinstance(data, self.deserialize_expected_types.get(data_type, tuple())):
                     return data
+                if ET.iselement(data):
+                    data = data.text
                 data_val = self.deserialize_type[data_type](data)
                 return data_val
 
@@ -1351,6 +1353,8 @@ class Deserializer(object):
 
             obj_type = self.dependencies[data_type]
             if issubclass(obj_type, Enum):
+                if ET.iselement(data):
+                    data = data.text
                 return self.deserialize_enum(data, obj_type)
 
         except (ValueError, TypeError, AttributeError) as err:
