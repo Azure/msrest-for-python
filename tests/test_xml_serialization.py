@@ -230,7 +230,7 @@ class TestXmlDeserialization:
             }
 
         s = Deserializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
-        result = s(AppleBarrel, basic_xml, "application/xml")
+        result = s('AppleBarrel', basic_xml, "application/xml")
 
         assert [apple.name for apple in result.good_apples] == ["granny", "fuji"]
 
@@ -405,6 +405,35 @@ class TestXmlSerialization:
         rawxml = s.body(mymodel, 'XmlModel')
 
         assert_xml_equals(rawxml, basic_xml)        
+
+    def test_direct_array(self):
+        """Test an ultra basic XML."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <bananas>
+               <Data country="france"/>
+            </bananas>
+            """)
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'country': {'key': 'country', 'type': 'str', 'xml':{'name': 'country', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            country="france"
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(
+            [mymodel],
+            '[XmlModel]',
+            serialization_ctxt={'xml': {'name': 'bananas', 'wrapped': True}}
+        )
+
+        assert_xml_equals(rawxml, basic_xml)
 
     def test_list_wrapped_basic_types(self):
         """Test XML list and wrap, items is basic type and there is no itemsName.

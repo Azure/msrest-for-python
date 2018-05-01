@@ -1289,6 +1289,10 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.TestObj.from_dict(attr_data)
         assert_model(model_instance)
 
+    def test_array_deserialize(self):
+        result = self.d('[str]', ["a","b"])
+        assert result == ['a','b']
+
     def test_personalize_deserialization(self):
 
         class TestDurationObj(Model):

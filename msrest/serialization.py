@@ -474,6 +474,7 @@ class Serializer(object):
                         keys = keys if isinstance(keys, list) else [keys]
 
                     ### Serialize this data ###
+                    kwargs["serialization_ctxt"] = attr_desc
                     new_attr = self.serialize_data(orig_attr, attr_desc['type'], **kwargs)
 
                     ### Incorporate this data in the right place ###
@@ -484,31 +485,7 @@ class Serializer(object):
                             serialized.set(xml_name, new_attr)
                             continue
                         if isinstance(new_attr, list):
-                            # Create a wrap node if necessary
-                            is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
-                            node_name = xml_desc.get("itemsName", xml_name)
-                            if is_wrapped:
-                                local_node = _create_xml_node(
-                                    xml_name,
-                                    xml_desc.get('prefix', None),
-                                    xml_desc.get('ns', None)
-                                )
-                                serialized.append(local_node)
-                            else:
-                                local_node = serialized
-                            # All list elements to "local_node"
-                            for el in new_attr:
-                                if ET.iselement(el):
-                                    el_node = el
-                                else:
-                                    el_node = _create_xml_node(
-                                        node_name,
-                                        xml_desc.get('prefix', None),
-                                        xml_desc.get('ns', None)
-                                    )
-                                    if el is not None:  # Otherwise it writes "None" :-p
-                                        el_node.text = str(el)
-                                local_node.append(el_node)
+                            serialized.extend(new_attr)
                         elif ET.iselement(new_attr):
                             # We MUST replace the tag with the local tag. But keeping the namespaces.
                             splitted_tag = new_attr.tag.split("}")
@@ -769,6 +746,9 @@ class Serializer(object):
     def serialize_iter(self, data, iter_type, div=None, **kwargs):
         """Serialize iterable.
 
+        Supported kwargs:
+        serialization_ctxt dict : The current entry of _attribute_map, or same format. serialization_ctxt['type'] should be same as data_type.
+
         :param list attr: Object to be serialized.
         :param str iter_type: Type of object in the iterable.
         :param bool required: Whether the objects in the iterable must
@@ -779,17 +759,50 @@ class Serializer(object):
         """
         if isinstance(data, str):
             raise SerializationError("Refuse str type as a valid iter type.")
+
+        serialization_ctxt = kwargs.get("serialization_ctxt", {})
+
         serialized = []
         for d in data:
             try:
-                serialized.append(
-                    self.serialize_data(d, iter_type, **kwargs))
+                serialized.append(self.serialize_data(d, iter_type, **kwargs))
             except ValueError:
                 serialized.append(None)
 
         if div:
             serialized = ['' if s is None else s for s in serialized]
             serialized = div.join(serialized)
+
+        if 'xml' in serialization_ctxt:
+            # XML serialization is more complicated
+            xml_desc = serialization_ctxt['xml']
+            xml_name = xml_desc['name']
+
+            # Create a wrap node if necessary (use the fact that Element and list have "append")
+            is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+            node_name = xml_desc.get("itemsName", xml_name)
+            if is_wrapped:
+                final_result = _create_xml_node(
+                    xml_name,
+                    xml_desc.get('prefix', None),
+                    xml_desc.get('ns', None)
+                )
+            else:
+                final_result = []
+            # All list elements to "local_node"
+            for el in serialized:
+                if ET.iselement(el):
+                    el_node = el
+                else:
+                    el_node = _create_xml_node(
+                        node_name,
+                        xml_desc.get('prefix', None),
+                        xml_desc.get('ns', None)
+                    )
+                    if el is not None:  # Otherwise it writes "None" :-p
+                        el_node.text = str(el)
+                final_result.append(el_node)
+            return final_result
         return serialized
 
     def serialize_dict(self, attr, dict_type, **kwargs):
