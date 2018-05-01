@@ -379,6 +379,33 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    def test_type_basic(self):
+        """Test some types."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data>
+                <Age>37</Age>
+                <Enabled>true</Enabled>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age'}},
+                'enabled': {'key': 'enabled', 'type': 'bool', 'xml':{'name': 'Enabled'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            age=37,
+            enabled=True
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel')
+
+        assert_xml_equals(rawxml, basic_xml)        
+
     def test_list_wrapped_basic_types(self):
         """Test XML list and wrap, items is basic type and there is no itemsName.
         """

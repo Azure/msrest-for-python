@@ -374,6 +374,7 @@ class Serializer(object):
     """Request object model serializer."""
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
+    _xml_basic_types_serializers = {'bool': lambda x:str(x).lower()}
     days = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu",
             4: "Fri", 5: "Sat", 6: "Sun"}
     months = {1: "Jan", 2: "Feb", 3: "Mar", 4: "Apr", 5: "May", 6: "Jun",
@@ -446,6 +447,12 @@ class Serializer(object):
                 return self.serialize_data(
                     target_obj, data_type, **kwargs)
 
+        # Force "is_xml" kwargs if we detect a XML model
+        try:
+            is_xml_model_serialization = kwargs["is_xml"]
+        except KeyError:
+            is_xml_model_serialization = kwargs.setdefault("is_xml", target_obj.is_xml_model())
+
         serialized = self._create_serialized_base(target_obj)  # Could be JSON or XML
         try:
             attributes = target_obj._attribute_map
@@ -470,7 +477,7 @@ class Serializer(object):
                     new_attr = self.serialize_data(orig_attr, attr_desc['type'], **kwargs)
 
                     ### Incorporate this data in the right place ###
-                    if target_obj.is_xml_model():
+                    if is_xml_model_serialization:
                         xml_desc = attr_desc['xml']
                         xml_name = xml_desc['name']
                         if "attr" in xml_desc and xml_desc["attr"]:
@@ -686,7 +693,7 @@ class Serializer(object):
 
         try:
             if data_type in self.basic_types.values():
-                return self.serialize_basic(data, data_type)
+                return self.serialize_basic(data, data_type, **kwargs)
 
             elif data_type in self.serialize_type:
                 return self.serialize_type[data_type](data, **kwargs)
@@ -709,13 +716,27 @@ class Serializer(object):
         else:
             return self._serialize(data, **kwargs)
 
-    def serialize_basic(self, data, data_type):
+    def _get_custom_serializers(self, data_type, **kwargs):
+        custom_serializer = kwargs.get("basic_types_serializers", {}).get(data_type)
+        if custom_serializer:
+            return custom_serializer
+        if kwargs.get("is_xml", False):
+            return self._xml_basic_types_serializers.get(data_type)
+
+    def serialize_basic(self, data, data_type, **kwargs):
         """Serialize basic builting data type.
         Serializes objects to str, int, float or bool.
+
+        Possible kwargs:
+        - is_xml bool : If set, adapt basic serializers without the need for basic_types_serializers
+        - basic_types_serializers dict[str, callable] : If set, use the callable as serializer
 
         :param data: Object to be serialized.
         :param str data_type: Type of object in the iterable.
         """
+        custom_serializer = self._get_custom_serializers(data_type, **kwargs)
+        if custom_serializer:
+            return custom_serializer(data)
         if data_type == 'str':
             return self.serialize_unicode(data)
         return eval(data_type)(data)
@@ -796,7 +817,7 @@ class Serializer(object):
             return None
         obj_type = type(attr)
         if obj_type in self.basic_types:
-            return self.serialize_basic(attr, self.basic_types[obj_type])
+            return self.serialize_basic(attr, self.basic_types[obj_type], **kwargs)
         # If it's a model or I know this dependency, serialize as a Model
         elif obj_type in self.dependencies.values() or isinstance(obj_type, Model):
             return self._serialize(attr)
