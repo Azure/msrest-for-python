@@ -1062,6 +1062,9 @@ def xml_key_extractor(attr, attr_desc, data):
             items_name = xml_desc.get("itemsName", xml_name)
         children = data.findall(items_name, ns)
 
+    if len(children) == 0:
+        return None  # Assume it's not there, maybe an optional node.
+
     # If is_iter_type and not wrapped, return all found children
     if is_iter_type:
         if not is_wrapped:
@@ -1072,13 +1075,11 @@ def xml_key_extractor(attr, attr_desc, data):
                     "Tried to deserialize an array not wrapped, and found several nodes '{}'. Maybe you should declare this array as wrapped?".format(
                         xml_name
                     ))
-            return children[0].getchildren()  # Might be empty list and that's ok.
+            return list(children[0])  # Might be empty list and that's ok.
 
     # Here it's not a itertype, we should have found one element only or empty
     if len(children) > 1:
         raise DeserializationError("Find several XML '{}' where it was not expected".format(xml_name))
-    elif len(children) == 0:
-        return None  # Assume it's not there, maybe an optional node.
     return children[0]
 
 class Deserializer(object):
@@ -1374,7 +1375,7 @@ class Deserializer(object):
         if attr is None:
             return None
         if ET.iselement(attr): # If I receive an element here, get the children
-            attr = attr.getchildren()
+            attr = list(attr)
         if not isinstance(attr, (list, set)):
             raise DeserializationError("Cannot deserialize as [{}] an object of type {}".format(
                 iter_type,
