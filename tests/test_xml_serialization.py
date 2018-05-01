@@ -208,7 +208,8 @@ class TestXmlDeserialization:
 
         class AppleBarrel(Model):
             _attribute_map = {
-                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'itemsName': 'Apple'}},
+                # Pomme should be ignored, since it's invalid to define itemsName for a $ref type
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'itemsName': 'Pomme'}},
             }
             _xml_map = {
                 'name': 'AppleBarrel'
@@ -219,7 +220,7 @@ class TestXmlDeserialization:
                 'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
             }
             _xml_map = {
-                'name': 'Pomme' # Should be ignored, since "itemsName" is defined
+                'name': 'Apple'
             }
 
         s = Deserializer({"AppleBarrel": AppleBarrel, "Apple": Apple})

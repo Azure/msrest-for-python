@@ -1049,11 +1049,16 @@ def xml_key_extractor(attr, attr_desc, data):
     # Look for a children
     is_iter_type = attr_desc['type'].startswith("[")
     is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+    internal_type = attr_desc.get("internalType", None)
 
     if is_wrapped or not is_iter_type:
         children = data.findall(xml_name, ns)
     else:
-        items_name = xml_desc.get("itemsName", xml_name)
+        if internal_type: # Complex type, ignore itemsName and use the complex type name
+            items_name = internal_type._xml_map["name"]
+            ns = internal_type._xml_map.get("ns", None)
+        else:
+            items_name = xml_desc.get("itemsName", xml_name)
         children = data.findall(items_name, ns)
 
     # If is_iter_type and not wrapped, return all found children
@@ -1175,6 +1180,12 @@ class Deserializer(object):
                 if attr == "additional_properties" and attr_desc["key"] == '':
                     continue
                 raw_value = None
+                # Enhance attr_desc with some dynamic data
+                attr_desc = attr_desc.copy() # Do a copy, do not change the real one
+                internal_data_type = attr_desc["type"].strip('[]{}')
+                if internal_data_type in self.dependencies:
+                    attr_desc["internalType"] = self.dependencies[internal_data_type]
+
                 for key_extractor in self.key_extractors:
                     found_value = key_extractor(attr, attr_desc, data)
                     if found_value is not None:
