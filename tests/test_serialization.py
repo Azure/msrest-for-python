@@ -734,6 +734,13 @@ class TestRuntimeSerialized(unittest.TestCase):
         date_str = Serializer.serialize_iso(date_obj)
         self.assertEqual(date_str, '9999-12-31T23:59:59.999999Z')
 
+        date_obj = isodate.parse_datetime('2012-02-24T00:53:52.000001Z')
+        date_str = Serializer.serialize_iso(date_obj)
+        assert date_str == '2012-02-24T00:53:52.000001Z'
+
+        date_obj = isodate.parse_datetime('2012-02-24T00:53:52.780Z')
+        date_str = Serializer.serialize_iso(date_obj)
+        assert date_str == '2012-02-24T00:53:52.780Z'
 
     def test_serialize_primitive_types(self):
 
@@ -1870,6 +1877,17 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         with self.assertRaises(DeserializationError):
             a = Deserializer.deserialize_iso('Happy New Year 2016')
+
+        a = Deserializer.deserialize_iso('2012-02-24T00:53:52.780Z')
+        utc = a.utctimetuple()
+
+        self.assertEqual(utc.tm_year, 2012)
+        self.assertEqual(utc.tm_mon, 2)
+        self.assertEqual(utc.tm_mday, 24)
+        self.assertEqual(utc.tm_hour, 0)
+        self.assertEqual(utc.tm_min, 53)
+        self.assertEqual(utc.tm_sec, 52)
+        self.assertEqual(a.microsecond, 780000)
 
     def test_polymorphic_deserialization(self):
 

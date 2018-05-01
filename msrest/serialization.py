@@ -841,7 +841,9 @@ class Serializer(object):
             if utc.tm_year > 9999 or utc.tm_year < 1:
                 raise OverflowError("Hit max or min date")
 
-            microseconds = str(float(attr.microsecond)*1e-6)[1:].ljust(4, '0')
+            microseconds = str(attr.microsecond).rjust(6,'0').rstrip('0').ljust(3, '0')
+            if microseconds:
+                microseconds = '.'+microseconds
             date = "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}".format(
                 utc.tm_year, utc.tm_mon, utc.tm_mday,
                 utc.tm_hour, utc.tm_min, utc.tm_sec)
