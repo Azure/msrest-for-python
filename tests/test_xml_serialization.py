@@ -621,6 +621,44 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    def test_two_complex_same_type(self):
+        """Two different attribute are same type
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <EuropeanApple name="granny"/>
+                <USAApple name="fuji"/>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'eu_apple': {'key': 'EuropeanApple', 'type': 'Apple', 'xml': {'name': 'EuropeanApple'}},
+                'us_apple': {'key': 'USAApple', 'type': 'Apple', 'xml': {'name': 'USAApple'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            eu_apple=Apple(name='granny'),
+            us_apple=Apple(name='fuji'),
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+
     def test_basic_namespace(self):
         """Test an ultra basic XML."""
         basic_xml = ET.fromstring("""<?xml version="1.0"?>

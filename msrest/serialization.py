@@ -510,6 +510,12 @@ class Serializer(object):
                                         el_node.text = str(el)
                                 local_node.append(el_node)
                         elif ET.iselement(new_attr):
+                            # We MUST replace the tag with the local tag. But keeping the namespaces.
+                            splitted_tag = new_attr.tag.split("}")
+                            if len(splitted_tag) == 2: # Namespace
+                                new_attr.tag = "}".join([splitted_tag[0], xml_name])
+                            else:
+                                new_attr.tag = xml_name
                             serialized.append(new_attr)
                         else:  # That's a basic type
                             # Integrate namespace if necessary
