@@ -549,10 +549,11 @@ class Serializer(object):
 
         # Just in case this is a dict
         internal_data_type = data_type.strip('[]{}')
-        if internal_data_type in self.dependencies and not isinstance(internal_data_type, Enum):
+        internal_data_type = self.dependencies.get(internal_data_type, None)
+        if internal_data_type and not isinstance(internal_data_type, Enum):
             try:
                 deserializer = Deserializer(self.dependencies)
-                if self.dependencies[internal_data_type].is_xml_model():
+                if issubclass(internal_data_type, Model) and internal_data_type.is_xml_model():
                     deserializer.key_extractors = [
                         attribute_key_case_insensitive_extractor,
                     ]
