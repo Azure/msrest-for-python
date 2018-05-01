@@ -1373,6 +1373,8 @@ class Deserializer(object):
         """
         if attr is None:
             return None
+        if ET.iselement(attr): # If I receive an element here, get the children
+            attr = attr.getchildren()
         if not isinstance(attr, (list, set)):
             raise DeserializationError("Cannot deserialize as [{}] an object of type {}".format(
                 iter_type,

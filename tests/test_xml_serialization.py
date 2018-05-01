@@ -86,6 +86,24 @@ class TestXmlDeserialization:
             
         assert result.age == ""
 
+    def test_basic_empty_list(self):
+        """Test an basic XML with an empty node."""
+        basic_xml = """<?xml version="1.0"?>
+            <Data/>"""
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'str', 'xml':{'name': 'Age'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        s = Deserializer({"XmlModel": XmlModel})
+        result = s('[XmlModel]', basic_xml, "application/xml")
+
+        assert result == []
+
     def test_list_wrapped_items_name_basic_types(self):
         """Test XML list and wrap, items is basic type and there is itemsName.
         """
