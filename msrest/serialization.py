@@ -1038,7 +1038,7 @@ def xml_key_extractor(attr, attr_desc, data):
 
     # If it's an attribute, that's simple
     if "attr" in xml_desc and xml_desc["attr"]:
-        return data.attrib[xml_name]
+        return data.get(xml_name)
 
     # Integrate namespace if necessary
     if xml_ns:
