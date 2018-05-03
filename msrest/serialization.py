@@ -1103,6 +1103,8 @@ def xml_key_extractor(attr, attr_desc, data):
         children = data.findall(items_name, ns)
 
     if len(children) == 0:
+        if is_iter_type:
+            return []
         return None  # Assume it's not there, maybe an optional node.
 
     # If is_iter_type and not wrapped, return all found children
