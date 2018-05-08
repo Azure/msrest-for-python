@@ -23,7 +23,10 @@
 # THE SOFTWARE.
 #
 #--------------------------------------------------------------------------
+import sys
 import xml.etree.ElementTree as ET
+
+import pytest
 
 from msrest.serialization import Serializer, Deserializer, Model, xml_key_extractor
 
@@ -379,6 +382,8 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    @pytest.mark.skipif(sys.version_info < (3,6),
+                        reason="Unstable before python3.6 for some reasons")
     def test_type_basic(self):
         """Test some types."""
         basic_xml = ET.fromstring("""<?xml version="1.0"?>
@@ -650,6 +655,8 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    @pytest.mark.skipif(sys.version_info < (3,6),
+                        reason="Unstable before python3.6 for some reasons")
     def test_two_complex_same_type(self):
         """Two different attribute are same type
         """
