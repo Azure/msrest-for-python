@@ -1104,7 +1104,10 @@ def xml_key_extractor(attr, attr_desc, data):
 
     if len(children) == 0:
         if is_iter_type:
-            return []
+            if is_wrapped:
+                return None # is_wrapped no node, we want None
+            else:
+                return [] # not wrapped, assume empty list
         return None  # Assume it's not there, maybe an optional node.
 
     # If is_iter_type and not wrapped, return all found children
