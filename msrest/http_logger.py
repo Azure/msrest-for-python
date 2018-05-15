@@ -28,14 +28,19 @@ import logging
 import re
 import types
 
+from typing import Any, Union, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import requests
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def log_request(adapter, request, *args, **kwargs):
+def log_request(_, request, *args, **kwargs):
+    # type: (Any, requests.PreparedRequest, str, str) -> None
     """Log a client request.
 
-    :param ClientHTTPAdapter adapter: Adapter making the request.
+    :param _: Unused in current version (will be None)
     :param requests.Request request: The request object.
     """
     if not _LOGGER.isEnabledFor(logging.DEBUG):
@@ -60,38 +65,38 @@ def log_request(adapter, request, *args, **kwargs):
         _LOGGER.debug("Failed to log request: %r", err)
 
 
-def log_response(adapter, request, response, *args, **kwargs):
+def log_response(_, request, response, *args, **kwargs):
+    # type: (Any, requests.PreparedRequest, requests.Response, str, str) -> Optional[requests.Response]
     """Log a server response.
 
-    :param ClientHTTPAdapter adapter: Adapter making the request.
+    :param _: Unused in current version (will be None)
     :param requests.Request request: The request object.
     :param requests.Response response: The response object.
     """
     if not _LOGGER.isEnabledFor(logging.DEBUG):
-        return
+        return None
 
     try:
-        result = kwargs['result']
-        _LOGGER.debug("Response status: %r", result.status_code)
+        _LOGGER.debug("Response status: %r", response.status_code)
         _LOGGER.debug("Response headers:")
-        for header, value in result.headers.items():
-            _LOGGER.debug("    %r: %r", header, value)
+        for res_header, value in response.headers.items():
+            _LOGGER.debug("    %r: %r", res_header, value)
 
         # We don't want to log binary data if the response is a file.
         _LOGGER.debug("Response content:")
         pattern = re.compile(r'attachment; ?filename=["\w.]+', re.IGNORECASE)
-        header = result.headers.get('content-disposition')
+        header = response.headers.get('content-disposition')
 
         if header and pattern.match(header):
             filename = header.partition('=')[2]
             _LOGGER.debug("File attachments: " + filename)
-        elif result.headers.get("content-type", "").endswith("octet-stream"):
+        elif response.headers.get("content-type", "").endswith("octet-stream"):
             _LOGGER.debug("Body contains binary data.")
-        elif result.headers.get("content-type", "").startswith("image"):
+        elif response.headers.get("content-type", "").startswith("image"):
             _LOGGER.debug("Body contains image data.")
         else:
-            _LOGGER.debug(str(result.content))
-        return result
+            _LOGGER.debug(str(response.content))
+        return response
     except Exception as err:
         _LOGGER.debug("Failed to log response: " + repr(err))
-        return kwargs['result']
+        return response

@@ -3,3 +3,4 @@ httpretty>=0.8.10
 mock;python_version<="2.7"
 pytest
 pytest-cov
+mypy;python_version>"2.7"

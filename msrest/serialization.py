@@ -34,11 +34,13 @@ import logging
 import re
 import sys
 try:
-    from urllib import quote
+    from urllib import quote  # type: ignore
 except ImportError:
-    from urllib.parse import quote
+    from urllib.parse import quote  # type: ignore
 
 import isodate
+
+from typing import Dict, Any
 
 from .exceptions import (
     ValidationError,
@@ -47,9 +49,9 @@ from .exceptions import (
     raise_with_traceback)
 
 try:
-    basestring
+    basestring  # type: ignore
 except NameError:
-    basestring = str
+    basestring = str  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,9 +74,9 @@ class UTC(datetime.tzinfo):
 
 try:
     from datetime import timezone
-    TZ_UTC = timezone.utc
+    TZ_UTC = timezone.utc  # type: ignore
 except ImportError:
-    TZ_UTC = UTC()
+    TZ_UTC = UTC()  # type: ignore
 
 _FLATTEN = re.compile(r"(?<!\\)\.")
 
@@ -130,9 +132,9 @@ class Model(object):
     serialization and deserialization.
     """
 
-    _subtype_map = {}
-    _attribute_map = {}
-    _validation = {}
+    _subtype_map = {}  # type: Dict[str, Dict[str, Any]]
+    _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
+    _validation = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, **kwargs):
         self.additional_properties = {}
