@@ -29,7 +29,7 @@ try:
 except ImportError:
     from collections import Iterator
 
-from typing import Dict, Any, Type, List, Callable, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import requests
@@ -50,7 +50,7 @@ class Paged(Iterator):
     _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, command, classes, raw_headers=None):
-        # type: (Callable[[str], requests.Response], Dict[str, Type[Model]], Dict[str, str]) -> None
+        # type: (Callable[[str], requests.Response], Dict[str, Model], Dict[str, str]) -> None
         # Sets next_link, current_page, and _current_page_iter_index.
         self.reset()
         self._derserializer = Deserializer(classes)
@@ -82,7 +82,7 @@ class Paged(Iterator):
         return raw
 
     def get(self, url):
-        # type: (str) -> List[Type[Model]]
+        # type: (str) -> List[Model]
         """Get an arbitrary page.
 
         This resets the iterator and then fully consumes it to return the
@@ -98,11 +98,11 @@ class Paged(Iterator):
         # type: () -> None
         """Reset iterator to first page."""
         self.next_link = ""
-        self.current_page = []  # type: List[Type[Model]]
+        self.current_page = []  # type: List[Model]
         self._current_page_iter_index = 0
 
     def advance_page(self):
-        # type: () -> List[Type[Model]]
+        # type: () -> List[Model]
         """Force moving the cursor to the next azure call.
 
         This method is for advanced usage, iterator protocol is prefered.

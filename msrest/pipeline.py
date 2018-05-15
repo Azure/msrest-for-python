@@ -32,7 +32,7 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-from typing import Dict, Any, Optional, Union, List, Type
+from typing import Dict, Any, Optional, Union, List
 
 import requests
 from urllib3 import Retry  # Needs requests 2.16 at least to be safe
@@ -95,7 +95,7 @@ class ClientRawResponse(object):
     """
 
     def __init__(self, output, response):
-        # type: (Union[Type[Model], List[Type[Model]]], Optional[requests.Response]) -> None
+        # type: (Union[Model, List[Model]], Optional[requests.Response]) -> None
         self.response = response
         self.output = output
         self.headers = {}  # type: Dict[str, str]
