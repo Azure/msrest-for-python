@@ -32,6 +32,11 @@ try:
 except ImportError:
     from urllib.parse import urljoin, urlparse
 
+from typing import Any, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .configuration import Configuration
+
 from oauthlib import oauth2
 import requests.adapters
 
@@ -50,14 +55,17 @@ class SDKClient(object):
     """The base class of all generated SDK client.
     """
     def __init__(self, creds, config):
+        # type: (Any, Configuration) -> None
         self._client = ServiceClient(creds, config)
     
     def close(self):
+        # type () -> None
         """Close the client if keep_alive is True.
         """
         self._client.close()
 
     def __enter__(self):
+        # type: () -> SDKClient
         self._client.__enter__()
         return self
 
@@ -75,12 +83,14 @@ class ServiceClient(object):
     _protocols = ['http://', 'https://']
 
     def __init__(self, creds, config):
+        # type: (Any, Configuration) -> None
         self.config = config
         self.creds = creds if creds else Authentication()
-        self._headers = {}
+        self._headers = {}  # type: Dict[str, str]
         self._session = None
 
     def __enter__(self):
+        # type: () -> ServiceClient
         self.config.keep_alive = True
         return self
 
@@ -89,6 +99,7 @@ class ServiceClient(object):
         self.config.keep_alive = False
 
     def close(self):
+        # type: () -> None
         """Close the session if keep_alive is True.
         """
         if self._session:
