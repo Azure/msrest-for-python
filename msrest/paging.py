@@ -29,6 +29,8 @@ try:
 except ImportError:
     from collections import Iterator
 
+from typing import Dict, Any
+
 from .serialization import Deserializer
 from .pipeline import ClientRawResponse
 
@@ -41,8 +43,8 @@ class Paged(Iterator):
     :param dict classes: A dictionary of class dependencies for
      deserialization.
     """
-    _validation = {}
-    _attribute_map = {}
+    _validation = {}  # type: Dict[str, Dict[str, Any]]
+    _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, command, classes, raw_headers=None):
         # Sets next_link, current_page, and _current_page_iter_index.

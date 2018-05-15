@@ -39,9 +39,10 @@ matrix:
     - env: TOXENV=py35-autorest
     - env: TOXENV=py36-autorest
 install:
-  - pip install tox
+  - pip install tox mypy
 script:
   - tox
+  - mypy msrest --ignore-missing-imports
 after_success:
   - bash <(curl -s https://codecov.io/bash) -e TOXENV -f $TRAVIS_BUILD_DIR/coverage.xml
 deploy:
