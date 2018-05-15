@@ -47,7 +47,7 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Topic :: Software Development'],
     install_requires=[
-        "requests~=2.14",
+        "requests~=2.16",
         "requests_oauthlib>=0.5.0",
         "isodate>=0.6.0",
         "certifi>=2017.4.17",

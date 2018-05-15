@@ -32,11 +32,12 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
-import requests
-from requests.packages.urllib3 import Retry
-from requests.packages.urllib3 import HTTPConnectionPool
+from typing import Dict, Any, Optional, Union, List, Type
 
-from .serialization import Deserializer
+import requests
+from urllib3 import Retry  # Needs requests 2.16 at least to be safe
+
+from .serialization import Deserializer, Model
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,6 +48,7 @@ class ClientRequest(requests.Request):
     """Wrapper for requests.Request object."""
 
     def format_parameters(self, params):
+        # type: (Dict[str, str]) -> None
         """Format parameters into a valid query string.
         It's assumed all parameters have already been quoted as
         valid URL strings.
@@ -66,6 +68,7 @@ class ClientRequest(requests.Request):
         self.url = self.url + query
 
     def add_content(self, data):
+        # type: (Optional[Dict[str, Any]]) -> None
         """Add a body to the request.
 
         :param data: Request body data, can be a json serializable
@@ -92,21 +95,26 @@ class ClientRawResponse(object):
     """
 
     def __init__(self, output, response):
+        # type: (Union[Type[Model], List[Type[Model]]], Optional[requests.Response]) -> None
         self.response = response
         self.output = output
-        self.headers = {}
+        self.headers = {}  # type: Dict[str, str]
         self._deserialize = Deserializer()
 
     def add_headers(self, header_dict):
+        # type: (Dict[str, str]) -> None
         """Deserialize a specific header.
 
         :param dict header_dict: A dictionary containing the name of the
          header and the type to deserialize to.
         """
+        if not self.response:
+            return
         for name, data_type in header_dict.items():
             value = self.response.headers.get(name)
             value = self._deserialize(data_type, value)
-            self.headers[name] = value
+            if value:
+                self.headers[name] = value
 
 
 class ClientRetryPolicy(object):
@@ -130,6 +138,7 @@ class ClientRetryPolicy(object):
                                         'OPTIONS', 'DELETE', 'POST', 'PATCH']
 
     def __call__(self):
+        # type: () -> Retry
         """Return configuration to be applied to connection."""
         debug = ("Configuring retry: max_retries=%r, "
                  "backoff_factor=%r, max_backoff=%r")
@@ -139,31 +148,37 @@ class ClientRetryPolicy(object):
 
     @property
     def retries(self):
+        # type: () -> int
         """Total number of allowed retries."""
         return self.policy.total
 
     @retries.setter
     def retries(self, value):
+        # type: (int) -> None
         self.policy.total = value
         self.policy.connect = value
         self.policy.read = value
 
     @property
     def backoff_factor(self):
+        # type: () -> Union[int, float]
         """Factor by which back-off delay is incementally increased."""
         return self.policy.backoff_factor
 
     @backoff_factor.setter
     def backoff_factor(self, value):
+        # type: (Union[int, float]) -> None
         self.policy.backoff_factor = value
 
     @property
     def max_backoff(self):
+        # type: () -> int
         """Max retry back-off delay."""
         return self.policy.BACKOFF_MAX
 
     @max_backoff.setter
     def max_backoff(self, value):
+        # type: (int) -> None
         self.policy.BACKOFF_MAX = value
 
 
@@ -176,16 +191,19 @@ class ClientRedirectPolicy(object):
         self.max_redirects = 30
 
     def __bool__(self):
+        # type: () -> bool
         """Whether redirects are allowed."""
         return self.allow
 
     def __call__(self):
+        # type: () -> int
         """Return configuration to be applied to connection."""
         debug = "Configuring redirects: allow=%r, max=%r"
         _LOGGER.debug(debug, self.allow, self.max_redirects)
         return self.max_redirects
 
     def check_redirect(self, resp, request):
+        # type: (requests.Response, requests.PreparedRequest) -> bool
         """Whether redirect policy should be applied based on status code."""
         if resp.status_code in (301, 302) and \
                 request.method not in ['GET', 'HEAD']:
@@ -204,6 +222,7 @@ class ClientProxies(object):
         self.use_env_settings = True
 
     def __call__(self):
+        # type: () -> Dict[str, str]
         """Return configuration to be applied to connection."""
         proxy_string = "\n".join(
             ["    {}: {}".format(k, v) for k, v in self.proxies.items()])
@@ -214,6 +233,7 @@ class ClientProxies(object):
         return self.proxies
 
     def add(self, protocol, proxy_url):
+        # type: (str, str) -> None
         """Add proxy.
 
         :param str protocol: Protocol for which proxy is to be applied. Can
@@ -235,6 +255,7 @@ class ClientConnection(object):
         self.data_block_size = 4096
 
     def __call__(self):
+        # type: () -> Dict[str, Union[str, int]]
         """Return configuration to be applied to connection."""
         debug = "Configuring request: timeout=%r, verify=%r, cert=%r"
         _LOGGER.debug(debug, self.timeout, self.verify, self.cert)
