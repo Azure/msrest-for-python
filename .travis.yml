@@ -2,6 +2,13 @@ dist: trusty
 sudo: required
 language: python
 cache: pip
+_test: &_test
+  install:
+    - pip install tox
+  script:
+    - tox
+  after_success:
+    - bash <(curl -s https://codecov.io/bash) -e TOXENV -f $TRAVIS_BUILD_DIR/coverage.xml
 _autorest_install: &_autorest_install
   before_install:
   - git clone https://github.com/Azure/autorest.python.git
@@ -11,40 +18,55 @@ _autorest_install: &_autorest_install
   - npm install # Install test server pre-requisites
   - cd node_modules/@microsoft.azure/autorest.testserver
   - npm start &
-matrix:
+jobs:
   include:
-    - python: 2.7
+    - stage: MyPy
+      python: 3.5
+      install:
+        - pip install mypy
+      script:
+        - mypy msrest --ignore-missing-imports
+    - stage: Test
+      python: 2.7
       env: TOXENV=py27
-    - python: 3.4
+      <<: *_test
+    - stage: Test
+      python: 3.4
       env: TOXENV=py34
-    - python: 3.5
+      <<: *_test
+    - stage: Test
+      python: 3.5
       env: TOXENV=py35
-    - python: 3.6
+      <<: *_test
+    - stage: Test
+      python: 3.6
       env: TOXENV=py36
-    - python: 2.7
+      <<: *_test
+    - stage: Test
+      python: 2.7
       env: TOXENV=py27-autorest
       <<: *_autorest_install
-    - python: 3.4
+      <<: *_test
+    - stage: Test
+      python: 3.4
       env: TOXENV=py34-autorest
       <<: *_autorest_install
-    - python: 3.5
+      <<: *_test
+    - stage: Test
+      python: 3.5
       env: TOXENV=py35-autorest
       <<: *_autorest_install
-    - python: 3.6
+      <<: *_test
+    - stage: Test
+      python: 3.6
       env: TOXENV=py36-autorest
       <<: *_autorest_install
+      <<: *_test
   allow_failures:
     - env: TOXENV=py27-autorest
     - env: TOXENV=py34-autorest
     - env: TOXENV=py35-autorest
     - env: TOXENV=py36-autorest
-install:
-  - pip install tox mypy
-script:
-  - tox
-  - mypy msrest --ignore-missing-imports
-after_success:
-  - bash <(curl -s https://codecov.io/bash) -e TOXENV -f $TRAVIS_BUILD_DIR/coverage.xml
 deploy:
   provider: pypi
   user: Laurent.Mazuel
