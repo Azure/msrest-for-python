@@ -72,77 +72,26 @@ class SDKClient(object):
     def __exit__(self, *exc_details):
         self._client.__exit__(*exc_details)
 
-class ServiceClient(object):
-    """REST Service Client.
-    Maintains client pipeline and handles all requests and responses.
-
-    :param Configuration config: Service configuration.
-    :param Authentication creds: Authenticated credentials.
-    """
+class _RequestsHTTPDriver(object):
 
     _protocols = ['http://', 'https://']
-
-    def __init__(self, creds, config):
-        # type: (Any, Configuration) -> None
+    
+    def __init__(self, config):
         self.config = config
-        self.creds = creds if creds else Authentication()
-        self._headers = {}  # type: Dict[str, str]
-        self._session = None
+        self.session = requests.Session()
 
     def __enter__(self):
-        # type: () -> ServiceClient
-        self.config.keep_alive = True
         return self
 
     def __exit__(self, *exc_details):
         self.close()
-        self.config.keep_alive = False
 
     def close(self):
-        # type: () -> None
-        """Close the session if keep_alive is True.
-        """
-        if self._session:
-            self._session.close()
-        self._session = None
+        self.session.close()
 
-    def _format_data(self, data):
-        """Format field data according to whether it is a stream or
-        a string for a form-data request.
-
-        :param data: The request field data.
-        :type data: str or file-like object.
-        """
-        content = [None, data]
-        if hasattr(data, 'read'):
-            content.append("application/octet-stream")
-            try:
-                if data.name[0] != '<' and data.name[-1] != '>':
-                    content[0] = os.path.basename(data.name)
-            except (AttributeError, TypeError):
-                pass
-        return tuple(content)
-
-    def _request(self, url, params):
-        """Create ClientRequest object.
-
-        :param str url: URL for the request.
-        :param dict params: URL query parameters.
-        """
-        request = ClientRequest()
-
-        if url:
-            request.url = self.format_url(url)
-
-        if params:
-            request.format_parameters(params)
-
-        return request
-
-    def _configure_session(self, session, **config):
+    def configure_session(self, **config):
         """Apply configuration to session.
 
-        :param requests.Session session: Current request session.
         :param config: Specific configuration overrides.
         :rtype: dict
         :return: A dict that will be kwarg-send to session.request
@@ -150,11 +99,11 @@ class ServiceClient(object):
         kwargs = self.config.connection()
         for opt in ['timeout', 'verify', 'cert']:
             kwargs[opt] = config.get(opt, kwargs[opt])
-        kwargs.update({k:config[k] for k in ['cookies', 'files'] if k in config})
+        kwargs.update({k:config[k] for k in ['cookies'] if k in config})
         kwargs['allow_redirects'] = config.get(
             'allow_redirects', bool(self.config.redirect_policy))
 
-        kwargs['headers'] = dict(self._headers)
+        kwargs['headers'] = {}
         kwargs['headers']['User-Agent'] = self.config.user_agent
         kwargs['headers']['Accept'] = 'application/json'
         proxies = config.get('proxies', self.config.proxies())
@@ -163,19 +112,19 @@ class ServiceClient(object):
 
         kwargs['stream'] = config.get('stream', True)
 
-        session.max_redirects = config.get('max_redirects', self.config.redirect_policy())
-        session.trust_env = config.get('use_env_proxies', self.config.proxies.use_env_settings)
+        self.session.max_redirects = config.get('max_redirects', self.config.redirect_policy())
+        self.session.trust_env = config.get('use_env_proxies', self.config.proxies.use_env_settings)
 
         # Patch the redirect method directly *if not done already*
-        if not getattr(session.resolve_redirects, 'is_mrest_patched', False):
-            redirect_logic = session.resolve_redirects
+        if not getattr(self.session.resolve_redirects, 'is_mrest_patched', False):
+            redirect_logic = self.session.resolve_redirects
 
             def wrapped_redirect(resp, req, **kwargs):
                 attempt = self.config.redirect_policy.check_redirect(resp, req)
                 return redirect_logic(resp, req, **kwargs) if attempt else []
             wrapped_redirect.is_mrest_patched = True
 
-            session.resolve_redirects = wrapped_redirect
+            self.session.resolve_redirects = wrapped_redirect
 
         # if "enable_http_logger" is defined at the operation level, take the value.
         # if not, take the one in the client config
@@ -194,7 +143,7 @@ class ServiceClient(object):
             return user_hook_cb
 
         for user_hook in self.config.hooks:
-            hooks.append(make_user_hook_cb(user_hook, session))
+            hooks.append(make_user_hook_cb(user_hook, self.session))
 
         if hooks:
             kwargs['hooks'] = {'response': hooks}
@@ -202,23 +151,118 @@ class ServiceClient(object):
         # Change max_retries in current all installed adapters
         max_retries = config.get('retries', self.config.retry_policy())
         for protocol in self._protocols:
-            session.adapters[protocol].max_retries=max_retries
+            self.session.adapters[protocol].max_retries=max_retries
 
-        output_kwargs = self.config.session_configuration_callback(session, self.config, config, **kwargs)
+        output_kwargs = self.config.session_configuration_callback(
+            self.session,
+            self.config,
+            config,
+            **kwargs
+        )
         if output_kwargs is not None:
             kwargs = output_kwargs
 
         return kwargs
 
-    def send_formdata(self, request, headers=None, content=None, **config):
-        """Send data as a multipart form-data request.
+    def send(self, request, **config):
+        """Send request object according to configuration.
+
+        :param ClientRequest request: The request object to be sent.
+        :param config: Any specific config overrides
+        """
+        kwargs = config.copy()
+        if request.files:
+            kwargs['files'] = request.files
+        elif request.data:
+            kwargs['data'] = request.data
+        kwargs.setdefault("headers", {}).update(request.headers)
+
+        response = self.session.request(
+            request.method,
+            request.url,
+            **kwargs)
+        return response
+
+class ServiceClient(object):
+    """REST Service Client.
+    Maintains client pipeline and handles all requests and responses.
+
+    :param Configuration config: Service configuration.
+    :param Authentication creds: Authenticated credentials.
+    """
+
+    def __init__(self, creds, config):
+        # type: (Any, Configuration) -> None
+        self.config = config
+        self.creds = creds if creds else Authentication()
+        self._http_driver = _RequestsHTTPDriver(config)        
+
+    def __enter__(self):
+        # type: () -> ServiceClient
+        self.config.keep_alive = True
+        self._http_driver.__enter__()
+        return self
+
+    def __exit__(self, *exc_details):
+        self._http_driver.__exit__(*exc_details)
+        self.config.keep_alive = False
+
+    def close(self):
+        # type: () -> None
+        """Close the session if keep_alive is True.
+        """
+        self._http_driver.close()
+
+    def _format_data(self, data):
+        """Format field data according to whether it is a stream or
+        a string for a form-data request.
+
+        :param data: The request field data.
+        :type data: str or file-like object.
+        """
+        content = [None, data]
+        if hasattr(data, 'read'):
+            content.append("application/octet-stream")
+            try:
+                if data.name[0] != '<' and data.name[-1] != '>':
+                    content[0] = os.path.basename(data.name)
+            except (AttributeError, TypeError):
+                pass
+        return tuple(content)
+
+    def _request(self, url, params, headers, form_content):
+        """Create ClientRequest object.
+
+        :param str url: URL for the request.
+        :param dict params: URL query parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
+        """
+        request = ClientRequest()
+
+        if url:
+            request.url = self.format_url(url)
+
+        if params:
+            request.format_parameters(params)
+
+        if headers:
+            request.headers.update(headers)
+
+        if form_content:
+            self.add_formdata(request, headers, form_content)
+
+        return request
+
+    def add_formdata(self, request, headers=None, content=None):
+        """Add data as a multipart form-data request to the request.
+
         We only deal with file-like objects or strings at this point.
         The requests is not yet streamed.
 
         :param ClientRequest request: The request object to be sent.
         :param dict headers: Any headers to add to the request.
         :param dict content: Dictionary of the fields of the formdata.
-        :param config: Any specific config overrides.
         """
         if content is None:
             content = {}
@@ -227,10 +271,23 @@ class ServiceClient(object):
         if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
             # Do NOT use "add_content" that assumes input is JSON
             request.data = {f: d for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, **config)
         else: # Assume "multipart/form-data"
-            file_data = {f: self._format_data(d) for f, d in content.items() if d is not None}
-            return self.send(request, headers, None, files=file_data, **config)
+            request.files = {f: self._format_data(d) for f, d in content.items() if d is not None}
+
+    def send_formdata(self, request, headers=None, content=None, **config):
+        """Send data as a multipart form-data request.
+        We only deal with file-like objects or strings at this point.
+        The requests is not yet streamed.
+
+        This method is deprecated, and shouldn't be used anymore.
+
+        :param ClientRequest request: The request object to be sent.
+        :param dict headers: Any headers to add to the request.
+        :param dict content: Dictionary of the fields of the formdata.
+        :param config: Any specific config overrides.
+        """
+        self.add_formdata(request, headers, content)
+        return self.send(request, headers, None, **config)
 
     def send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
@@ -240,34 +297,32 @@ class ServiceClient(object):
         :param content: Any body data to add to the request.
         :param config: Any specific config overrides
         """
-        if self.config.keep_alive and self._session is None:
-            self._session = requests.Session()
+        if self.config.keep_alive:
+            http_driver = self._http_driver
+        else:
+            http_driver = _RequestsHTTPDriver(self.config)
+
         try:
-            session = self.creds.signed_session(self._session)
+            self.creds.signed_session(http_driver.session)
         except TypeError: # Credentials does not support session injection
-            session = self.creds.signed_session()
-            if self._session is not None:
+            http_driver.session = self.creds.signed_session()
+            if http_driver is self._http_driver:
                 _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
 
-        kwargs = self._configure_session(session, **config)
+        kwargs = http_driver.configure_session(**config)
+
+        # "content" and "headers" are deprecated, only old SDK
         if headers:
             request.headers.update(headers)
-
-        if not kwargs.get('files'):
+        if not request.files and content:
             request.add_content(content)
-        if request.data:
-            kwargs['data']=request.data
-        kwargs['headers'].update(request.headers)
+        # End of deprecation
 
         response = None
         try:
             try:
-                response = session.request(
-                    request.method,
-                    request.url,
-                    **kwargs)
+                response = http_driver.send(request, **kwargs)
                 return response
-
             except (oauth2.rfc6749.errors.InvalidGrantError,
                     oauth2.rfc6749.errors.TokenExpiredError) as err:
                 error = "Token expired or is invalid. Attempting to refresh."
@@ -275,20 +330,15 @@ class ServiceClient(object):
 
             try:
                 try:
-                    session = self.creds.refresh_session(self._session)
+                    self.creds.refresh_session(http_driver.session)
                 except TypeError: # Credentials does not support session injection
-                    session = self.creds.refresh_session()
-                    if self._session is not None:
+                    http_driver.session = self.creds.refresh_session()
+                    if http_driver is self._http_driver:
                         _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-                kwargs = self._configure_session(session, **config)
-                if request.data:
-                    kwargs['data']=request.data
-                kwargs['headers'].update(request.headers)
+                    # Only reconfigure on refresh if it's a new session
+                    kwargs = http_driver.configure_session(**config)
 
-                response = session.request(
-                    request.method,
-                    request.url,
-                    **kwargs)
+                response = http_driver.send(request, **kwargs)
                 return response
             except (oauth2.rfc6749.errors.InvalidGrantError,
                     oauth2.rfc6749.errors.TokenExpiredError) as err:
@@ -300,15 +350,15 @@ class ServiceClient(object):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:
-            self._close_local_session_if_necessary(response, session, kwargs['stream'])
+            self._close_local_session_if_necessary(response, http_driver, kwargs['stream'])
 
-    def _close_local_session_if_necessary(self, response, session, stream):
-        # Do NOT close session if session is self._session. No exception.
-        if self._session is session:
+    def _close_local_session_if_necessary(self, response, http_driver, stream):
+        # Do NOT close session if using my own HTTP driver. No exception.
+        if self._http_driver is http_driver:
             return
         # Here, it's a local session, I might close it.
         if not response or not stream:
-            session.close()
+            http_driver.session.close()
 
     def stream_download(self, data, callback):
         """Generator for streaming request body data.
@@ -362,81 +412,86 @@ class ServiceClient(object):
             url = urljoin(base + '/', url)
         return url
 
-    def add_header(self, header, value):
-        """Add a persistent header - this header will be applied to all
-        requests sent during the current client session.
-
-        :param str header: The header name.
-        :param str value: The header value.
-        """
-        self._headers[header] = value
-
-    def get(self, url=None, params=None):
+    def get(self, url=None, params=None, headers=None, form_content=None):
         """Create a GET request object.
 
         :param str url: The request URL.
         :param dict params: Request URL parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
         """
-        request = self._request(url, params)
+        request = self._request(url, params, headers, form_content)
         request.method = 'GET'
         return request
 
-    def put(self, url=None, params=None):
+    def put(self, url=None, params=None, headers=None, form_content=None):
         """Create a PUT request object.
 
         :param str url: The request URL.
         :param dict params: Request URL parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
         """
-        request = self._request(url, params)
+        request = self._request(url, params, headers, form_content)
         request.method = 'PUT'
         return request
 
-    def post(self, url=None, params=None):
+    def post(self, url=None, params=None, headers=None, form_content=None):
         """Create a POST request object.
 
         :param str url: The request URL.
         :param dict params: Request URL parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
         """
-        request = self._request(url, params)
+        request = self._request(url, params, headers, form_content)
         request.method = 'POST'
         return request
 
-    def head(self, url=None, params=None):
+    def head(self, url=None, params=None, headers=None, form_content=None):
         """Create a HEAD request object.
 
         :param str url: The request URL.
         :param dict params: Request URL parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
         """
-        request = self._request(url, params)
+        request = self._request(url, params, headers, form_content)
         request.method = 'HEAD'
         return request
 
-    def patch(self, url=None, params=None):
+    def patch(self, url=None, params=None, headers=None, form_content=None):
         """Create a PATCH request object.
 
         :param str url: The request URL.
         :param dict params: Request URL parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
         """
-        request = self._request(url, params)
+        request = self._request(url, params, headers, form_content)
         request.method = 'PATCH'
         return request
 
-    def delete(self, url=None, params=None):
+    def delete(self, url=None, params=None, headers=None, form_content=None):
         """Create a DELETE request object.
 
         :param str url: The request URL.
         :param dict params: Request URL parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
         """
-        request = self._request(url, params)
+        request = self._request(url, params, headers, form_content)
         request.method = 'DELETE'
         return request
 
-    def merge(self, url=None, params=None):
+    def merge(self, url=None, params=None, headers=None, form_content=None):
         """Create a MERGE request object.
 
         :param str url: The request URL.
         :param dict params: Request URL parameters.
+        :param dict headers: Headers
+        :param dict form_content: Form content
         """
-        request = self._request(url, params)
+        request = self._request(url, params, headers, form_content)
         request.method = 'MERGE'
         return request

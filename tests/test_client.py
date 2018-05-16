@@ -37,6 +37,7 @@ from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
 from msrest import ServiceClient, SDKClient
+from msrest.service_client import _RequestsHTTPDriver
 from msrest.authentication import OAuthTokenAuthentication, Authentication
 
 from msrest import Configuration
@@ -53,19 +54,17 @@ class TestServiceClient(unittest.TestCase):
 
     def test_session_callback(self):
 
-        client = ServiceClient(self.creds, self.cfg)
-        local_session = requests.Session()
+        with _RequestsHTTPDriver(self.cfg) as driver:
 
-        def callback(session, global_config, local_config, **kwargs):
-            self.assertIs(session, local_session)
-            self.assertIs(global_config, self.cfg)
-            self.assertTrue(local_config["test"])
-            return {'used_callback': True}
+            def callback(session, global_config, local_config, **kwargs):
+                self.assertIs(session, driver.session)
+                self.assertIs(global_config, self.cfg)
+                self.assertTrue(local_config["test"])
+                return {'used_callback': True}
+            self.cfg.session_configuration_callback = callback
 
-        self.cfg.session_configuration_callback = callback
-
-        output_kwargs = client._configure_session(local_session, **{"test": True})
-        self.assertTrue(output_kwargs['used_callback'])
+            output_kwargs = driver.configure_session(**{"test": True})
+            self.assertTrue(output_kwargs['used_callback'])
 
     def test_sdk_context_manager(self):
         cfg = Configuration("http://127.0.0.1/")
@@ -132,11 +131,10 @@ class TestServiceClient(unittest.TestCase):
                 client.send(req)  # Will fail, I don't care, that's not the point of the test
             except Exception:
                 pass
-            assert client._session  # Still alive
+            assert client._http_driver.session  # Still alive
 
         assert not cfg.keep_alive
         assert creds.called == 2
-        assert client._session is None  # Dead
 
     def test_keep_alive(self):
 
@@ -170,56 +168,50 @@ class TestServiceClient(unittest.TestCase):
             pass
 
         assert creds.called == 2
-        assert client._session  # Still alive
+        assert client._http_driver.session  # Still alive
         # Manually close the client in "keep_alive" mode
         client.close()
-        assert client._session is None  # Dead
 
     def test_max_retries_on_default_adapter(self):
         # max_retries must be applied only on the default adapters of requests
         # If the user adds its own adapter, don't touch it
-        client = ServiceClient(self.creds, self.cfg)
-        
         max_retries = self.cfg.retry_policy()
 
-        local_session = requests.Session()
-        local_session.mount('http://example.org', HTTPAdapter())
-        client._configure_session(local_session)
-        assert local_session.adapters["http://"].max_retries is max_retries
-        assert local_session.adapters["https://"].max_retries is max_retries
-        assert local_session.adapters['http://example.org'].max_retries is not max_retries
-        
+        with _RequestsHTTPDriver(self.cfg) as driver:
+            driver.session.mount('http://example.org', HTTPAdapter())
+            driver.configure_session()
+            assert driver.session.adapters["http://"].max_retries is max_retries
+            assert driver.session.adapters["https://"].max_retries is max_retries
+            assert driver.session.adapters['http://example.org'].max_retries is not max_retries
 
     def test_no_log(self):
-
-        client = ServiceClient(self.creds, self.cfg)
         
         # By default, no log handler for HTTP
-        local_session = requests.Session()
-        kwargs = client._configure_session(local_session)
-        assert 'hooks' not in kwargs
+        with _RequestsHTTPDriver(self.cfg) as driver:
+            kwargs = driver.configure_session()
+            assert 'hooks' not in kwargs
 
         # I can enable it per request
-        local_session = requests.Session()
-        kwargs = client._configure_session(local_session, **{"enable_http_logger": True})
-        assert 'hooks' in kwargs
+        with _RequestsHTTPDriver(self.cfg) as driver:
+            kwargs = driver.configure_session(**{"enable_http_logger": True})
+            assert 'hooks' in kwargs
 
         # I can enable it per request (bool value should be honored)
-        local_session = requests.Session()
-        kwargs = client._configure_session(local_session, **{"enable_http_logger": False})
-        assert 'hooks' not in kwargs
+        with _RequestsHTTPDriver(self.cfg) as driver:
+            kwargs = driver.configure_session(**{"enable_http_logger": False})
+            assert 'hooks' not in kwargs
 
         # I can enable it globally
-        client.config.enable_http_logger = True
-        local_session = requests.Session()
-        kwargs = client._configure_session(local_session)
-        assert 'hooks' in kwargs
+        self.cfg.enable_http_logger = True
+        with _RequestsHTTPDriver(self.cfg) as driver:        
+            kwargs = driver.configure_session()
+            assert 'hooks' in kwargs
 
         # I can enable it globally and override it locally
-        client.config.enable_http_logger = True
-        local_session = requests.Session()
-        kwargs = client._configure_session(local_session, **{"enable_http_logger": False})
-        assert 'hooks' not in kwargs
+        self.cfg.enable_http_logger = True
+        with _RequestsHTTPDriver(self.cfg) as driver:
+            kwargs = driver.configure_session(**{"enable_http_logger": False})
+            assert 'hooks' not in kwargs
 
     def test_client_request(self):
 
@@ -261,12 +253,6 @@ class TestServiceClient(unittest.TestCase):
         obj = client.delete()
         self.assertEqual(obj.method, 'DELETE')
 
-    def test_client_header(self):
-        client = ServiceClient(self.creds, self.cfg)
-        client.add_header("test", "value")
-
-        self.assertEqual(client._headers.get('test'), 'value')
-
     def test_format_url(self):
 
         url = "/bool/test true"
@@ -302,8 +288,16 @@ class TestServiceClient(unittest.TestCase):
 
     def test_client_send(self):
 
+        class MockHTTPDriver(object):
+            def configure_session(self, **config):
+                pass
+            def send(self, request, **config):
+                pass
+
         client = ServiceClient(self.creds, self.cfg)
+        client.config.keep_alive = True
         session = mock.create_autospec(requests.Session)
+        client._http_driver.session = session
         session.adapters = {
             "http://": HTTPAdapter(),
             "https://": HTTPAdapter(),
@@ -330,7 +324,6 @@ class TestServiceClient(unittest.TestCase):
             verify=True
         )
         assert session.resolve_redirects.is_mrest_patched
-        session.close.assert_called_with()
 
         client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, stream=False)
         session.request.assert_called_with(
@@ -352,7 +345,6 @@ class TestServiceClient(unittest.TestCase):
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
         assert session.resolve_redirects.is_mrest_patched
-        session.close.assert_called_with()
 
         session.request.side_effect = requests.RequestException("test")
         with self.assertRaises(ClientRequestError):
@@ -376,44 +368,47 @@ class TestServiceClient(unittest.TestCase):
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
         assert session.resolve_redirects.is_mrest_patched
-        session.close.assert_called_with()
 
         session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
         with self.assertRaises(TokenExpiredError):
             client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         self.assertEqual(session.request.call_count, 2)
         session.request.call_count = 0
-        session.close.assert_called_with()
 
         session.request.side_effect = ValueError("test")
         with self.assertRaises(ValueError):
             client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
-        session.close.assert_called_with()
 
-    def test_client_formdata_send(self):
+    def test_client_formdata_add(self):
 
         client = mock.create_autospec(ServiceClient)
         client._format_data.return_value = "formatted"
+    
         request = ClientRequest('GET')
-        ServiceClient.send_formdata(client, request)
-        client.send.assert_called_with(request, None, None, files={})
+        ServiceClient.add_formdata(client, request)
+        assert request.files == {}
 
-        ServiceClient.send_formdata(client, request, {'id':'1234'}, {'Test':'Data'})
-        client.send.assert_called_with(request, {'id':'1234'}, None, files={'Test':'formatted'})
+        request = ClientRequest('GET')
+        ServiceClient.add_formdata(client, request, {'id':'1234'}, {'Test':'Data'})
+        assert request.files == {'Test':'formatted'}
 
-        ServiceClient.send_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
-        client.send.assert_called_with(request, {}, None, files={'1':'formatted', '2':'formatted'})
+        request = ClientRequest('GET')
+        ServiceClient.add_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
+        assert request.files == {'1':'formatted', '2':'formatted'}
 
-        ServiceClient.send_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
-        client.send.assert_called_with(request, {}, None, files={'1':'formatted'})
+        request = ClientRequest('GET')
+        ServiceClient.add_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
+        assert request.files == {'1':'formatted'}
 
-        ServiceClient.send_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
-        client.send.assert_called_with(request, {}, None)
-        self.assertEqual(request.data, {'1':'1', '2':'2'})
+        request = ClientRequest('GET')
+        ServiceClient.add_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
+        assert request.files == []
+        assert request.data == {'1':'1', '2':'2'}
 
-        ServiceClient.send_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
-        client.send.assert_called_with(request, {}, None)
-        self.assertEqual(request.data, {'1':'1'})
+        request = ClientRequest('GET')
+        ServiceClient.add_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
+        assert request.files == []
+        assert request.data == {'1':'1'}
 
     def test_format_data(self):
 
