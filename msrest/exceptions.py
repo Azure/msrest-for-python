@@ -27,19 +27,28 @@
 import logging
 import sys
 
+from typing import Callable, Any, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import requests
+    from msrest.serialization import Deserializer
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def raise_with_traceback(exception, message="", *args, **kwargs):
+    # type: (Callable, str, str, str) -> None
     """Raise exception with a specified traceback.
+
+    This MUST be called inside a "except" clause.
 
     :param Exception exception: Error type to be raised.
     :param str message: Message to include with error, empty by default.
     :param args: Any additional args to be included with exception.
     """
     exc_type, exc_value, exc_traceback = sys.exc_info()
-    exc_msg = "{}, {}: {}".format(message, exc_type.__name__, exc_value)
+    # If not called inside a "except", exc_type will be None. Assume it will not happen
+    exc_msg = "{}, {}: {}".format(message, exc_type.__name__, exc_value)  # type: ignore
     error = exception(exc_msg, *args, **kwargs)
     try:
         raise error.with_traceback(exc_traceback)
@@ -52,6 +61,7 @@ class ClientException(Exception):
     """Base exception for all Client Runtime exceptions."""
 
     def __init__(self, message, inner_exception=None, *args, **kwargs):
+        # type: (str, Any, str, str) -> None
         self.inner_exception = inner_exception
         _LOGGER.debug(message)
         super(ClientException, self).__init__(message, *args, **kwargs)
@@ -92,6 +102,7 @@ class ValidationError(ClientException):
     }
 
     def __init__(self, rule, target, value, *args, **kwargs):
+        # type: (str, str, str, str, str) -> None
         self.rule = rule
         self.target = target
         message = "Parameter {!r} ".format(target)
@@ -121,14 +132,17 @@ class HttpOperationError(ClientException):
     :param str resp_type: Objects type to deserialize response.
     :param args: Additional args to pass to exception object.
     """
+    _DEFAULT_MESSAGE = "Unknown error"
 
     def __str__(self):
+        # type: () -> str
         return str(self.message)
 
     def __init__(self, deserialize, response,
                  resp_type=None, *args, **kwargs):
+        # type: (Deserializer, requests.Response, Optional[str], str, str) -> None
         self.error = None
-        self.message = None
+        self.message = self._DEFAULT_MESSAGE
         self.response = response
         try:
             if resp_type:
@@ -149,7 +163,7 @@ class HttpOperationError(ClientException):
         except (DeserializationError, AttributeError, KeyError):
             pass
 
-        if not self.error or not self.message:
+        if not self.error or self.message == self._DEFAULT_MESSAGE:
             try:
                 response.raise_for_status()
             # Two possible raises here:
@@ -159,15 +173,15 @@ class HttpOperationError(ClientException):
                 if not self.error:
                     self.error = err
 
-                if not self.message:
+                if self.message == self._DEFAULT_MESSAGE:
                     msg = "Operation returned an invalid status code {!r}"
                     self.message = msg.format(response.reason)
             else:
                 if not self.error:
                     self.error = response
 
-                if not self.message:
-                    self.message = "Unknown error"
+        # We can't type hint, but at least we can check that
+        assert self.message is not None
 
         super(HttpOperationError, self).__init__(
             self.message, self.error, *args, **kwargs)

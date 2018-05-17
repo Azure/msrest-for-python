@@ -34,12 +34,14 @@ import logging
 import re
 import sys
 try:
-    from urllib import quote
+    from urllib import quote  # type: ignore
 except ImportError:
-    from urllib.parse import quote
+    from urllib.parse import quote  # type: ignore
 import xml.etree.ElementTree as ET
 
 import isodate
+
+from typing import Dict, Any
 
 from .exceptions import (
     ValidationError,
@@ -48,9 +50,9 @@ from .exceptions import (
     raise_with_traceback)
 
 try:
-    basestring
+    basestring  # type: ignore
 except NameError:
-    basestring = str
+    basestring = str  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -72,9 +74,9 @@ class UTC(datetime.tzinfo):
 
 try:
     from datetime import timezone
-    TZ_UTC = timezone.utc
+    TZ_UTC = timezone.utc  # type: ignore
 except ImportError:
-    TZ_UTC = UTC()
+    TZ_UTC = UTC()  # type: ignore
 
 _FLATTEN = re.compile(r"(?<!\\)\.")
 
@@ -108,7 +110,7 @@ def last_restapi_key_transformer(key, attr_desc, value):
     :returns: The last RestAPI key.
     """
     key, value = full_restapi_key_transformer(key, attr_desc, value)
-    return (key[-1], value)    
+    return (key[-1], value)
 
 def _recursive_validate(attr_name, attr_type, data):
     result = []
@@ -138,9 +140,9 @@ class Model(object):
     serialization and deserialization.
     """
 
-    _subtype_map = {}
-    _attribute_map = {}
-    _validation = {}
+    _subtype_map = {}  # type: Dict[str, Dict[str, Any]]
+    _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
+    _validation = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, **kwargs):
         if not self.is_xml_model():
