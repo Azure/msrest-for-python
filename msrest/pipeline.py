@@ -108,7 +108,7 @@ class ClientRawResponse(object):
         # type: (Union[Model, List[Model]], Optional[requests.Response]) -> None
         self.response = response
         self.output = output
-        self.headers = {}  # type: Dict[str, str]
+        self.headers = {}  # type: Dict[str, Optional[Any]]
         self._deserialize = Deserializer()
 
     def add_headers(self, header_dict):
@@ -123,8 +123,7 @@ class ClientRawResponse(object):
         for name, data_type in header_dict.items():
             value = self.response.headers.get(name)
             value = self._deserialize(data_type, value)
-            if value:
-                self.headers[name] = value
+            self.headers[name] = value
 
 
 class ClientRetryPolicy(object):
