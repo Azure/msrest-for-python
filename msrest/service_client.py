@@ -32,7 +32,7 @@ try:
 except ImportError:
     from urllib.parse import urljoin, urlparse
 
-from typing import Any, Dict, TYPE_CHECKING
+from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .configuration import Configuration
@@ -59,7 +59,7 @@ class SDKClient(object):
         self._client = ServiceClient(creds, config)
     
     def close(self):
-        # type () -> None
+        # type: () -> None
         """Close the client if keep_alive is True.
         """
         self._client.close()
@@ -77,10 +77,12 @@ class _RequestsHTTPDriver(object):
     _protocols = ['http://', 'https://']
     
     def __init__(self, config):
+        # type: (Configuration) -> None
         self.config = config
         self.session = requests.Session()
 
     def __enter__(self):
+        # type: () -> _RequestsHTTPDriver
         return self
 
     def __exit__(self, *exc_details):
@@ -90,13 +92,14 @@ class _RequestsHTTPDriver(object):
         self.session.close()
 
     def configure_session(self, **config):
+        # type: (str) -> Dict[str, Any]
         """Apply configuration to session.
 
         :param config: Specific configuration overrides.
         :rtype: dict
         :return: A dict that will be kwarg-send to session.request
         """
-        kwargs = self.config.connection()
+        kwargs = self.config.connection()  # type: Dict[str, Any]
         for opt in ['timeout', 'verify', 'cert']:
             kwargs[opt] = config.get(opt, kwargs[opt])
         kwargs.update({k:config[k] for k in ['cookies'] if k in config})
@@ -112,8 +115,8 @@ class _RequestsHTTPDriver(object):
 
         kwargs['stream'] = config.get('stream', True)
 
-        self.session.max_redirects = config.get('max_redirects', self.config.redirect_policy())
-        self.session.trust_env = config.get('use_env_proxies', self.config.proxies.use_env_settings)
+        self.session.max_redirects = int(config.get('max_redirects', self.config.redirect_policy()))
+        self.session.trust_env = bool(config.get('use_env_proxies', self.config.proxies.use_env_settings))
 
         # Patch the redirect method directly *if not done already*
         if not getattr(self.session.resolve_redirects, 'is_mrest_patched', False):
@@ -122,9 +125,9 @@ class _RequestsHTTPDriver(object):
             def wrapped_redirect(resp, req, **kwargs):
                 attempt = self.config.redirect_policy.check_redirect(resp, req)
                 return redirect_logic(resp, req, **kwargs) if attempt else []
-            wrapped_redirect.is_mrest_patched = True
+            wrapped_redirect.is_mrest_patched = True  # type: ignore
 
-            self.session.resolve_redirects = wrapped_redirect
+            self.session.resolve_redirects = wrapped_redirect  # type: ignore
 
         # if "enable_http_logger" is defined at the operation level, take the value.
         # if not, take the one in the client config
@@ -165,6 +168,7 @@ class _RequestsHTTPDriver(object):
         return kwargs
 
     def send(self, request, **config):
+        # type: (ClientRequest, Any) -> requests.Response
         """Send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
@@ -214,23 +218,26 @@ class ServiceClient(object):
         self._http_driver.close()
 
     def _format_data(self, data):
+        # type: (Union[str, IO]) -> Union[Tuple[None, str], Tuple[Optional[str], IO, str]]
         """Format field data according to whether it is a stream or
         a string for a form-data request.
 
         :param data: The request field data.
         :type data: str or file-like object.
         """
-        content = [None, data]
         if hasattr(data, 'read'):
-            content.append("application/octet-stream")
+            data = cast(IO, data)
+            data_name = None
             try:
                 if data.name[0] != '<' and data.name[-1] != '>':
-                    content[0] = os.path.basename(data.name)
+                    data_name = os.path.basename(data.name)
             except (AttributeError, TypeError):
                 pass
-        return tuple(content)
+            return (data_name, data, "application/octet-stream")
+        return (None, cast(str, data))
 
     def _request(self, url, params, headers, form_content):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create ClientRequest object.
 
         :param str url: URL for the request.
@@ -255,6 +262,7 @@ class ServiceClient(object):
         return request
 
     def add_formdata(self, request, headers=None, content=None):
+        # type: (ClientRequest, Dict[str, str], Optional[Dict[str, str]]) -> None
         """Add data as a multipart form-data request to the request.
 
         We only deal with file-like objects or strings at this point.
@@ -399,6 +407,7 @@ class ServiceClient(object):
             yield chunk
 
     def format_url(self, url, **kwargs):
+        # type: (str, Any) -> str
         """Format request URL with the client base URL, unless the
         supplied URL is already absolute.
 
@@ -413,6 +422,7 @@ class ServiceClient(object):
         return url
 
     def get(self, url=None, params=None, headers=None, form_content=None):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create a GET request object.
 
         :param str url: The request URL.
@@ -425,6 +435,7 @@ class ServiceClient(object):
         return request
 
     def put(self, url=None, params=None, headers=None, form_content=None):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create a PUT request object.
 
         :param str url: The request URL.
@@ -437,6 +448,7 @@ class ServiceClient(object):
         return request
 
     def post(self, url=None, params=None, headers=None, form_content=None):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create a POST request object.
 
         :param str url: The request URL.
@@ -449,6 +461,7 @@ class ServiceClient(object):
         return request
 
     def head(self, url=None, params=None, headers=None, form_content=None):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create a HEAD request object.
 
         :param str url: The request URL.
@@ -461,6 +474,7 @@ class ServiceClient(object):
         return request
 
     def patch(self, url=None, params=None, headers=None, form_content=None):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create a PATCH request object.
 
         :param str url: The request URL.
@@ -473,6 +487,7 @@ class ServiceClient(object):
         return request
 
     def delete(self, url=None, params=None, headers=None, form_content=None):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create a DELETE request object.
 
         :param str url: The request URL.
@@ -485,6 +500,7 @@ class ServiceClient(object):
         return request
 
     def merge(self, url=None, params=None, headers=None, form_content=None):
+        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Optional[Dict[str, Any]]) -> ClientRequest
         """Create a MERGE request object.
 
         :param str url: The request URL.
