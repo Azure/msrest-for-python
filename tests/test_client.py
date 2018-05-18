@@ -427,6 +427,25 @@ class TestServiceClient(unittest.TestCase):
         data = ServiceClient._format_data(mock_client, mock_stream)
         self.assertEqual(data, ("file_name", mock_stream, "application/octet-stream"))
 
+    def test_request_builder(self):
+        client = ServiceClient(self.creds, self.cfg)
+
+        req = client.get('http://example.org')
+        assert req.method == 'GET'
+        assert req.url == 'http://example.org'
+        assert req.params == {}
+        assert req.headers == {}
+        assert req.data == []
+        assert req.files == []
+
+        req = client.put('http://example.org', content={'creation': True})
+        assert req.method == 'PUT'
+        assert req.url == 'http://example.org'
+        assert req.params == {}
+        assert req.headers == {'Content-Length': '18'}
+        assert req.data == '{"creation": true}'
+        assert req.files == []
+
 
 if __name__ == '__main__':
     unittest.main()
