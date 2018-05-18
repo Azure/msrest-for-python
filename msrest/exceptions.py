@@ -159,7 +159,8 @@ class HttpOperationError(ClientException):
                     )
                 except AttributeError:
                     # Try the default for Autorest if not available (compat)
-                    self.message = self.error.message
+                    if self.error.message:
+                        self.message = self.error.message
         except (DeserializationError, AttributeError, KeyError):
             pass
 
