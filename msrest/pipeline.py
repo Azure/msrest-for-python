@@ -31,8 +31,12 @@ try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
+import xml.etree.ElementTree as ET
 
-from typing import Dict, Any, Optional, Union, List
+from typing import Dict, Any, Optional, Union, List, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import xml.etree.ElementTree as ET
 
 import requests
 from urllib3 import Retry  # Needs requests 2.16 at least to be safe
@@ -68,7 +72,7 @@ class ClientRequest(requests.Request):
         self.url = self.url + query
 
     def add_content(self, data):
-        # type: (Optional[Dict[str, Any]]) -> None
+        # type: (Optional[Union[Dict[str, Any], ET.Element]]) -> None
         """Add a body to the request.
 
         :param data: Request body data, can be a json serializable
@@ -77,6 +81,12 @@ class ClientRequest(requests.Request):
         if data is None:
             return
 
+        if isinstance(data, ET.Element):
+            self.data = ET.tostring(data, encoding="utf8")
+            self.headers['Content-Length'] = str(len(self.data))
+            return
+
+        # By default, assume JSON
         try:
             self.data = json.dumps(data)
             self.headers['Content-Length'] = str(len(self.data))
