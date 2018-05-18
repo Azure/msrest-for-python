@@ -36,8 +36,12 @@ import sys
 try:
     from urllib import quote  # type: ignore
 except ImportError:
-    from urllib.parse import quote  # type: ignore
+<<<<<<< HEAD
+    from urllib.parse import quote
 import xml.etree.ElementTree as ET
+=======
+    from urllib.parse import quote  # type: ignore
+>>>>>>> origin/master
 
 import isodate
 
@@ -110,7 +114,7 @@ def last_restapi_key_transformer(key, attr_desc, value):
     :returns: The last RestAPI key.
     """
     key, value = full_restapi_key_transformer(key, attr_desc, value)
-    return (key[-1], value)
+    return (key[-1], value)    
 
 def _recursive_validate(attr_name, attr_type, data):
     result = []
@@ -488,7 +492,7 @@ class Serializer(object):
                             continue
                         if isinstance(new_attr, list):
                             serialized.extend(new_attr)
-                        elif isinstance(new_attr, ET.Element):
+                        elif ET.iselement(new_attr):
                             # We MUST replace the tag with the local tag. But keeping the namespaces.
                             splitted_tag = new_attr.tag.split("}")
                             if len(splitted_tag) == 2: # Namespace
@@ -793,7 +797,7 @@ class Serializer(object):
                 final_result = []
             # All list elements to "local_node"
             for el in serialized:
-                if isinstance(el, ET.Element):
+                if ET.iselement(el):
                     el_node = el
                 else:
                     el_node = _create_xml_node(
@@ -1390,7 +1394,7 @@ class Deserializer(object):
             if data_type in self.deserialize_type:
                 if isinstance(data, self.deserialize_expected_types.get(data_type, tuple())):
                     return data
-                if isinstance(data, ET.Element):
+                if ET.iselement(data):
                     data = data.text
                 data_val = self.deserialize_type[data_type](data)
                 return data_val
@@ -1401,7 +1405,7 @@ class Deserializer(object):
 
             obj_type = self.dependencies[data_type]
             if issubclass(obj_type, Enum):
-                if isinstance(data, ET.Element):
+                if ET.iselement(data):
                     data = data.text
                 return self.deserialize_enum(data, obj_type)
 
@@ -1421,7 +1425,7 @@ class Deserializer(object):
         """
         if attr is None:
             return None
-        if isinstance(attr, ET.Element): # If I receive an element here, get the children
+        if ET.iselement(attr): # If I receive an element here, get the children
             attr = list(attr)
         if not isinstance(attr, (list, set)):
             raise DeserializationError("Cannot deserialize as [{}] an object of type {}".format(
@@ -1497,7 +1501,7 @@ class Deserializer(object):
         """
         # If we're here, data is supposed to be a basic type.
         # If it's still an XML node, take the text
-        if isinstance(attr, ET.Element):
+        if ET.iselement(attr):
             attr = attr.text
             if not attr:  # None or '', < node <a/> is empty string.
                 return ''
