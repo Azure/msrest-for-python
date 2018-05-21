@@ -49,6 +49,7 @@ class TestServiceClient(unittest.TestCase):
 
     def setUp(self):
         self.cfg = Configuration("https://my_endpoint.com")
+        self.cfg.headers = {'Test': 'true'}
         self.creds = mock.create_autospec(OAuthTokenAuthentication)
         return super(TestServiceClient, self).setUp()
 
@@ -317,7 +318,8 @@ class TestServiceClient(unittest.TestCase):
             cert=None,
             headers={
                 'User-Agent': self.cfg.user_agent,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Test': 'true'  # From global config
             },
             stream=False,
             timeout=100,
@@ -336,7 +338,8 @@ class TestServiceClient(unittest.TestCase):
                 'User-Agent': self.cfg.user_agent,
                 'Accept': 'application/json',
                 'Content-Length': '16',
-                'id':'1234'
+                'id':'1234',
+                'Test': 'true'  # From global config
             },
             stream=False,
             timeout=100,
@@ -359,7 +362,8 @@ class TestServiceClient(unittest.TestCase):
                 'User-Agent': self.cfg.user_agent,
                 'Accept': 'application/json',
                 'Content-Length': '16',
-                'id':'1234'
+                'id':'1234',
+                'Test': 'true'  # From global config
             },
             stream=False,
             timeout=100,

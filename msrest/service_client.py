@@ -31,6 +31,7 @@ try:
     from urlparse import urljoin, urlparse
 except ImportError:
     from urllib.parse import urljoin, urlparse
+import warnings
 
 from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
 
@@ -106,7 +107,7 @@ class _RequestsHTTPDriver(object):
         kwargs['allow_redirects'] = config.get(
             'allow_redirects', bool(self.config.redirect_policy))
 
-        kwargs['headers'] = {}
+        kwargs['headers'] = self.config.headers.copy()
         kwargs['headers']['User-Agent'] = self.config.user_agent
         kwargs['headers']['Accept'] = 'application/json'
         proxies = config.get('proxies', self.config.proxies())
@@ -423,6 +424,21 @@ class ServiceClient(object):
             base = self.config.base_url.format(**kwargs).rstrip('/')
             url = urljoin(base + '/', url)
         return url
+
+    def add_header(self, header, value):
+        # type: (str, str) -> None
+        """Add a persistent header - this header will be applied to all
+        requests sent during the current client session.
+
+        .. deprecated:: 0.5.0
+           Use config.headers instead
+
+        :param str header: The header name.
+        :param str value: The header value.
+        """
+        warnings.warn("Private attribute _client.add_header is deprecated. Use config.headers instead.",
+                      DeprecationWarning)
+        self.config.headers[header] = value
 
     def get(self, url=None, params=None, headers=None, content=None, form_content=None):
         # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
