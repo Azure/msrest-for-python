@@ -75,6 +75,9 @@ class Configuration(object):
         # Communication configuration
         self.connection = ClientConnection()
 
+        # Headers (sent with every requests)
+        self.headers = {}  # type: Dict[str, str]
+
         # ProxyConfiguration
         self.proxies = ClientProxies()
 
