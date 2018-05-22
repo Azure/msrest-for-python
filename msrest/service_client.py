@@ -58,7 +58,7 @@ class SDKClient(object):
     def __init__(self, creds, config):
         # type: (Any, Configuration) -> None
         self._client = ServiceClient(creds, config)
-    
+
     def close(self):
         # type: () -> None
         """Close the client if keep_alive is True.
@@ -76,7 +76,7 @@ class SDKClient(object):
 class _RequestsHTTPDriver(object):
 
     _protocols = ['http://', 'https://']
-    
+
     def __init__(self, config):
         # type: (Configuration) -> None
         self.config = config
@@ -109,7 +109,6 @@ class _RequestsHTTPDriver(object):
 
         kwargs['headers'] = self.config.headers.copy()
         kwargs['headers']['User-Agent'] = self.config.user_agent
-        kwargs['headers']['Accept'] = 'application/json'
         proxies = config.get('proxies', self.config.proxies())
         if proxies:
             kwargs['proxies'] = proxies
@@ -200,7 +199,7 @@ class ServiceClient(object):
         # type: (Any, Configuration) -> None
         self.config = config
         self.creds = creds if creds else Authentication()
-        self._http_driver = _RequestsHTTPDriver(config)        
+        self._http_driver = _RequestsHTTPDriver(config)
 
     def __enter__(self):
         # type: () -> ServiceClient
@@ -256,6 +255,12 @@ class ServiceClient(object):
 
         if headers:
             request.headers.update(headers)
+        # All requests should contain a Accept.
+        # This should be done by Autorest, but wasn't in old Autorest
+        # Force it for now, but might deprecate it later.
+        if "Accept" not in request.headers:
+            _LOGGER.warning("Accept header absent and forced to application/json")
+            request.headers['Accept'] = 'application/json'
 
         if content:
             request.add_content(content)
