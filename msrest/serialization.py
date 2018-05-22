@@ -243,7 +243,7 @@ class Model(object):
                 return key
 
         Key is the attribute name used in Python. Attr_desc
-        is a dict of metadata. Currently contains 'type' with the 
+        is a dict of metadata. Currently contains 'type' with the
         msrest type and 'key' with the RestAPI encoded key.
         Value is the current value in this object.
 
@@ -462,7 +462,7 @@ class Serializer(object):
                 attr_name = attr
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
                     continue
-                
+
                 if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
                     serialized.update(target_obj.additional_properties)
                     continue
@@ -525,7 +525,7 @@ class Serializer(object):
                 attr_name, class_name, str(target_obj))
             raise_with_traceback(SerializationError, msg, err)
         else:
-            return serialized        
+            return serialized
 
     def body(self, data, data_type, **kwargs):
         """Serialize data intended for a request body.
@@ -1295,7 +1295,7 @@ class Deserializer(object):
 
         If raw_data is a requests.Response object, follow Content-Type
         to parse (ignore content_type parameter).
-        If bytes is given, decode using UTF8 first. 
+        If bytes is given, decode using UTF8 first.
         If content_type is given, try to parse.
         Otherwise, return initial data.
         We assume everything is UTF8 (BOM acceptable).
@@ -1333,7 +1333,27 @@ class Deserializer(object):
             except ValueError as err:
                 raise DeserializationError("JSON is invalid: {}".format(err), err)
         elif "xml" in (content_type or []):
-            return ET.fromstring(data)
+            try:
+                return ET.fromstring(data)
+            except ET.ParseError:
+                # It might be because the server has an issue, and returned JSON with
+                # content-type XML....
+                # So let's try a JSON load, and if it's still broken
+                # let's flow the initial exception
+                def _json_attemp(data):
+                    try:
+                        return True, json.loads(data)
+                    except ValueError:
+                        return False, None # Don't care about this one
+                success, data = _json_attemp(data)
+                if success:
+                    return data
+                # If i'm here, it's not JSON, it's not XML, let's scream
+                # and raise the last context in this block (the XML exception)
+                # The function hack is because Py2.7 messes up with exception
+                # context otherwise.
+                _LOGGER.critical("Wasn't XML not JSON, failing")
+                raise
         return data
 
     def _instantiate_model(self, response, attrs, additional_properties=None):

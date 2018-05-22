@@ -1,6 +1,6 @@
 ﻿#--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -99,7 +99,7 @@ class TestServiceClient(unittest.TestCase):
                 pass
 
         assert not cfg.keep_alive
-        assert creds.called == 2        
+        assert creds.called == 2
 
     def test_context_manager(self):
 
@@ -186,7 +186,7 @@ class TestServiceClient(unittest.TestCase):
             assert driver.session.adapters['http://example.org'].max_retries is not max_retries
 
     def test_no_log(self):
-        
+
         # By default, no log handler for HTTP
         with _RequestsHTTPDriver(self.cfg) as driver:
             kwargs = driver.configure_session()
@@ -204,7 +204,7 @@ class TestServiceClient(unittest.TestCase):
 
         # I can enable it globally
         self.cfg.enable_http_logger = True
-        with _RequestsHTTPDriver(self.cfg) as driver:        
+        with _RequestsHTTPDriver(self.cfg) as driver:
             kwargs = driver.configure_session()
             assert 'hooks' in kwargs
 
@@ -285,7 +285,7 @@ class TestServiceClient(unittest.TestCase):
         client.config = mock.Mock(base_url="https://my_endpoint.com/")
         formatted = ServiceClient.format_url(client, url, foo=123, bar="value")
         self.assertEqual(formatted, "https://my_endpoint.com/test")
-        
+
 
     def test_client_send(self):
 
@@ -318,7 +318,6 @@ class TestServiceClient(unittest.TestCase):
             cert=None,
             headers={
                 'User-Agent': self.cfg.user_agent,
-                'Accept': 'application/json',
                 'Test': 'true'  # From global config
             },
             stream=False,
@@ -336,7 +335,6 @@ class TestServiceClient(unittest.TestCase):
             cert=None,
             headers={
                 'User-Agent': self.cfg.user_agent,
-                'Accept': 'application/json',
                 'Content-Length': '16',
                 'id':'1234',
                 'Test': 'true'  # From global config
@@ -360,7 +358,6 @@ class TestServiceClient(unittest.TestCase):
             cert=None,
             headers={
                 'User-Agent': self.cfg.user_agent,
-                'Accept': 'application/json',
                 'Content-Length': '16',
                 'id':'1234',
                 'Test': 'true'  # From global config
@@ -387,7 +384,7 @@ class TestServiceClient(unittest.TestCase):
 
         client = mock.create_autospec(ServiceClient)
         client._format_data.return_value = "formatted"
-    
+
         request = ClientRequest('GET')
         ServiceClient.add_formdata(client, request)
         assert request.files == {}
@@ -438,7 +435,7 @@ class TestServiceClient(unittest.TestCase):
         assert req.method == 'GET'
         assert req.url == 'http://example.org'
         assert req.params == {}
-        assert req.headers == {}
+        assert req.headers == {'Accept': 'application/json'}
         assert req.data == []
         assert req.files == []
 
@@ -446,7 +443,7 @@ class TestServiceClient(unittest.TestCase):
         assert req.method == 'PUT'
         assert req.url == 'http://example.org'
         assert req.params == {}
-        assert req.headers == {'Content-Length': '18'}
+        assert req.headers == {'Content-Length': '18', 'Accept': 'application/json'}
         assert req.data == '{"creation": true}'
         assert req.files == []
 
