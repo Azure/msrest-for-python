@@ -1340,11 +1340,19 @@ class Deserializer(object):
                 # content-type XML....
                 # So let's try a JSON load, and if it's still broken
                 # let's flow the initial exception
-                try:
-                    return json.loads(data)
-                except Exception:
-                    pass # Don't care about this one
-                # If i'm here, it's not JSON, it's not XML, let's scream for XML
+                def _json_attemp(data):
+                    try:
+                        return True, json.loads(data)
+                    except ValueError:
+                        return False, None # Don't care about this one
+                success, data = _json_attemp(data)
+                if success:
+                    return data
+                # If i'm here, it's not JSON, it's not XML, let's scream
+                # and raise the last context in this block (the XML exception)
+                # The function hack is because Py2.7 messes up with exception
+                # context otherwise.
+                _LOGGER.critical("Wasn't XML not JSON, failing")
                 raise
         return data
 
