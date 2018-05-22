@@ -1,6 +1,6 @@
 ﻿#--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -339,7 +339,7 @@ class TestRuntimeSerialized(unittest.TestCase):
             _validation = {
                 'name': {'min_length': 3},
                 'display_names': {'min_items': 2},
-            }                
+            }
             _attribute_map = {
                 'name': {'key':'name', 'type':'str'},
                 'rec_list': {'key':'rec_list', 'type':'[[TestObj]]'},
@@ -347,7 +347,7 @@ class TestRuntimeSerialized(unittest.TestCase):
                 'display_names': {'key': 'display_names', 'type': '[str]'},
                 'obj': {'key':'obj', 'type':'TestObj'},
             }
-            
+
             def __init__(self, name):
                 self.name = name
                 self.rec_list = None
@@ -847,27 +847,27 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         message =self.s._serialize(ComplexJson())
 
-        output = { 
-            'p1': 'value1', 
-            'p2': 'value2', 
-            'top_date': '2014-01-01T00:00:00.000Z', 
-            'top_dates': [ 
-                '1900-01-01T00:00:00.000Z', 
-                '1901-01-01T00:00:00.000Z' 
-            ], 
+        output = {
+            'p1': 'value1',
+            'p2': 'value2',
+            'top_date': '2014-01-01T00:00:00.000Z',
+            'top_dates': [
+                '1900-01-01T00:00:00.000Z',
+                '1901-01-01T00:00:00.000Z'
+            ],
             'insider': {
-                'k1': '2015-01-01T00:00:00.000Z', 
-                'k2': '2016-01-01T00:00:00.000Z', 
-                'k3': '2017-01-01T00:00:00.000Z' 
-            }, 
-            'top_complex': { 
-                'id': 1, 
-                'name': 'Joey', 
-                'age': 23.36, 
-                'male': True, 
-                'birthday': '1992-01-01T00:00:00.000Z', 
-                'anniversary': '2013-12-08T00:00:00.000Z', 
-            } 
+                'k1': '2015-01-01T00:00:00.000Z',
+                'k2': '2016-01-01T00:00:00.000Z',
+                'k3': '2017-01-01T00:00:00.000Z'
+            },
+            'top_complex': {
+                'id': 1,
+                'name': 'Joey',
+                'age': 23.36,
+                'male': True,
+                'birthday': '1992-01-01T00:00:00.000Z',
+                'anniversary': '2013-12-08T00:00:00.000Z',
+            }
         }
         self.maxDiff = None
         self.assertEqual(message, output)
@@ -949,27 +949,27 @@ class TestRuntimeSerialized(unittest.TestCase):
                 self.d_type = 'siamese'
 
         message = {
-            "Animals": [ 
-            { 
-            "dType": "dog", 
-            "likesDogFood": True, 
-            "Name": "Fido" 
-            }, 
-            { 
-            "dType": "cat", 
-            "likesMice": False, 
-            "dislikes": { 
-            "dType": "dog", 
-            "likesDogFood": True, 
-            "Name": "Angry" 
-            }, 
-            "Name": "Felix" 
-            }, 
-            { 
-            "dType": "siamese", 
-            "Color": "grey", 
-            "likesMice": True, 
-            "Name": "Finch" 
+            "Animals": [
+            {
+            "dType": "dog",
+            "likesDogFood": True,
+            "Name": "Fido"
+            },
+            {
+            "dType": "cat",
+            "likesMice": False,
+            "dislikes": {
+            "dType": "dog",
+            "likesDogFood": True,
+            "Name": "Angry"
+            },
+            "Name": "Felix"
+            },
+            {
+            "dType": "siamese",
+            "Color": "grey",
+            "likesMice": True,
+            "Name": "Finch"
             }]}
 
         zoo = Zoo()
@@ -1008,22 +1008,22 @@ class TestRuntimeSerialized(unittest.TestCase):
         serialized = self.s.body({
             "animals": [{
                 "dType": "dog",
-                "likes_dog_food": True, 
-                "name": "Fido" 
-            },{ 
-                "dType": "cat", 
-                "likes_mice": False, 
-                "dislikes": { 
-                    "dType": "dog", 
-                    "likes_dog_food": True, 
-                    "name": "Angry" 
-                }, 
-                "name": "Felix" 
-            },{ 
-                "dType": "siamese", 
-                "color": "grey", 
-                "likes_mice": True, 
-                "name": "Finch" 
+                "likes_dog_food": True,
+                "name": "Fido"
+            },{
+                "dType": "cat",
+                "likes_mice": False,
+                "dislikes": {
+                    "dType": "dog",
+                    "likes_dog_food": True,
+                    "name": "Angry"
+                },
+                "name": "Felix"
+            },{
+                "dType": "siamese",
+                "color": "grey",
+                "likes_mice": True,
+                "name": "Finch"
             }]
         }, "Zoo")
         self.assertEqual(serialized, message)
@@ -1062,7 +1062,7 @@ class TestRuntimeSerialized(unittest.TestCase):
                 "KeyD": 4
             }
         }
-        
+
         self.assertEqual(serialized, message)
 
         self.s.dependencies = old_dependencies
@@ -1256,6 +1256,41 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.d = Deserializer()
         return super(TestRuntimeDeserialized, self).setUp()
 
+    def test_unpack(self):
+        result = Deserializer._unpack_content("<groot/>", content_type="application/xml")
+        assert result.tag == "groot"
+
+        # Catch some weird situation where content_type is XML, but content is JSON
+        result = Deserializer._unpack_content('{"ugly": true}', content_type="application/xml")
+        assert result["ugly"] is True
+
+        result = Deserializer._unpack_content('{"success": true}', content_type="application/json")
+        assert result["success"] is True
+
+        # For compat, if no content-type, and direct string, just return it
+        result = Deserializer._unpack_content('data')
+        assert result == "data"
+
+        # Decore bytes
+        result = Deserializer._unpack_content(b'data')
+        assert result == "data"
+
+        response = Response()
+        response.headers["content-type"] = "application/json"
+        response._content = b'{"success": true}'
+        response._content_consumed = True
+
+        result = Deserializer._unpack_content(response)
+        assert result["success"] is True
+
+        # If no content-type, assume it's JSON
+        response = Response()
+        response._content = b'{"success": true}'
+        response._content_consumed = True
+
+        result = Deserializer._unpack_content(response)
+        assert result["success"] is True
+
     def test_cls_method_deserialization(self):
         json_data = {
             'id': 'myid',
@@ -1369,11 +1404,11 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
             _validation = {
                 'name': {'min_length': 3},
-            }                
+            }
             _attribute_map = {
                 'name': {'key':'RestName', 'type':'str'},
             }
-            
+
             def __init__(self, name):
                 self.name = name
 
@@ -1657,7 +1692,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         with self.assertRaises(DeserializationError):
             response = self.d(self.TestObj, response_data)
             deserialized_list = [d for d in response.attr_d]
-        
+
         response_data.text = json.dumps({'AttrD': "NotAList"})
         with self.assertRaises(DeserializationError):
             response = self.d(self.TestObj, response_data)
@@ -1957,24 +1992,24 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 self.d_type = 'siamese'
 
         message = {
-            "Animals": [{ 
-                "dType": "dog", 
-                "likesDogFood": True, 
-                "Name": "Fido" 
-            },{ 
-                "dType": "cat", 
-                "likesMice": False, 
-                "dislikes": { 
-                    "dType": "dog", 
-                    "likesDogFood": True, 
-                    "Name": "Angry" 
-                }, 
-                "Name": "Felix" 
-            },{ 
-                "dType": "siamese", 
-                "Color": "grey", 
-                "likesMice": True, 
-                "Name": "Finch" 
+            "Animals": [{
+                "dType": "dog",
+                "likesDogFood": True,
+                "Name": "Fido"
+            },{
+                "dType": "cat",
+                "likesMice": False,
+                "dislikes": {
+                    "dType": "dog",
+                    "likesDogFood": True,
+                    "Name": "Angry"
+                },
+                "Name": "Felix"
+            },{
+                "dType": "siamese",
+                "Color": "grey",
+                "likesMice": True,
+                "Name": "Finch"
             }]
         }
 
@@ -2031,10 +2066,10 @@ class TestRuntimeDeserialized(unittest.TestCase):
             animal = self.d(Animal, message)
         self.assertEquals(animal.name, "Didier")
 
-        message = { 
-            "dType": "Penguin", 
-            "likesDogFood": True, 
-            "Name": "Fido" 
+        message = {
+            "dType": "Penguin",
+            "likesDogFood": True,
+            "Name": "Fido"
         }
         with self.assertLogs('msrest.serialization', level="WARNING"):
             animal = self.d(Animal, message)
@@ -2069,10 +2104,10 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 super(Dog, self).__init__(name)
                 self.d_type = 'dog'
 
-        message = { 
-            "odata.type": "dog", 
-            "likesDogFood": True, 
-            "Name": "Fido" 
+        message = {
+            "odata.type": "dog",
+            "likesDogFood": True,
+            "Name": "Fido"
             }
 
         self.d.dependencies = {
