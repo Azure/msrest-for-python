@@ -36,6 +36,8 @@ try:
 except ImportError:
     import mock
 
+import xml.etree.ElementTree as ET
+
 from requests import Response
 
 from msrest.serialization import Model, last_restapi_key_transformer, full_restapi_key_transformer, rest_key_extractor
@@ -44,6 +46,7 @@ from msrest.exceptions import SerializationError, DeserializationError, Validati
 
 from . import storage_models
 
+import pytest
 
 class Resource(Model):
     """Resource
@@ -1263,6 +1266,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
         # Catch some weird situation where content_type is XML, but content is JSON
         result = Deserializer._unpack_content('{"ugly": true}', content_type="application/xml")
         assert result["ugly"] is True
+
+        # Be sure I catch the correct exception if it's neither XML nor JSON
+        with pytest.raises(ET.ParseError):
+            result = Deserializer._unpack_content('gibberish', content_type="application/xml")
+        with pytest.raises(ET.ParseError):
+            result = Deserializer._unpack_content('{{gibberish}}', content_type="application/xml")
 
         result = Deserializer._unpack_content('{"success": true}', content_type="application/json")
         assert result["success"] is True
