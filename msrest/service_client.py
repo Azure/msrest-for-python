@@ -262,16 +262,16 @@ class ServiceClient(object):
             _LOGGER.warning("Accept header absent and forced to application/json")
             request.headers['Accept'] = 'application/json'
 
-        if content:
+        if content is not None:
             request.add_content(content)
 
         if form_content:
-            self.add_formdata(request, headers, form_content)
+            self._add_formdata(request, form_content)
 
         return request
 
-    def add_formdata(self, request, headers=None, content=None):
-        # type: (ClientRequest, Dict[str, str], Optional[Dict[str, str]]) -> None
+    def _add_formdata(self, request, content=None):
+        # type: (ClientRequest, Optional[Dict[str, str]]) -> None
         """Add data as a multipart form-data request to the request.
 
         We only deal with file-like objects or strings at this point.
@@ -283,7 +283,7 @@ class ServiceClient(object):
         """
         if content is None:
             content = {}
-        content_type = headers.pop('Content-Type', None) if headers else None
+        content_type = request.headers.pop('Content-Type', None) if request.headers else None
 
         if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
             # Do NOT use "add_content" that assumes input is JSON
@@ -303,8 +303,9 @@ class ServiceClient(object):
         :param dict content: Dictionary of the fields of the formdata.
         :param config: Any specific config overrides.
         """
-        self.add_formdata(request, headers, content)
-        return self.send(request, headers, None, **config)
+        request.headers = headers
+        self._add_formdata(request, content)
+        return self.send(request, **config)
 
     def send(self, request, headers=None, content=None, **config):
         """Prepare and send request object according to configuration.
@@ -331,7 +332,7 @@ class ServiceClient(object):
         # "content" and "headers" are deprecated, only old SDK
         if headers:
             request.headers.update(headers)
-        if not request.files and content is not None:
+        if not request.files and request.data == [] and content is not None:
             request.add_content(content)
         # End of deprecation
 

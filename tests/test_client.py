@@ -386,28 +386,32 @@ class TestServiceClient(unittest.TestCase):
         client._format_data.return_value = "formatted"
 
         request = ClientRequest('GET')
-        ServiceClient.add_formdata(client, request)
+        ServiceClient._add_formdata(client, request)
         assert request.files == {}
 
         request = ClientRequest('GET')
-        ServiceClient.add_formdata(client, request, {'id':'1234'}, {'Test':'Data'})
+        ServiceClient._add_formdata(client, request, {'Test':'Data'})
         assert request.files == {'Test':'formatted'}
 
         request = ClientRequest('GET')
-        ServiceClient.add_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':'2'})
+        request.headers = {'Content-Type':'1234'}
+        ServiceClient._add_formdata(client, request, {'1':'1', '2':'2'})
         assert request.files == {'1':'formatted', '2':'formatted'}
 
         request = ClientRequest('GET')
-        ServiceClient.add_formdata(client, request, {'Content-Type':'1234'}, {'1':'1', '2':None})
+        request.headers = {'Content-Type':'1234'}
+        ServiceClient._add_formdata(client, request, {'1':'1', '2':None})
         assert request.files == {'1':'formatted'}
 
         request = ClientRequest('GET')
-        ServiceClient.add_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':'2'})
+        request.headers = {'Content-Type':'application/x-www-form-urlencoded'}
+        ServiceClient._add_formdata(client, request, {'1':'1', '2':'2'})
         assert request.files == []
         assert request.data == {'1':'1', '2':'2'}
 
         request = ClientRequest('GET')
-        ServiceClient.add_formdata(client, request, {'Content-Type':'application/x-www-form-urlencoded'}, {'1':'1', '2':None})
+        request.headers = {'Content-Type':'application/x-www-form-urlencoded'}
+        ServiceClient._add_formdata(client, request, {'1':'1', '2':None})
         assert request.files == []
         assert request.data == {'1':'1'}
 
