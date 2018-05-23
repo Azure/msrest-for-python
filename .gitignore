@@ -1,5 +1,6 @@
 __pycache__
 env*
+.venv
 *.egg-info
 .tox
 .coverage
@@ -8,3 +9,4 @@ coverage.xml
 .idea
 build/
 dist/
+.pytest_cache

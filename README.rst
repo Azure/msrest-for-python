@@ -20,6 +20,32 @@ To install:
 Release History
 ---------------
 
+Unreleased Version 0.5.0
+++++++++++++++++++++++++
+
+**Disclaimer**
+
+This released is designed to be backward compatible with 0.4.x, but there is too many internal refactoring
+and new features to continue with 0.4.x versionning
+
+**Features**
+
+- Add XML support
+- Add many type hints, and MyPY testing on CI.
+- HTTP calls are made through a HTTPDriver API. Only implementation is `requests` for now. This driver API is *not* considered stable
+  and you should pin your msrest version if you want to provide a personal implementation.
+
+**Bugfixes**
+
+- Incorrect milliseconds serialization for some datetime object #94
+
+**Deprecation**
+
+That will trigger a DeprecationWarning if an old Autorest generated code is used.
+
+- _client.add_header is deprecated, and config.headers should be used instead
+- _client.send_formdata is deprecated, and _client.put/get/delete/post + _client.send should be used instead
+
 2018-04-30 Version 0.4.29
 +++++++++++++++++++++++++
 
@@ -127,7 +153,7 @@ Release History
 - Add support for additional_properties
 
   - By default, all additional_properties are kept.
-  - Additional properties are sent to the server only if it was specified in the Swagger, 
+  - Additional properties are sent to the server only if it was specified in the Swagger,
     or if "enable_additional_properties_sending" is called on the model we want it.
     This is a class method that enables it for all instance of this model.
 
@@ -143,7 +169,7 @@ Release History
 
   Instead of failing with an exception, this now returns the base type for this "discriminator".
 
-  Note that this is not a contradiction of the Swagger 2.0 spec, that specifies 
+  Note that this is not a contradiction of the Swagger 2.0 spec, that specifies
   "validation SHOULD fail [...] there may exist valid reasons in particular circumstances to ignore a particular item,
   but the full implications must be understood and carefully weighed before choosing a different course."
 
@@ -152,7 +178,7 @@ Release History
 **Bugfixes**
 
 - Optional formdata parameters were raising an exception (#65)
-- "application/x-www-form-urlencoded" form was sent using "multipart/form-data". 
+- "application/x-www-form-urlencoded" form was sent using "multipart/form-data".
   This causes problems if the server does not support "multipart/form-data" (#66)
 
 2017-10-26 Version 0.4.18
