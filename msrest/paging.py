@@ -40,9 +40,9 @@ from .pipeline import ClientRawResponse
 
 if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
-    from .async_paging import AsyncPagedMixin
+    from .async_paging import AsyncPagedMixin  # type: ignore
 else:
-    class AsyncPagedMixin(object):
+    class AsyncPagedMixin(object):  # type: ignore
         pass
 
 class Paged(AsyncPagedMixin, Iterator):
@@ -59,7 +59,7 @@ class Paged(AsyncPagedMixin, Iterator):
 
     def __init__(self, command, classes, raw_headers=None, **kwargs):
         # type: (Callable[[str], requests.Response], Dict[str, Model], Dict[str, str], Any) -> None
-        super(Paged, self).__init__(**kwargs)
+        super(Paged, self).__init__(**kwargs)  # type: ignore
         # Sets next_link, current_page, and _current_page_iter_index.
         self.reset()
         self._derserializer = Deserializer(classes)

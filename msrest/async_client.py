@@ -29,7 +29,7 @@ from collections.abc import AsyncIterator
 import functools
 import logging
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, Dict, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .configuration import Configuration
@@ -67,8 +67,7 @@ class _AsyncRequestsHTTPDriver(object):
     def close(self):
         self.session.close()
 
-    def configure_session(self, **config):
-        # type: (str) -> Dict[str, Any]
+    def configure_session(self, **config) -> Dict[str, Any]:
         """Apply configuration to session.
 
         :param config: Specific configuration overrides.
@@ -170,7 +169,7 @@ class _AsyncRequestsHTTPDriver(object):
 
 class AsyncServiceClientMixin:
 
-    def __init__(self, creds : Any, config : 'Configuration'):
+    def __init__(self, creds : Any, config : 'Configuration') -> None:
         # Don't do super, since I know it will be "object"
         # super(AsyncServiceClientMixin, self).__init__(creds, config)
         self._async_http_driver = _AsyncRequestsHTTPDriver(config)

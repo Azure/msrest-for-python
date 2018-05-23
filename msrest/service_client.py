@@ -52,9 +52,9 @@ from .exceptions import (
 
 if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
-    from .async_client import AsyncServiceClientMixin
+    from .async_client import AsyncServiceClientMixin  # type: ignore
 else:
-    class AsyncServiceClientMixin(object):
+    class AsyncServiceClientMixin(object):  # type: ignore
         def __init__(self, creds, config):
             pass
 
