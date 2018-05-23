@@ -30,7 +30,12 @@ try:
 except ImportError:
     from collections import Iterator
 
-from .serialization import Deserializer
+from typing import Dict, Any, List, Callable, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import requests
+
+from .serialization import Deserializer, Model
 from .pipeline import ClientRawResponse
 
 if sys.version_info >= (3, 5, 2):
@@ -49,15 +54,17 @@ class Paged(AsyncPagedMixin, Iterator):
      deserialization.
     :param dict raw_headers: A dict of raw headers to add if "raw" is called
     """
-    _validation = {}
-    _attribute_map = {}
+    _validation = {}  # type: Dict[str, Dict[str, Any]]
+    _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, command, classes, raw_headers=None, **kwargs):
+        # type: (Callable[[str], requests.Response], Dict[str, Model], Dict[str, str], Any) -> None
         super(Paged, self).__init__(**kwargs)
+        # Sets next_link, current_page, and _current_page_iter_index.
         self.reset()
         self._derserializer = Deserializer(classes)
         self._get_next = command
-        self._response = None
+        self._response = None  # type: Optional[requests.Response]
         self._raw_headers = raw_headers
 
     def __iter__(self):
@@ -73,6 +80,7 @@ class Paged(AsyncPagedMixin, Iterator):
 
     @property
     def raw(self):
+        # type: () -> ClientRawResponse
         """Get current page as ClientRawResponse.
 
         :rtype: ClientRawResponse
@@ -83,6 +91,7 @@ class Paged(AsyncPagedMixin, Iterator):
         return raw
 
     def get(self, url):
+        # type: (str) -> List[Model]
         """Get an arbitrary page.
 
         This resets the iterator and then fully consumes it to return the
@@ -95,12 +104,14 @@ class Paged(AsyncPagedMixin, Iterator):
         return self.advance_page()
 
     def reset(self):
+        # type: () -> None
         """Reset iterator to first page."""
         self.next_link = ""
-        self.current_page = []
+        self.current_page = []  # type: List[Model]
         self._current_page_iter_index = 0
 
     def advance_page(self):
+        # type: () -> List[Model]
         """Force moving the cursor to the next azure call.
 
         This method is for advanced usage, iterator protocol is prefered.

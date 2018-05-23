@@ -31,6 +31,11 @@ try:
 except ImportError:
     from urllib.parse import urlparse
 
+from typing import Any, Callable, Union, List, Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import requests
+
 from ..serialization import Model
 from ..service_client import ServiceClient
 from ..pipeline import ClientRawResponse
@@ -39,18 +44,23 @@ class PollingMethod(object):
     """ABC class for polling method.
     """
     def initialize(self, client, initial_response, deserialization_callback):
+        # type: (Any, Any, Any) -> None
         raise NotImplementedError("This method needs to be implemented")
 
     def run(self):
+        # type: () -> None
         raise NotImplementedError("This method needs to be implemented")
 
     def status(self):
+        # type: () -> str
         raise NotImplementedError("This method needs to be implemented")
 
     def finished(self):
+        # type: () -> bool
         raise NotImplementedError("This method needs to be implemented")
 
     def resource(self):
+        # type: () -> Any
         raise NotImplementedError("This method needs to be implemented")
 
 class NoPolling(PollingMethod):
@@ -61,27 +71,32 @@ class NoPolling(PollingMethod):
         self._deserialization_callback = None
 
     def initialize(self, _, initial_response, deserialization_callback):
+        # type: (Any, requests.Response, Callable) -> None
         self._initial_response = initial_response
         self._deserialization_callback = deserialization_callback
 
     def run(self):
+        # type: () -> None
         """Empty run, no polling.
         """
         pass
 
     def status(self):
+        # type: () -> str
         """Return the current status as a string.
         :rtype: str
         """
         return "succeeded"
 
     def finished(self):
+        # type: () -> bool
         """Is this polling finished?
         :rtype: bool
         """
         return True
 
     def resource(self):
+        # type: () -> Any
         return self._deserialization_callback(self._initial_response)
 
 
@@ -99,16 +114,17 @@ class LROPoller(object):
     """
 
     def __init__(self, client, initial_response, deserialization_callback, polling_method):
+        # type: (Any, Union[ClientRawResponse, requests.Response], Union[Model, Callable[[requests.Response], Model]], PollingMethod) -> None
         try:
-            self._client = client if isinstance(client, ServiceClient) else client._client
+            self._client = client if isinstance(client, ServiceClient) else client._client  #  type: ServiceClient
         except AttributeError:
             raise ValueError("Poller client parameter must be a low-level msrest Service Client or a SDK client.")
         self._response = initial_response.response if isinstance(initial_response, ClientRawResponse) else initial_response
-        self._callbacks = []
+        self._callbacks = []  # type: List[Callable]
         self._polling_method = polling_method
 
         if isinstance(deserialization_callback, type) and issubclass(deserialization_callback, Model):
-            deserialization_callback = deserialization_callback.deserialize
+            deserialization_callback = deserialization_callback.deserialize  # type: ignore
 
         # Might raise a CloudError
         self._polling_method.initialize(self._client, self._response, deserialization_callback)
@@ -147,6 +163,7 @@ class LROPoller(object):
             callbacks, self._callbacks = self._callbacks, []
 
     def status(self):
+        # type: () -> str
         """Returns the current status string.
 
         :returns: The current status string
@@ -155,6 +172,7 @@ class LROPoller(object):
         return self._polling_method.status()
 
     def result(self, timeout=None):
+        # type: (Optional[int]) -> Model
         """Return the result of the long running operation, or
         the result available after the specified timeout.
 
@@ -166,6 +184,7 @@ class LROPoller(object):
         return self._polling_method.resource()
 
     def wait(self, timeout=None):
+        # type: (Optional[int]) -> None
         """Wait on the long running operation for a specified length
         of time. You can check if this call as ended with timeout with the
         "done()" method.
@@ -178,11 +197,13 @@ class LROPoller(object):
             return
         self._thread.join(timeout=timeout)
         try:
-            raise self._exception
+            # Let's handle possible None in forgiveness here
+            raise self._exception  # type: ignore
         except TypeError: # Was None
             pass
 
     def done(self):
+        # type: () -> bool
         """Check status of the long running operation.
 
         :returns: 'True' if the process has completed, else 'False'.
@@ -190,6 +211,7 @@ class LROPoller(object):
         return self._thread is None or not self._thread.is_alive()
 
     def add_done_callback(self, func):
+        # type: (Callable) -> None
         """Add callback function to be run once the long running operation
         has completed - regardless of the status of the operation.
 
@@ -203,6 +225,7 @@ class LROPoller(object):
         self._callbacks.append(func)
 
     def remove_done_callback(self, func):
+        # type: (Callable) -> None
         """Remove a callback from the long running operation.
 
         :param callable func: The function to be removed from the callbacks.
