@@ -118,7 +118,7 @@ class ClientRequestError(ClientException):
 
 
 class AuthenticationError(ClientException):
-    """Client request failed to authentication."""
+    """Client request failed to authenticate."""
     pass
 
 
