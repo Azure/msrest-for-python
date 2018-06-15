@@ -9,4 +9,6 @@ coverage.xml
 .idea
 build/
 dist/
+.cache
 .pytest_cache
+.mypy_cache
