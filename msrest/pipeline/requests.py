@@ -1,4 +1,4 @@
-﻿# --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
 #
@@ -23,108 +23,137 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
-
-import functools
-import json
+"""
+This module is the requests implementation of Pipeline ABC
+"""
 import logging
-try:
-    from urlparse import urlparse
-except ImportError:
-    from urllib.parse import urlparse
-import xml.etree.ElementTree as ET
-
-from typing import Dict, Any, Optional, Union, List, TYPE_CHECKING
+from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import xml.etree.ElementTree as ET
+    from ..configuration import Configuration
 
 import requests
 from urllib3 import Retry  # Needs requests 2.16 at least to be safe
 
-from .serialization import Deserializer, Model
+from ..http_logger import log_request, log_response
+from . import HTTPSender, HTTPPolicy, ClientRequest, ClientRawResponse
 
 
 _LOGGER = logging.getLogger(__name__)
 
+class RequestsHTTPSender(HTTPSender):
 
+    _protocols = ['http://', 'https://']
 
-class ClientRequest(requests.Request):
-    """Wrapper for requests.Request object."""
+    def __init__(self, config):
+        # type: (Configuration) -> None
+        self.config = config
+        self.session = requests.Session()
 
-    def format_parameters(self, params):
-        # type: (Dict[str, str]) -> None
-        """Format parameters into a valid query string.
-        It's assumed all parameters have already been quoted as
-        valid URL strings.
+    def __enter__(self):
+        # type: () -> RequestsHTTPSender
+        return self
 
-        :param dict params: A dictionary of parameters.
+    def __exit__(self, *exc_details):
+        self.close()
+
+    def close(self):
+        self.session.close()
+
+    def configure_session(self, **config):
+        # type: (str) -> Dict[str, Any]
+        """Apply configuration to session.
+
+        :param config: Specific configuration overrides.
+        :rtype: dict
+        :return: A dict that will be kwarg-send to session.request
         """
-        query = urlparse(self.url).query
-        if query:
-            self.url = self.url.partition('?')[0]
-            existing_params = {
-                p[0]: p[-1]
-                for p in [p.partition('=') for p in query.split('&')]
-            }
-            params.update(existing_params)
-        query_params = ["{}={}".format(k, v) for k, v in params.items()]
-        query = '?' + '&'.join(query_params)
-        self.url = self.url + query
+        kwargs = self.config.connection()  # type: Dict[str, Any]
+        for opt in ['timeout', 'verify', 'cert']:
+            kwargs[opt] = config.get(opt, kwargs[opt])
+        kwargs.update({k:config[k] for k in ['cookies'] if k in config})
+        kwargs['allow_redirects'] = config.get(
+            'allow_redirects', bool(self.config.redirect_policy))
 
-    def add_content(self, data):
-        # type: (Optional[Union[Dict[str, Any], ET.Element]]) -> None
-        """Add a body to the request.
+        kwargs['headers'] = self.config.headers.copy()
+        kwargs['headers']['User-Agent'] = self.config.user_agent
+        proxies = config.get('proxies', self.config.proxies())
+        if proxies:
+            kwargs['proxies'] = proxies
 
-        :param data: Request body data, can be a json serializable
-         object (e.g. dictionary) or a generator (e.g. file data).
+        kwargs['stream'] = config.get('stream', True)
+
+        self.session.max_redirects = int(config.get('max_redirects', self.config.redirect_policy()))
+        self.session.trust_env = bool(config.get('use_env_proxies', self.config.proxies.use_env_settings))
+
+        # Patch the redirect method directly *if not done already*
+        if not getattr(self.session.resolve_redirects, 'is_mrest_patched', False):
+            redirect_logic = self.session.resolve_redirects
+
+            def wrapped_redirect(resp, req, **kwargs):
+                attempt = self.config.redirect_policy.check_redirect(resp, req)
+                return redirect_logic(resp, req, **kwargs) if attempt else []
+            wrapped_redirect.is_mrest_patched = True  # type: ignore
+
+            self.session.resolve_redirects = wrapped_redirect  # type: ignore
+
+        # if "enable_http_logger" is defined at the operation level, take the value.
+        # if not, take the one in the client config
+        # if not, disable http_logger
+        hooks = []
+        if config.get("enable_http_logger", self.config.enable_http_logger):
+            def log_hook(r, *args, **kwargs):
+                log_request(None, r.request)
+                log_response(None, r.request, r, result=r)
+            hooks.append(log_hook)
+
+        def make_user_hook_cb(user_hook, session):
+            def user_hook_cb(r, *args, **kwargs):
+                kwargs.setdefault("msrest", {})['session'] = session
+                return user_hook(r, *args, **kwargs)
+            return user_hook_cb
+
+        for user_hook in self.config.hooks:
+            hooks.append(make_user_hook_cb(user_hook, self.session))
+
+        if hooks:
+            kwargs['hooks'] = {'response': hooks}
+
+        # Change max_retries in current all installed adapters
+        max_retries = config.get('retries', self.config.retry_policy())
+        for protocol in self._protocols:
+            self.session.adapters[protocol].max_retries=max_retries
+
+        output_kwargs = self.config.session_configuration_callback(
+            self.session,
+            self.config,
+            config,
+            **kwargs
+        )
+        if output_kwargs is not None:
+            kwargs = output_kwargs
+
+        return kwargs
+
+    def send(self, request, **config):
+        # type: (ClientRequest, Any) -> requests.Response
+        """Send request object according to configuration.
+
+        :param ClientRequest request: The request object to be sent.
+        :param config: Any specific config overrides
         """
-        if data is None:
-            return
+        kwargs = config.copy()
+        if request.files:
+            kwargs['files'] = request.files
+        elif request.data:
+            kwargs['data'] = request.data
+        kwargs.setdefault("headers", {}).update(request.headers)
 
-        if isinstance(data, ET.Element):
-            self.data = ET.tostring(data, encoding="utf8")
-            self.headers['Content-Length'] = str(len(self.data))
-            return
-
-        # By default, assume JSON
-        try:
-            self.data = json.dumps(data)
-            self.headers['Content-Length'] = str(len(self.data))
-        except TypeError:
-            self.data = data
-
-
-class ClientRawResponse(object):
-    """Wrapper for response object.
-    This allows for additional data to be gathereded from the response,
-    for example deserialized headers.
-    It also allows the raw response object to be passed back to the user.
-
-    :param output: Deserialized response object.
-    :param response: Raw response object.
-    """
-
-    def __init__(self, output, response):
-        # type: (Union[Model, List[Model]], Optional[requests.Response]) -> None
-        self.response = response
-        self.output = output
-        self.headers = {}  # type: Dict[str, Optional[Any]]
-        self._deserialize = Deserializer()
-
-    def add_headers(self, header_dict):
-        # type: (Dict[str, str]) -> None
-        """Deserialize a specific header.
-
-        :param dict header_dict: A dictionary containing the name of the
-         header and the type to deserialize to.
-        """
-        if not self.response:
-            return
-        for name, data_type in header_dict.items():
-            value = self.response.headers.get(name)
-            value = self._deserialize(data_type, value)
-            self.headers[name] = value
-
+        response = self.session.request(
+            request.method,
+            request.url,
+            **kwargs)
+        return response
 
 class ClientRetryPolicy(object):
     """Retry configuration settings.

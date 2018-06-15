@@ -43,7 +43,7 @@ import requests.adapters
 
 from .authentication import Authentication
 from .pipeline import ClientRequest
-from .http_logger import log_request, log_response
+from .pipeline.requests import RequestsHTTPSender
 from .exceptions import (
     TokenExpiredError,
     ClientRequestError,
@@ -73,119 +73,6 @@ class SDKClient(object):
     def __exit__(self, *exc_details):
         self._client.__exit__(*exc_details)
 
-class _RequestsHTTPDriver(object):
-
-    _protocols = ['http://', 'https://']
-
-    def __init__(self, config):
-        # type: (Configuration) -> None
-        self.config = config
-        self.session = requests.Session()
-
-    def __enter__(self):
-        # type: () -> _RequestsHTTPDriver
-        return self
-
-    def __exit__(self, *exc_details):
-        self.close()
-
-    def close(self):
-        self.session.close()
-
-    def configure_session(self, **config):
-        # type: (str) -> Dict[str, Any]
-        """Apply configuration to session.
-
-        :param config: Specific configuration overrides.
-        :rtype: dict
-        :return: A dict that will be kwarg-send to session.request
-        """
-        kwargs = self.config.connection()  # type: Dict[str, Any]
-        for opt in ['timeout', 'verify', 'cert']:
-            kwargs[opt] = config.get(opt, kwargs[opt])
-        kwargs.update({k:config[k] for k in ['cookies'] if k in config})
-        kwargs['allow_redirects'] = config.get(
-            'allow_redirects', bool(self.config.redirect_policy))
-
-        kwargs['headers'] = self.config.headers.copy()
-        kwargs['headers']['User-Agent'] = self.config.user_agent
-        proxies = config.get('proxies', self.config.proxies())
-        if proxies:
-            kwargs['proxies'] = proxies
-
-        kwargs['stream'] = config.get('stream', True)
-
-        self.session.max_redirects = int(config.get('max_redirects', self.config.redirect_policy()))
-        self.session.trust_env = bool(config.get('use_env_proxies', self.config.proxies.use_env_settings))
-
-        # Patch the redirect method directly *if not done already*
-        if not getattr(self.session.resolve_redirects, 'is_mrest_patched', False):
-            redirect_logic = self.session.resolve_redirects
-
-            def wrapped_redirect(resp, req, **kwargs):
-                attempt = self.config.redirect_policy.check_redirect(resp, req)
-                return redirect_logic(resp, req, **kwargs) if attempt else []
-            wrapped_redirect.is_mrest_patched = True  # type: ignore
-
-            self.session.resolve_redirects = wrapped_redirect  # type: ignore
-
-        # if "enable_http_logger" is defined at the operation level, take the value.
-        # if not, take the one in the client config
-        # if not, disable http_logger
-        hooks = []
-        if config.get("enable_http_logger", self.config.enable_http_logger):
-            def log_hook(r, *args, **kwargs):
-                log_request(None, r.request)
-                log_response(None, r.request, r, result=r)
-            hooks.append(log_hook)
-
-        def make_user_hook_cb(user_hook, session):
-            def user_hook_cb(r, *args, **kwargs):
-                kwargs.setdefault("msrest", {})['session'] = session
-                return user_hook(r, *args, **kwargs)
-            return user_hook_cb
-
-        for user_hook in self.config.hooks:
-            hooks.append(make_user_hook_cb(user_hook, self.session))
-
-        if hooks:
-            kwargs['hooks'] = {'response': hooks}
-
-        # Change max_retries in current all installed adapters
-        max_retries = config.get('retries', self.config.retry_policy())
-        for protocol in self._protocols:
-            self.session.adapters[protocol].max_retries=max_retries
-
-        output_kwargs = self.config.session_configuration_callback(
-            self.session,
-            self.config,
-            config,
-            **kwargs
-        )
-        if output_kwargs is not None:
-            kwargs = output_kwargs
-
-        return kwargs
-
-    def send(self, request, **config):
-        # type: (ClientRequest, Any) -> requests.Response
-        """Send request object according to configuration.
-
-        :param ClientRequest request: The request object to be sent.
-        :param config: Any specific config overrides
-        """
-        kwargs = config.copy()
-        if request.files:
-            kwargs['files'] = request.files
-        elif request.data:
-            kwargs['data'] = request.data
-        kwargs.setdefault("headers", {}).update(request.headers)
-
-        response = self.session.request(
-            request.method,
-            request.url,
-            **kwargs)
-        return response
 
 class ServiceClient(object):
     """REST Service Client.
@@ -199,7 +86,7 @@ class ServiceClient(object):
         # type: (Any, Configuration) -> None
         self.config = config
         self.creds = creds if creds else Authentication()
-        self._http_driver = _RequestsHTTPDriver(config)
+        self._http_driver = RequestsHTTPSender(config)
 
     def __enter__(self):
         # type: () -> ServiceClient
@@ -318,7 +205,7 @@ class ServiceClient(object):
         if self.config.keep_alive:
             http_driver = self._http_driver
         else:
-            http_driver = _RequestsHTTPDriver(self.config)
+            http_driver = RequestsHTTPSender(self.config)
 
         try:
             self.creds.signed_session(http_driver.session)

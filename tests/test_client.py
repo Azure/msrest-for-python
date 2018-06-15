@@ -37,7 +37,7 @@ from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
 from msrest import ServiceClient, SDKClient
-from msrest.service_client import _RequestsHTTPDriver
+from msrest.pipeline.requests import RequestsHTTPSender
 from msrest.authentication import OAuthTokenAuthentication, Authentication
 
 from msrest import Configuration
@@ -55,7 +55,7 @@ class TestServiceClient(unittest.TestCase):
 
     def test_session_callback(self):
 
-        with _RequestsHTTPDriver(self.cfg) as driver:
+        with RequestsHTTPSender(self.cfg) as driver:
 
             def callback(session, global_config, local_config, **kwargs):
                 self.assertIs(session, driver.session)
@@ -178,7 +178,7 @@ class TestServiceClient(unittest.TestCase):
         # If the user adds its own adapter, don't touch it
         max_retries = self.cfg.retry_policy()
 
-        with _RequestsHTTPDriver(self.cfg) as driver:
+        with RequestsHTTPSender(self.cfg) as driver:
             driver.session.mount('http://example.org', HTTPAdapter())
             driver.configure_session()
             assert driver.session.adapters["http://"].max_retries is max_retries
@@ -188,29 +188,29 @@ class TestServiceClient(unittest.TestCase):
     def test_no_log(self):
 
         # By default, no log handler for HTTP
-        with _RequestsHTTPDriver(self.cfg) as driver:
+        with RequestsHTTPSender(self.cfg) as driver:
             kwargs = driver.configure_session()
             assert 'hooks' not in kwargs
 
         # I can enable it per request
-        with _RequestsHTTPDriver(self.cfg) as driver:
+        with RequestsHTTPSender(self.cfg) as driver:
             kwargs = driver.configure_session(**{"enable_http_logger": True})
             assert 'hooks' in kwargs
 
         # I can enable it per request (bool value should be honored)
-        with _RequestsHTTPDriver(self.cfg) as driver:
+        with RequestsHTTPSender(self.cfg) as driver:
             kwargs = driver.configure_session(**{"enable_http_logger": False})
             assert 'hooks' not in kwargs
 
         # I can enable it globally
         self.cfg.enable_http_logger = True
-        with _RequestsHTTPDriver(self.cfg) as driver:
+        with RequestsHTTPSender(self.cfg) as driver:
             kwargs = driver.configure_session()
             assert 'hooks' in kwargs
 
         # I can enable it globally and override it locally
         self.cfg.enable_http_logger = True
-        with _RequestsHTTPDriver(self.cfg) as driver:
+        with RequestsHTTPSender(self.cfg) as driver:
             kwargs = driver.configure_session(**{"enable_http_logger": False})
             assert 'hooks' not in kwargs
 
