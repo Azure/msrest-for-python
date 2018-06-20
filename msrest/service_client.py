@@ -27,6 +27,7 @@
 import contextlib
 import logging
 import os
+import sys
 try:
     from urlparse import urljoin, urlparse
 except ImportError:
@@ -48,6 +49,14 @@ from .exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
+
+if sys.version_info >= (3, 5, 2):
+    # Not executed on old Python, no syntax error
+    from .async_client import AsyncServiceClientMixin  # type: ignore
+else:
+    class AsyncServiceClientMixin(object):  # type: ignore
+        def __init__(self, creds, config):
+            pass
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -187,7 +196,7 @@ class _RequestsHTTPDriver(object):
             **kwargs)
         return response
 
-class ServiceClient(object):
+class ServiceClient(AsyncServiceClientMixin):
     """REST Service Client.
     Maintains client pipeline and handles all requests and responses.
 
@@ -197,6 +206,7 @@ class ServiceClient(object):
 
     def __init__(self, creds, config):
         # type: (Any, Configuration) -> None
+        super(ServiceClient, self).__init__(creds, config)
         self.config = config
         self.creds = creds if creds else Authentication()
         self._http_driver = _RequestsHTTPDriver(config)
@@ -385,22 +395,13 @@ class ServiceClient(object):
         :param callback: Custom callback for monitoring progress.
         """
         block = self.config.connection.data_block_size
-        if not data._content_consumed:
-            with contextlib.closing(data) as response:
-                for chunk in response.iter_content(block):
-                    if not chunk:
-                        break
-                    if callback and callable(callback):
-                        callback(chunk, response=response)
-                    yield chunk
-        else:
-            for chunk in data.iter_content(block):
+        with contextlib.closing(data) as response:
+            for chunk in response.iter_content(block):
                 if not chunk:
                     break
                 if callback and callable(callback):
-                    callback(chunk, response=data)
+                    callback(chunk, response)
                 yield chunk
-        data.close()
 
     def stream_upload(self, data, callback):
         """Generator for streaming request body data.

@@ -432,6 +432,25 @@ class TestServiceClient(unittest.TestCase):
         data = ServiceClient._format_data(mock_client, mock_stream)
         self.assertEqual(data, ("file_name", mock_stream, "application/octet-stream"))
 
+    def test_client_stream_download(self):
+
+        mock_client = ServiceClient(None, Configuration(None))
+        mock_client.config.connection.data_block_size = 1
+
+        response = requests.Response()
+        response._content = "abc"
+        response._content_consumed = True
+        response.status_code = 200
+
+        def user_callback(chunk, local_response):
+            assert local_response is response
+            assert chunk in ["a", "b", "c"]
+
+        sync_iterator = mock_client.stream_download(response, user_callback)
+        result = ""
+        for value in sync_iterator:
+            result += value
+        assert result == "abc"
     def test_request_builder(self):
         client = ServiceClient(self.creds, self.cfg)
 
