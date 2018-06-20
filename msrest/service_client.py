@@ -259,7 +259,7 @@ class ServiceClient(object):
         # This should be done by Autorest, but wasn't in old Autorest
         # Force it for now, but might deprecate it later.
         if "Accept" not in request.headers:
-            _LOGGER.warning("Accept header absent and forced to application/json")
+            _LOGGER.debug("Accept header absent and forced to application/json")
             request.headers['Accept'] = 'application/json'
 
         if content is not None:
