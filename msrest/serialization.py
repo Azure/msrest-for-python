@@ -1410,8 +1410,6 @@ class Deserializer(object):
             if data_type in self.deserialize_type:
                 if isinstance(data, self.deserialize_expected_types.get(data_type, tuple())):
                     return data
-                if isinstance(data, ET.Element):
-                    data = data.text
                 data_val = self.deserialize_type[data_type](data)
                 return data_val
 
@@ -1474,6 +1472,9 @@ class Deserializer(object):
         """
         if attr is None:
             return None
+        if isinstance(attr, ET.Element):
+            # Do no recurse on XML, just return the tree as-is
+            return attr
         if isinstance(attr, basestring):
             return self.deserialize_basic(attr, 'str')
         obj_type = type(attr)
@@ -1597,6 +1598,8 @@ class Deserializer(object):
         :rtype: bytearray
         :raises: TypeError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         return bytearray(b64decode(attr))
 
     @staticmethod
@@ -1607,6 +1610,8 @@ class Deserializer(object):
         :rtype: bytearray
         :raises: TypeError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         padding = '=' * (3 - (len(attr) + 3) % 4)
         attr = attr + padding
         encoded = attr.replace('-', '+').replace('_', '/')
@@ -1620,6 +1625,8 @@ class Deserializer(object):
         :rtype: Decimal
         :raises: DeserializationError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         try:
             return decimal.Decimal(attr)
         except decimal.DecimalException as err:
@@ -1634,6 +1641,8 @@ class Deserializer(object):
         :rtype: long or int
         :raises: ValueError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         try:
             return long(attr)
         except NameError:
@@ -1647,6 +1656,8 @@ class Deserializer(object):
         :rtype: TimeDelta
         :raises: DeserializationError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         try:
             duration = isodate.parse_duration(attr)
         except(ValueError, OverflowError, AttributeError) as err:
@@ -1663,6 +1674,8 @@ class Deserializer(object):
         :rtype: Date
         :raises: DeserializationError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         if re.search(r"[^\W\d_]", attr, re.I + re.U):
             raise DeserializationError("Date must have only digits and -. Received: %s" % attr)
         # This must NOT use defaultmonth/defaultday. Using None ensure this raises an exception.
@@ -1676,6 +1689,8 @@ class Deserializer(object):
         :rtype: Datetime
         :raises: DeserializationError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         try:
             date_obj = datetime.datetime.strptime(
                 attr, "%a, %d %b %Y %H:%M:%S %Z")
@@ -1695,6 +1710,8 @@ class Deserializer(object):
         :rtype: Datetime
         :raises: DeserializationError if string format invalid.
         """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
         try:
             attr = attr.upper()
             match = Deserializer.valid_date.match(attr)
@@ -1731,6 +1748,8 @@ class Deserializer(object):
         :rtype: Datetime
         :raises: DeserializationError if format invalid
         """
+        if isinstance(attr, ET.Element):
+            attr = int(attr.text)
         try:
             date_obj = datetime.datetime.fromtimestamp(attr, TZ_UTC)
         except ValueError as err:

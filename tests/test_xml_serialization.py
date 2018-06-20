@@ -1,6 +1,6 @@
 #--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -65,9 +65,25 @@ class TestXmlDeserialization:
 
         s = Deserializer({"XmlModel": XmlModel})
         result = s(XmlModel, basic_xml, "application/xml")
-            
+
         assert result.age == 37
         assert result.country == "france"
+
+    def test_object(self):
+        basic_xml = """<?xml version="1.0"?>
+            <Data country="france">
+                <Age>37</Age>
+            </Data>"""
+
+        s = Deserializer()
+        result = s('object', basic_xml, "application/xml")
+
+        # Should be a XML tree
+        assert result.tag == "Data"
+        assert result.get("country") == "france"
+        for child in result:
+            assert child.tag == "Age"
+            assert child.text == "37"
 
     def test_basic_empty(self):
         """Test an basic XML with an empty node."""
@@ -86,7 +102,7 @@ class TestXmlDeserialization:
 
         s = Deserializer({"XmlModel": XmlModel})
         result = s(XmlModel, basic_xml, "application/xml")
-            
+
         assert result.age == ""
 
     def test_basic_empty_list(self):
@@ -351,7 +367,7 @@ class TestXmlDeserialization:
 
         s = Deserializer({"XmlModel": XmlModel})
         result = s(XmlModel, basic_xml, "application/xml")
-            
+
         assert result.age == 37
 
 class TestXmlSerialization:
@@ -409,7 +425,7 @@ class TestXmlSerialization:
         s = Serializer({"XmlModel": XmlModel})
         rawxml = s.body(mymodel, 'XmlModel')
 
-        assert_xml_equals(rawxml, basic_xml)        
+        assert_xml_equals(rawxml, basic_xml)
 
     def test_direct_array(self):
         """Test an ultra basic XML."""
@@ -718,4 +734,4 @@ class TestXmlSerialization:
         rawxml = s.body(mymodel, 'XmlModel')
 
         assert_xml_equals(rawxml, basic_xml)
-        
+
