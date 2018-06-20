@@ -398,6 +398,20 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    def test_object(self):
+        """Test serialize object as is.
+        """
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data country="france">
+                <Age>37</Age>
+            </Data>""")
+
+        s = Serializer()
+        rawxml = s.body(basic_xml, 'object')
+
+        # It should actually be the same object, should not even try to touch it
+        assert rawxml is basic_xml
+
     @pytest.mark.skipif(sys.version_info < (3,6),
                         reason="Unstable before python3.6 for some reasons")
     def test_type_basic(self):

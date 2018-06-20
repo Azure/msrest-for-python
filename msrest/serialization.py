@@ -836,6 +836,8 @@ class Serializer(object):
         """
         if attr is None:
             return None
+        if isinstance(attr, ET.Element):
+            return attr
         obj_type = type(attr)
         if obj_type in self.basic_types:
             return self.serialize_basic(attr, self.basic_types[obj_type], **kwargs)
