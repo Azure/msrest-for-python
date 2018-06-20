@@ -16,8 +16,6 @@ _autorest_install: &_autorest_install
   - sudo apt-get install libunwind8-dev
   - nvm install 7
   - npm install # Install test server pre-requisites
-  - cd node_modules/@microsoft.azure/autorest.testserver
-  - npm start &
 jobs:
   include:
     - stage: MyPy
