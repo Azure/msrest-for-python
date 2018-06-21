@@ -14,7 +14,7 @@ _autorest_install: &_autorest_install
   - git clone --recursive https://github.com/Azure/autorest.python.git
   - cd autorest.python
   - sudo apt-get install libunwind8-dev
-  - nvm install 7
+  - nvm install 8
   - npm install # Install test server pre-requisites
 jobs:
   include:
