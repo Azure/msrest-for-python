@@ -20,6 +20,16 @@ To install:
 Release History
 ---------------
 
+2018-06-21 Version 0.5.1
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Lower Accept header overwrite logging message #110
+- Fix 'object' type and XML format
+
+Thanks to dharmab for his contribution
+
 2018-06-12 Version 0.5.0
 ++++++++++++++++++++++++
 
