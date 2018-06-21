@@ -12,10 +12,11 @@ _test: &_test
 _autorest_install: &_autorest_install
   before_install:
   - git clone --recursive https://github.com/Azure/autorest.python.git
-  - cd autorest.python
   - sudo apt-get install libunwind8-dev
   - nvm install 8
+  - pushd autorest.python
   - npm install # Install test server pre-requisites
+  - popd
 jobs:
   include:
     - stage: MyPy
