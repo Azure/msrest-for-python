@@ -28,6 +28,7 @@ This module is the requests implementation of Pipeline ABC
 """
 import logging
 from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
+import warnings
 
 if TYPE_CHECKING:
     from ..configuration import Configuration
@@ -49,6 +50,7 @@ class RequestsHTTPSender(HTTPSender):
         # type: (Configuration) -> None
         self.config = config
         self.session = requests.Session()
+        self._init_session()
 
     def __enter__(self):
         # type: () -> RequestsHTTPSender
@@ -59,6 +61,51 @@ class RequestsHTTPSender(HTTPSender):
 
     def close(self):
         self.session.close()
+
+    def _init_session(self):
+        # type: () -> None
+        """Init session level configuration of requests.
+        """
+        self.session.max_redirects = int(config.get('max_redirects', self.config.redirect_policy()))
+        self.session.trust_env = bool(config.get('use_env_proxies', self.config.proxies.use_env_settings))
+
+        # Patch the redirect method directly
+        redirect_logic = self.session.resolve_redirects
+
+        def wrapped_redirect(resp, req, **kwargs):
+            attempt = self.config.redirect_policy.check_redirect(resp, req)
+            return redirect_logic(resp, req, **kwargs) if attempt else []
+
+        self.session.resolve_redirects = wrapped_redirect  # type: ignore
+
+        # Change max_retries in current all installed adapters
+        max_retries = config.get('retries', self.config.retry_policy())
+        for protocol in self._protocols:
+            self.session.adapters[protocol].max_retries=max_retries
+
+    def _patch_session(self, **config):
+        # type: (str) -> None
+        """Patch the current session with Request level operation config.
+
+        This is deprecated, we shouldn't patch the session with
+        arguments at the Request, and "config" should be used.
+        """
+        if 'max_redirects' in config:
+            warnings.warn("max_redirects in operation kwargs is deprecated, use config.redirect_policy instead",
+                          DeprecationWarning)
+            self.session.max_redirects = int(config.get('max_redirects'))
+
+        if 'use_env_proxies' in config:
+            warnings.warn("use_env_proxies in operation kwargs is deprecated, use config.proxies instead",
+                          DeprecationWarning)
+            self.session.trust_env = bool(config.get('use_env_proxies'))
+
+        if 'retries' in config:
+            warnings.warn("retries in operation kwargs is deprecated, use config.retry_policy instead",
+                          DeprecationWarning)
+            max_retries = config.get('retries')
+            for protocol in self._protocols:
+                self.session.adapters[protocol].max_retries=max_retries
 
     def configure_session(self, **config):
         # type: (str) -> Dict[str, Any]
@@ -83,20 +130,6 @@ class RequestsHTTPSender(HTTPSender):
 
         kwargs['stream'] = config.get('stream', True)
 
-        self.session.max_redirects = int(config.get('max_redirects', self.config.redirect_policy()))
-        self.session.trust_env = bool(config.get('use_env_proxies', self.config.proxies.use_env_settings))
-
-        # Patch the redirect method directly *if not done already*
-        if not getattr(self.session.resolve_redirects, 'is_mrest_patched', False):
-            redirect_logic = self.session.resolve_redirects
-
-            def wrapped_redirect(resp, req, **kwargs):
-                attempt = self.config.redirect_policy.check_redirect(resp, req)
-                return redirect_logic(resp, req, **kwargs) if attempt else []
-            wrapped_redirect.is_mrest_patched = True  # type: ignore
-
-            self.session.resolve_redirects = wrapped_redirect  # type: ignore
-
         # if "enable_http_logger" is defined at the operation level, take the value.
         # if not, take the one in the client config
         # if not, disable http_logger
@@ -118,11 +151,6 @@ class RequestsHTTPSender(HTTPSender):
 
         if hooks:
             kwargs['hooks'] = {'response': hooks}
-
-        # Change max_retries in current all installed adapters
-        max_retries = config.get('retries', self.config.retry_policy())
-        for protocol in self._protocols:
-            self.session.adapters[protocol].max_retries=max_retries
 
         output_kwargs = self.config.session_configuration_callback(
             self.session,
