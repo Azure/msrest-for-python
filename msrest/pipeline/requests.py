@@ -26,6 +26,7 @@
 """
 This module is the requests implementation of Pipeline ABC
 """
+from collections import namedtuple
 import logging
 from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
 import warnings
@@ -33,14 +34,128 @@ import warnings
 if TYPE_CHECKING:
     from ..configuration import Configuration
 
+from oauthlib import oauth2
 import requests
 from urllib3 import Retry  # Needs requests 2.16 at least to be safe
 
 from ..http_logger import log_request, log_response
+from ..exceptions import (
+    TokenExpiredError,
+    ClientRequestError,
+    raise_with_traceback)
 from . import HTTPSender, HTTPPolicy, ClientRequest, ClientRawResponse
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class RequestsCredentialsPolicy(HTTPPolicy):
+    """Implementation of request-oauthlib except and retry logic.
+    """
+    def __init__(self, credentials):
+        self._creds = credentials
+
+    def send(self, context, request):
+        session = context.session
+        try:
+            self.creds.signed_session(session)
+        except TypeError: # Credentials does not support session injection
+            _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
+            context.session = session = self.creds.signed_session()
+
+        try:
+            try:
+                return self.next.send(request)
+            except (oauth2.rfc6749.errors.InvalidGrantError,
+                    oauth2.rfc6749.errors.TokenExpiredError) as err:
+                error = "Token expired or is invalid. Attempting to refresh."
+                _LOGGER.warning(error)
+
+            try:
+                try:
+                    self.creds.refresh_session(session)
+                except TypeError: # Credentials does not support session injection
+                    _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
+                    context.session = session = self.creds.refresh_session()
+
+                return self.next.send(request)
+            except (oauth2.rfc6749.errors.InvalidGrantError,
+                    oauth2.rfc6749.errors.TokenExpiredError) as err:
+                msg = "Token expired or is invalid."
+                raise_with_traceback(TokenExpiredError, msg, err)
+
+        except (requests.RequestException,
+                oauth2.rfc6749.errors.OAuth2Error) as err:
+            msg = "Error occurred in request."
+            raise_with_traceback(ClientRequestError, msg, err)
+
+class RequestsPatchSession(HTTPPolicy):
+    """Implements request level configuration
+    that are actually to be done at the session level.
+
+    This is highly deprecated, and is totally legacy.
+    The pipeline structure allows way better design for this.
+    """
+    _protocols = ['http://', 'https://']
+
+    def __init__(self, config):
+        self._config = config
+
+    def send(self, context, request):
+        """Patch the current session with Request level operation config.
+
+        This is deprecated, we shouldn't patch the session with
+        arguments at the Request, and "config" should be used.
+        """
+        session = context.session
+
+        old_max_redirects = None
+        if 'max_redirects' in self.config:
+            warnings.warn("max_redirects in operation kwargs is deprecated, use config.redirect_policy instead",
+                          DeprecationWarning)
+            old_max_redirects = session.max_redirects
+            session.max_redirects = int(self.config.get('max_redirects'))
+
+        old_trust_env = None
+        if 'use_env_proxies' in self.config:
+            warnings.warn("use_env_proxies in operation kwargs is deprecated, use config.proxies instead",
+                          DeprecationWarning)
+            old_trust_env = session.trust_env
+            session.trust_env = bool(self.config.get('use_env_proxies'))
+
+        old_retries = {}
+        if 'retries' in self.config:
+            warnings.warn("retries in operation kwargs is deprecated, use config.retry_policy instead",
+                          DeprecationWarning)
+            max_retries = self.config.get('retries')
+            for protocol in self._protocols:
+                old_retries[protocol] = session.adapters[protocol].max_retries
+                session.adapters[protocol].max_retries = max_retries
+
+        try:
+            return self.next.send(context, request)
+        finally:
+            if old_max_redirects:
+                session.max_redirects = old_max_redirects
+
+            if old_trust_env:
+                session.trust_env = old_trust_env
+
+            if old_retries:
+                for protocol in self._protocols:
+                    session.adapters[protocol].max_retries = old_retries[protocol]
+
+class RequestsHTTPLogger(HTTPPolicy):
+    def __init__(self, config):
+        self._config = config
+
+    def send(self, context, request):
+        log_request(None, request)
+        response = self.next.send(context, request)
+        log_response(None, request, response, result=response)
+
+
+RequestsContext = namedtuple('RequestsContext', ['session', 'kwargs'])
 
 class RequestsHTTPSender(HTTPSender):
 
@@ -62,12 +177,18 @@ class RequestsHTTPSender(HTTPSender):
     def close(self):
         self.session.close()
 
+    def build_context(self):
+        return RequestsContext(
+            session=self.session,
+            kwargs={}
+        )
+
     def _init_session(self):
         # type: () -> None
         """Init session level configuration of requests.
         """
-        self.session.max_redirects = int(config.get('max_redirects', self.config.redirect_policy()))
-        self.session.trust_env = bool(config.get('use_env_proxies', self.config.proxies.use_env_settings))
+        self.session.max_redirects = int(self.config.redirect_policy())
+        self.session.trust_env = bool(self.config.get('use_env_proxies', self.config.proxies.use_env_settings))
 
         # Patch the redirect method directly
         redirect_logic = self.session.resolve_redirects
@@ -79,33 +200,9 @@ class RequestsHTTPSender(HTTPSender):
         self.session.resolve_redirects = wrapped_redirect  # type: ignore
 
         # Change max_retries in current all installed adapters
-        max_retries = config.get('retries', self.config.retry_policy())
+        max_retries = self.config.get('retries', self.config.retry_policy())
         for protocol in self._protocols:
             self.session.adapters[protocol].max_retries=max_retries
-
-    def _patch_session(self, **config):
-        # type: (str) -> None
-        """Patch the current session with Request level operation config.
-
-        This is deprecated, we shouldn't patch the session with
-        arguments at the Request, and "config" should be used.
-        """
-        if 'max_redirects' in config:
-            warnings.warn("max_redirects in operation kwargs is deprecated, use config.redirect_policy instead",
-                          DeprecationWarning)
-            self.session.max_redirects = int(config.get('max_redirects'))
-
-        if 'use_env_proxies' in config:
-            warnings.warn("use_env_proxies in operation kwargs is deprecated, use config.proxies instead",
-                          DeprecationWarning)
-            self.session.trust_env = bool(config.get('use_env_proxies'))
-
-        if 'retries' in config:
-            warnings.warn("retries in operation kwargs is deprecated, use config.retry_policy instead",
-                          DeprecationWarning)
-            max_retries = config.get('retries')
-            for protocol in self._protocols:
-                self.session.adapters[protocol].max_retries=max_retries
 
     def configure_session(self, **config):
         # type: (str) -> Dict[str, Any]
@@ -123,7 +220,6 @@ class RequestsHTTPSender(HTTPSender):
             'allow_redirects', bool(self.config.redirect_policy))
 
         kwargs['headers'] = self.config.headers.copy()
-        kwargs['headers']['User-Agent'] = self.config.user_agent
         proxies = config.get('proxies', self.config.proxies())
         if proxies:
             kwargs['proxies'] = proxies
@@ -176,6 +272,9 @@ class RequestsHTTPSender(HTTPSender):
         elif request.data:
             kwargs['data'] = request.data
         kwargs.setdefault("headers", {}).update(request.headers)
+
+        # Tag the request as sent by "requests", to help debugging depending of the driver used.
+        kwargs['headers']['User-Agent'] += " requests/{}".format(requests.__version__)
 
         response = self.session.request(
             request.method,

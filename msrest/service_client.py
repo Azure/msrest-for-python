@@ -42,8 +42,9 @@ from oauthlib import oauth2
 import requests.adapters
 
 from .authentication import Authentication
-from .pipeline import ClientRequest
-from .pipeline.requests import RequestsHTTPSender
+from .pipeline import ClientRequest, Pipeline
+from .pipeline.requests import RequestsHTTPSender, RequestsCredentialsPolicy
+from .pipeline.universal import UserAgentPolicy
 from .exceptions import (
     TokenExpiredError,
     ClientRequestError,
@@ -86,23 +87,32 @@ class ServiceClient(object):
         # type: (Any, Configuration) -> None
         self.config = config
         self.creds = creds if creds else Authentication()
-        self._http_driver = RequestsHTTPSender(config)
+
+        self._pipeline = self._create_pipeline()
+
+    def _create_pipeline(self):
+        # type: () -> Pipeline
+        return Pipeline([
+            self.config._user_agent,
+            RequestsCredentialsPolicy(self.creds),
+            RequestsHTTPSender(self.config)
+        ])
 
     def __enter__(self):
         # type: () -> ServiceClient
         self.config.keep_alive = True
-        self._http_driver.__enter__()
+        self._pipeline.__enter__()
         return self
 
     def __exit__(self, *exc_details):
-        self._http_driver.__exit__(*exc_details)
+        self._pipeline.__exit__(*exc_details)
         self.config.keep_alive = False
 
     def close(self):
         # type: () -> None
-        """Close the session if keep_alive is True.
+        """Close the pipeline if keep_alive is True.
         """
-        self._http_driver.close()
+        self._pipeline.__exit__()
 
     def _format_data(self, data):
         # type: (Union[str, IO]) -> Union[Tuple[None, str], Tuple[Optional[str], IO, str]]
@@ -203,18 +213,18 @@ class ServiceClient(object):
         :param config: Any specific config overrides
         """
         if self.config.keep_alive:
-            http_driver = self._http_driver
+            pipeline = self._pipeline
         else:
-            http_driver = RequestsHTTPSender(self.config)
+            pipeline = self._create_pipeline()
 
         try:
-            self.creds.signed_session(http_driver.session)
+            self.creds.signed_session(pipeline.session)
         except TypeError: # Credentials does not support session injection
-            http_driver.session = self.creds.signed_session()
-            if http_driver is self._http_driver:
+            pipeline.session = self.creds.signed_session()
+            if pipeline is self._pipeline:
                 _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
 
-        kwargs = http_driver.configure_session(**config)
+        kwargs = pipeline.configure_session(**config)
 
         # "content" and "headers" are deprecated, only old SDK
         if headers:
@@ -226,7 +236,7 @@ class ServiceClient(object):
         response = None
         try:
             try:
-                response = http_driver.send(request, **kwargs)
+                response = pipeline.run(request, **kwargs)
                 return response
             except (oauth2.rfc6749.errors.InvalidGrantError,
                     oauth2.rfc6749.errors.TokenExpiredError) as err:
@@ -235,15 +245,15 @@ class ServiceClient(object):
 
             try:
                 try:
-                    self.creds.refresh_session(http_driver.session)
+                    self.creds.refresh_session(pipeline.session)
                 except TypeError: # Credentials does not support session injection
-                    http_driver.session = self.creds.refresh_session()
-                    if http_driver is self._http_driver:
+                    pipeline.session = self.creds.refresh_session()
+                    if pipeline is self._pipeline:
                         _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
                     # Only reconfigure on refresh if it's a new session
-                    kwargs = http_driver.configure_session(**config)
+                    kwargs = pipeline.configure_session(**config)
 
-                response = http_driver.send(request, **kwargs)
+                response = pipeline.run(request, **kwargs)
                 return response
             except (oauth2.rfc6749.errors.InvalidGrantError,
                     oauth2.rfc6749.errors.TokenExpiredError) as err:
@@ -255,15 +265,15 @@ class ServiceClient(object):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:
-            self._close_local_session_if_necessary(response, http_driver, kwargs['stream'])
+            self._close_local_session_if_necessary(response, pipeline, kwargs['stream'])
 
-    def _close_local_session_if_necessary(self, response, http_driver, stream):
+    def _close_local_session_if_necessary(self, response, pipeline, stream):
         # Do NOT close session if using my own HTTP driver. No exception.
-        if self._http_driver is http_driver:
+        if self._pipeline is pipeline:
             return
         # Here, it's a local session, I might close it.
         if not response or not stream:
-            http_driver.session.close()
+            pipeline.session.close()
 
     def stream_download(self, data, callback):
         """Generator for streaming request body data.

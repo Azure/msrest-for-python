@@ -43,6 +43,7 @@ from .pipeline import (
     ClientRedirectPolicy,
     ClientProxies,
     ClientConnection)
+from .pipeline.universal import UserAgentPolicy
 from .version import msrest_version
 
 
@@ -88,11 +89,7 @@ class Configuration(object):
         self.redirect_policy = ClientRedirectPolicy()
 
         # User-Agent Header
-        self._user_agent = "python/{} ({}) requests/{} msrest/{}".format(
-            platform.python_version(),
-            platform.platform(),
-            requests.__version__,
-            msrest_version)
+        self._user_agent = UserAgentPolicy()
 
         # Should we log HTTP requests/response?
         self.enable_http_logger = False
@@ -117,7 +114,7 @@ class Configuration(object):
     def user_agent(self):
         # type: () -> str
         """The current user agent value."""
-        return self._user_agent
+        return self._user_agent.user_agent
 
     def add_user_agent(self, value):
         # type: (str) -> None
@@ -125,7 +122,7 @@ class Configuration(object):
 
         :param str value: value to add to user agent.
         """
-        self._user_agent = "{} {}".format(self._user_agent, value)
+        self._user_agent.add_user_agent(value)
 
     def _clear_config(self):
         # type: () -> None

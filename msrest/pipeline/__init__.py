@@ -51,6 +51,35 @@ try:
 except ImportError: # Python 2.7
     ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})  # type: ignore
 
+class Pipeline:
+    """A pipeline implementation.
+
+    This is implemented as a context manager, that will activate the context
+    of the HTTP sender.
+    """
+
+    def __init__(self, policies):
+        # type: List[Union[HTTPPolicy, SansIOHTTPPolicy, HTTPSender]] -> None
+        self._impl_policies = []
+        for policy in policies:
+            if isinstance(policy, SansIOHTTPPolicy):
+                self._impl_policies.append(_SansIOHTTPPolicyRunner(policy))
+            else:
+                self._impl_policies.append(policy)
+
+    def __enter__(self):
+        # type: () -> Pipeline
+        self._impl_policies[-1].__enter__()
+        return self
+
+    def __exit__(self, *exc_details):
+        self._impl_policies[-1].__exit__(*exc_details)
+
+    def run(self, request):
+        # type: (ClientRequest) -> requests.Response
+        context = self._impl_policies[-1].build_context()
+        return self._impl_policies[0].send(context, request)
+
 class HTTPSender(ABC):
     """An http sender ABC.
     """
@@ -62,16 +91,64 @@ class HTTPSender(ABC):
         """
         pass
 
+    def build_context(self):
+        # type: () -> Any
+        """Allow the sender to build a context that will be passed
+        across the pipeline with the request.
+
+        Return type has no constraints. Implementation is not
+        required and None by default.
+        """
+        return None
+
 class HTTPPolicy(ABC):
     """An http policy ABC.
     """
 
     @abc.abstractmethod
-    def send(self, request):
+    def send(self, context, request):
         # type: (ClientRequest) -> ClientRawResponse
         """Mutate the request.
+
+        Context content is dependent of the HTTPSender.
         """
         pass
+
+class SansIOHTTPPolicy:
+    """Represents a sans I/O policy.
+
+    This policy can act before the I/O, and after the I/O.
+    Use this policy if the actual I/O in the middle is an implementation
+    detail.
+
+    Context is not available, since it's implementation dependent.
+    if a policy needs a context of the Sender, it can't be universal.
+
+    Example: setting a UserAgent does not need to be tight to
+    sync or async implementation or specific HTTP lib
+    """
+    def prepare(self, request):
+        """Is executed before sending the request to next policy.
+        """
+        pass
+
+    def post_send(self, request, response):
+        """Is executed after the request comes back from the policy.
+        """
+        pass
+
+class _SansIOHTTPPolicyRunner(HTTPPolicy):
+    """Sync implementation of the SansIO policy.
+    """
+    def __init__(self, policy):
+        # type: (SansIOHTTPPolicy) -> None
+        self._policy = policy
+
+    def send(self, context, request):
+        self.prepare(request)
+        response = self.next.send(context, request)
+        self.post_send(request, response)
+
 
 class ClientRequest(requests.Request):
     """Wrapper for requests.Request object."""

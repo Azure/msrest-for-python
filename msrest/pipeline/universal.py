@@ -29,31 +29,23 @@ This module represents universal policy that works whatever the HTTPSender imple
 import platform
 
 from .. import __version__ as _msrest_version
-from . import ClientRequest, ClientRawResponse
+from . import ClientRequest, ClientRawResponse, SansIOHTTPPolicy
 from . import HTTPPolicy
 
 
-class SansIOHTTPPolicy(HTTPPolicy):
-    """Represents a sans I/O policy.
-
-    This policy can act before the I/O, and after the I/O.
-    Use this policy if the actual I/O in the middle is an implementation
-    detail.
-
-    Example: setting a UserAgent does not need to be tight to 
-    sync or async implementation or specific HTTP lib
+class HeadersPolicy(SansIOHTTPPolicy):
+    """A simple policy that sends the given headers
+    with the request.
     """
+    def __init__(self, headers):
+        self.headers = headers
+
     def prepare(self, request):
-        """Is executed before sending the request to next policy.
-        """
-        pass
+        request.headers.update(self.headers)
 
-    def post_send(self, request, response):
-        """Is executed after the request comes back from the policy.
-        """
-        pass        
+class UserAgentPolicy(HeadersPolicy):
+    _USERAGENT = "User-Agent"
 
-class UserAgentPolicy(SansIOHTTPPolicy):
     def __init__(self, user_agent=None):
         if user_agent is None:
             self._user_agent = "python/{} ({}) msrest/{}".format(
@@ -63,6 +55,9 @@ class UserAgentPolicy(SansIOHTTPPolicy):
             )
         else:
             self._user_agent = user_agent
+        super(UserAgentPolicy, self).__init__({
+            self._USERAGENT: self._user_agent
+        })
 
     @property
     def user_agent(self):
@@ -77,6 +72,4 @@ class UserAgentPolicy(SansIOHTTPPolicy):
         :param str value: value to add to user agent.
         """
         self._user_agent = "{} {}".format(self._user_agent, value)
-
-    def prepare(self, request):
-        request.headers["User-Agent"] = self._user_agent
+        self.headers[self._USERAGENT] = self._user_agent
