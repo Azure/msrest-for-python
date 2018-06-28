@@ -27,13 +27,14 @@ import abc
 import functools
 import json
 import logging
+import os.path
 try:
     from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import Dict, Any, Optional, Union, List, TYPE_CHECKING
+from typing import Dict, Any, Optional, Union, List, TYPE_CHECKING, cast, IO
 
 if TYPE_CHECKING:
     import xml.etree.ElementTree as ET
@@ -195,6 +196,44 @@ class ClientRequest(requests.Request):
         except TypeError:
             self.data = data
 
+    def _format_data(self, data):
+        # type: (Union[str, IO]) -> Union[Tuple[None, str], Tuple[Optional[str], IO, str]]
+        """Format field data according to whether it is a stream or
+        a string for a form-data request.
+
+        :param data: The request field data.
+        :type data: str or file-like object.
+        """
+        if hasattr(data, 'read'):
+            data = cast(IO, data)
+            data_name = None
+            try:
+                if data.name[0] != '<' and data.name[-1] != '>':
+                    data_name = os.path.basename(data.name)
+            except (AttributeError, TypeError):
+                pass
+            return (data_name, data, "application/octet-stream")
+        return (None, cast(str, data))
+
+    def _add_formdata(self, content=None):
+        # type: (Optional[Dict[str, str]]) -> None
+        """Add data as a multipart form-data request to the request.
+
+        We only deal with file-like objects or strings at this point.
+        The requests is not yet streamed.
+
+        :param dict headers: Any headers to add to the request.
+        :param dict content: Dictionary of the fields of the formdata.
+        """
+        if content is None:
+            content = {}
+        content_type = self.headers.pop('Content-Type', None) if self.headers else None
+
+        if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
+            # Do NOT use "add_content" that assumes input is JSON
+            self.data = {f: d for f, d in content.items() if d is not None}
+        else: # Assume "multipart/form-data"
+            self.files = {f: self._format_data(d) for f, d in content.items() if d is not None}
 
 class ClientRawResponse(object):
     """Wrapper for response object.

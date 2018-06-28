@@ -114,25 +114,6 @@ class ServiceClient(object):
         """
         self._pipeline.__exit__()
 
-    def _format_data(self, data):
-        # type: (Union[str, IO]) -> Union[Tuple[None, str], Tuple[Optional[str], IO, str]]
-        """Format field data according to whether it is a stream or
-        a string for a form-data request.
-
-        :param data: The request field data.
-        :type data: str or file-like object.
-        """
-        if hasattr(data, 'read'):
-            data = cast(IO, data)
-            data_name = None
-            try:
-                if data.name[0] != '<' and data.name[-1] != '>':
-                    data_name = os.path.basename(data.name)
-            except (AttributeError, TypeError):
-                pass
-            return (data_name, data, "application/octet-stream")
-        return (None, cast(str, data))
-
     def _request(self, url, params, headers, content, form_content):
         # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create ClientRequest object.
@@ -163,30 +144,9 @@ class ServiceClient(object):
             request.add_content(content)
 
         if form_content:
-            self._add_formdata(request, form_content)
+            request._add_formdata(form_content)
 
         return request
-
-    def _add_formdata(self, request, content=None):
-        # type: (ClientRequest, Optional[Dict[str, str]]) -> None
-        """Add data as a multipart form-data request to the request.
-
-        We only deal with file-like objects or strings at this point.
-        The requests is not yet streamed.
-
-        :param ClientRequest request: The request object to be sent.
-        :param dict headers: Any headers to add to the request.
-        :param dict content: Dictionary of the fields of the formdata.
-        """
-        if content is None:
-            content = {}
-        content_type = request.headers.pop('Content-Type', None) if request.headers else None
-
-        if content_type and content_type.lower() == 'application/x-www-form-urlencoded':
-            # Do NOT use "add_content" that assumes input is JSON
-            request.data = {f: d for f, d in content.items() if d is not None}
-        else: # Assume "multipart/form-data"
-            request.files = {f: self._format_data(d) for f, d in content.items() if d is not None}
 
     def send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.
@@ -201,7 +161,7 @@ class ServiceClient(object):
         :param config: Any specific config overrides.
         """
         request.headers = headers
-        self._add_formdata(request, content)
+        request._add_formdata(content)
         return self.send(request, **config)
 
     def send(self, request, headers=None, content=None, **config):
