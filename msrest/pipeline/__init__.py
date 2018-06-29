@@ -77,9 +77,10 @@ class Pipeline:
         self._impl_policies[-1].__exit__(*exc_details)
 
     def run(self, request):
-        # type: (ClientRequest) -> requests.Response
+        # type: (ClientRequest) -> ClientRawResponse
         context = self._impl_policies[-1].build_context()
-        return self._impl_policies[0].send(context, request)
+        request.pipeline_context = context
+        return self._impl_policies[0].send(request)
 
 class HTTPSender(ABC):
     """An http sender ABC.
@@ -145,14 +146,48 @@ class _SansIOHTTPPolicyRunner(HTTPPolicy):
         # type: (SansIOHTTPPolicy) -> None
         self._policy = policy
 
-    def send(self, context, request):
+    def send(self, request):
         self.prepare(request)
-        response = self.next.send(context, request)
+        response = self.next.send(request)
         self.post_send(request, response)
 
 
-class ClientRequest(requests.Request):
-    """Wrapper for requests.Request object."""
+class ClientRequest(object):
+    """Represents a HTTP request.
+
+    URL can be given without query parameters, to be added later using "format_parameters".
+
+    Instance can be created without data, to be added later using "add_content"
+
+    Instance can be created without files, to be added later using "add_formdata"
+
+    :param str method: HTTP method (GET, HEAD, etc.)
+    :param str url: At least complete scheme/host/path
+    :param dict[str,str] headers: HTTP headers
+    :param files: Files list.
+    :param data: Body to be sent.
+    :type data: bytes or str.
+    """
+    def __init__(self, method=None, url=None, headers=None, files=None, data=None):
+        # type: (str, str, Dict[str, str], Any, Union[str, bytes]) -> None
+        self.method = method
+        self.url = url
+        self.headers = headers
+        self.files = files
+        self.data = data
+        self.pipeline_context = None
+
+    def __repr__(self):
+        return '<ClientRequest [%s]>' % (self.method)
+
+    @property
+    def body(self):
+        """Alias to data."""
+        return self.data
+
+    @body.setter
+    def body(self, value):
+        self.data = value
 
     def format_parameters(self, params):
         # type: (Dict[str, str]) -> None
@@ -215,7 +250,7 @@ class ClientRequest(requests.Request):
             return (data_name, data, "application/octet-stream")
         return (None, cast(str, data))
 
-    def _add_formdata(self, content=None):
+    def add_formdata(self, content=None):
         # type: (Optional[Dict[str, str]]) -> None
         """Add data as a multipart form-data request to the request.
 

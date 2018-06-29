@@ -101,13 +101,13 @@ class RequestsPatchSession(HTTPPolicy):
     def __init__(self, config):
         self._config = config
 
-    def send(self, context, request):
+    def send(self, request):
         """Patch the current session with Request level operation config.
 
         This is deprecated, we shouldn't patch the session with
         arguments at the Request, and "config" should be used.
         """
-        session = context.session
+        session = request.pipeline_context.session
 
         old_max_redirects = None
         if 'max_redirects' in self.config:
@@ -133,7 +133,7 @@ class RequestsPatchSession(HTTPPolicy):
                 session.adapters[protocol].max_retries = max_retries
 
         try:
-            return self.next.send(context, request)
+            return self.next.send(request)
         finally:
             if old_max_redirects:
                 session.max_redirects = old_max_redirects
@@ -149,9 +149,9 @@ class RequestsHTTPLogger(HTTPPolicy):
     def __init__(self, config):
         self._config = config
 
-    def send(self, context, request):
+    def send(self, request):
         log_request(None, request)
-        response = self.next.send(context, request)
+        response = self.next.send(request)
         log_response(None, request, response, result=response)
 
 

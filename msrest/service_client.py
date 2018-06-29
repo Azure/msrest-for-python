@@ -144,7 +144,7 @@ class ServiceClient(object):
             request.add_content(content)
 
         if form_content:
-            request._add_formdata(form_content)
+            request.add_formdata(form_content)
 
         return request
 
@@ -161,7 +161,7 @@ class ServiceClient(object):
         :param config: Any specific config overrides.
         """
         request.headers = headers
-        request._add_formdata(content)
+        request.add_formdata(content)
         return self.send(request, **config)
 
     def send(self, request, headers=None, content=None, **config):
