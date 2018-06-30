@@ -177,13 +177,6 @@ class ServiceClient(object):
         else:
             pipeline = self._create_pipeline()
 
-        try:
-            self.creds.signed_session(pipeline.session)
-        except TypeError: # Credentials does not support session injection
-            pipeline.session = self.creds.signed_session()
-            if pipeline is self._pipeline:
-                _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-
         kwargs = pipeline.configure_session(**config)
 
         # "content" and "headers" are deprecated, only old SDK
@@ -195,33 +188,8 @@ class ServiceClient(object):
 
         response = None
         try:
-            try:
-                response = pipeline.run(request, **kwargs)
-                return response
-            except (oauth2.rfc6749.errors.InvalidGrantError,
-                    oauth2.rfc6749.errors.TokenExpiredError) as err:
-                error = "Token expired or is invalid. Attempting to refresh."
-                _LOGGER.warning(error)
-
-            try:
-                try:
-                    self.creds.refresh_session(pipeline.session)
-                except TypeError: # Credentials does not support session injection
-                    pipeline.session = self.creds.refresh_session()
-                    if pipeline is self._pipeline:
-                        _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-                    # Only reconfigure on refresh if it's a new session
-                    kwargs = pipeline.configure_session(**config)
-
-                response = pipeline.run(request, **kwargs)
-                return response
-            except (oauth2.rfc6749.errors.InvalidGrantError,
-                    oauth2.rfc6749.errors.TokenExpiredError) as err:
-                msg = "Token expired or is invalid."
-                raise_with_traceback(TokenExpiredError, msg, err)
-
-        except (requests.RequestException,
-                oauth2.rfc6749.errors.OAuth2Error) as err:
+            response = pipeline.run(request, **kwargs)
+        except Exception as err:
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
         finally:

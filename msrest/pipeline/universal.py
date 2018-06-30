@@ -31,6 +31,7 @@ import platform
 from .. import __version__ as _msrest_version
 from . import ClientRequest, ClientRawResponse, SansIOHTTPPolicy
 from . import HTTPPolicy
+from ..http_logger import log_request, log_response
 
 
 class HeadersPolicy(SansIOHTTPPolicy):
@@ -73,3 +74,15 @@ class UserAgentPolicy(HeadersPolicy):
         """
         self._user_agent = "{} {}".format(self._user_agent, value)
         self.headers[self._USERAGENT] = self._user_agent
+
+class HTTPLogger(SansIOHTTPPolicy):
+    def __init__(self, config):
+        self._config = config
+
+    def prepare(self, request, **kwargs):
+        if kwargs.get("enable_http_logger", self._config.enable_http_logger):
+            log_request(None, request)
+
+    def post_send(self, request, response, **kwargs):
+        if kwargs.get("enable_http_logger", self._config.enable_http_logger):
+            log_response(None, request, response, result=response)

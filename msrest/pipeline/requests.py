@@ -38,12 +38,11 @@ from oauthlib import oauth2
 import requests
 from urllib3 import Retry  # Needs requests 2.16 at least to be safe
 
-from ..http_logger import log_request, log_response
 from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
-from . import HTTPSender, HTTPPolicy, ClientRequest, ClientRawResponse
+from . import HTTPSender, HTTPPolicy, ClientRequest, ClientResponse
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -55,17 +54,17 @@ class RequestsCredentialsPolicy(HTTPPolicy):
     def __init__(self, credentials):
         self._creds = credentials
 
-    def send(self, context, request):
-        session = context.session
+    def send(self, request, **kwargs):
+        session = request.pipeline_context.session
         try:
             self.creds.signed_session(session)
         except TypeError: # Credentials does not support session injection
             _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-            context.session = session = self.creds.signed_session()
+            request.pipeline_context.session = session = self.creds.signed_session()
 
         try:
             try:
-                return self.next.send(request)
+                return self.next.send(request, **kwargs)
             except (oauth2.rfc6749.errors.InvalidGrantError,
                     oauth2.rfc6749.errors.TokenExpiredError) as err:
                 error = "Token expired or is invalid. Attempting to refresh."
@@ -76,9 +75,9 @@ class RequestsCredentialsPolicy(HTTPPolicy):
                     self.creds.refresh_session(session)
                 except TypeError: # Credentials does not support session injection
                     _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-                    context.session = session = self.creds.refresh_session()
+                    request.pipeline_context.session = session = self.creds.refresh_session()
 
-                return self.next.send(request)
+                return self.next.send(request, **kwargs)
             except (oauth2.rfc6749.errors.InvalidGrantError,
                     oauth2.rfc6749.errors.TokenExpiredError) as err:
                 msg = "Token expired or is invalid."
@@ -98,10 +97,7 @@ class RequestsPatchSession(HTTPPolicy):
     """
     _protocols = ['http://', 'https://']
 
-    def __init__(self, config):
-        self._config = config
-
-    def send(self, request):
+    def send(self, request, **kwargs):
         """Patch the current session with Request level operation config.
 
         This is deprecated, we shouldn't patch the session with
@@ -110,24 +106,24 @@ class RequestsPatchSession(HTTPPolicy):
         session = request.pipeline_context.session
 
         old_max_redirects = None
-        if 'max_redirects' in self.config:
+        if 'max_redirects' in kwargs:
             warnings.warn("max_redirects in operation kwargs is deprecated, use config.redirect_policy instead",
                           DeprecationWarning)
             old_max_redirects = session.max_redirects
-            session.max_redirects = int(self.config.get('max_redirects'))
+            session.max_redirects = int(kwargs['max_redirects'])
 
         old_trust_env = None
-        if 'use_env_proxies' in self.config:
+        if 'use_env_proxies' in kwargs:
             warnings.warn("use_env_proxies in operation kwargs is deprecated, use config.proxies instead",
                           DeprecationWarning)
             old_trust_env = session.trust_env
-            session.trust_env = bool(self.config.get('use_env_proxies'))
+            session.trust_env = bool(kwargs['use_env_proxies'])
 
         old_retries = {}
-        if 'retries' in self.config:
+        if 'retries' in kwargs:
             warnings.warn("retries in operation kwargs is deprecated, use config.retry_policy instead",
                           DeprecationWarning)
-            max_retries = self.config.get('retries')
+            max_retries = kwargs['retries']
             for protocol in self._protocols:
                 old_retries[protocol] = session.adapters[protocol].max_retries
                 session.adapters[protocol].max_retries = max_retries
@@ -145,17 +141,24 @@ class RequestsPatchSession(HTTPPolicy):
                 for protocol in self._protocols:
                     session.adapters[protocol].max_retries = old_retries[protocol]
 
-class RequestsHTTPLogger(HTTPPolicy):
-    def __init__(self, config):
-        self._config = config
-
-    def send(self, request):
-        log_request(None, request)
-        response = self.next.send(request)
-        log_response(None, request, response, result=response)
-
-
 RequestsContext = namedtuple('RequestsContext', ['session', 'kwargs'])
+
+class RequestsClientResponse(ClientResponse):
+    def __init__(self, request, requests_response):
+        super(RequestsClientResponse, self).__init__(request)
+        self._requests_response = requests_response
+
+    @property
+    def content(self):
+        return self._requests_response.content
+
+    @property
+    def status_code(self):
+        return self._requests_response.status_code
+
+    @property
+    def headers(self):
+        return self._requests_response.headers
 
 class RequestsHTTPSender(HTTPSender):
 
@@ -259,14 +262,13 @@ class RequestsHTTPSender(HTTPSender):
 
         return kwargs
 
-    def send(self, request, **config):
-        # type: (ClientRequest, Any) -> requests.Response
+    def send(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> RequestsClientResponse
         """Send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
-        :param config: Any specific config overrides
         """
-        kwargs = config.copy()
+        kwargs = request.pipeline_context.kwargs
         if request.files:
             kwargs['files'] = request.files
         elif request.data:
@@ -280,7 +282,7 @@ class RequestsHTTPSender(HTTPSender):
             request.method,
             request.url,
             **kwargs)
-        return response
+        return RequestsClientResponse(request, response)
 
 class ClientRetryPolicy(object):
     """Retry configuration settings.

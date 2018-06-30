@@ -76,11 +76,11 @@ class Pipeline:
     def __exit__(self, *exc_details):
         self._impl_policies[-1].__exit__(*exc_details)
 
-    def run(self, request):
+    def run(self, request, **kwargs):
         # type: (ClientRequest) -> ClientRawResponse
         context = self._impl_policies[-1].build_context()
         request.pipeline_context = context
-        return self._impl_policies[0].send(request)
+        return self._impl_policies[0].send(request, **kwargs)
 
 class HTTPSender(ABC):
     """An http sender ABC.
@@ -108,8 +108,8 @@ class HTTPPolicy(ABC):
     """
 
     @abc.abstractmethod
-    def send(self, context, request):
-        # type: (ClientRequest) -> ClientRawResponse
+    def send(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> ClientRawResponse
         """Mutate the request.
 
         Context content is dependent of the HTTPSender.
@@ -129,12 +129,12 @@ class SansIOHTTPPolicy:
     Example: setting a UserAgent does not need to be tight to
     sync or async implementation or specific HTTP lib
     """
-    def prepare(self, request):
+    def prepare(self, request, **kwargs):
         """Is executed before sending the request to next policy.
         """
         pass
 
-    def post_send(self, request, response):
+    def post_send(self, request, response, **kwargs):
         """Is executed after the request comes back from the policy.
         """
         pass
@@ -146,10 +146,10 @@ class _SansIOHTTPPolicyRunner(HTTPPolicy):
         # type: (SansIOHTTPPolicy) -> None
         self._policy = policy
 
-    def send(self, request):
-        self.prepare(request)
-        response = self.next.send(request)
-        self.post_send(request, response)
+    def send(self, request, **kwargs):
+        self.prepare(request, **kwargs)
+        response = self.next.send(request, **kwargs)
+        self.post_send(request, response, **kwargs)
 
 
 class ClientRequest(object):
@@ -269,6 +269,18 @@ class ClientRequest(object):
             self.data = {f: d for f, d in content.items() if d is not None}
         else: # Assume "multipart/form-data"
             self.files = {f: self._format_data(d) for f, d in content.items() if d is not None}
+
+class ClientResponse(object):
+    """Represent a HTTP response.
+    """
+    def __init__(self, request):
+        # type: (ClientRequest) -> None
+        self.request = request
+        self.status_code = None
+        self.headers = {}
+        self.content = None
+
+# ClientRawResponse is in Pipeline for compat, but technically there is nothing Pipeline here, this is deserialization
 
 class ClientRawResponse(object):
     """Wrapper for response object.
