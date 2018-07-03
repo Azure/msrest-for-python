@@ -109,7 +109,7 @@ class HTTPPolicy(ABC):
 
     @abc.abstractmethod
     def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> ClientRawResponse
+        # type: (ClientRequest, Any) -> ClientResponse
         """Mutate the request.
 
         Context content is dependent of the HTTPSender.
@@ -147,9 +147,10 @@ class _SansIOHTTPPolicyRunner(HTTPPolicy):
         self._policy = policy
 
     def send(self, request, **kwargs):
-        self.prepare(request, **kwargs)
+        # type: (ClientRequest, Any) -> ClientResponse
+        self._policy.prepare(request, **kwargs)
         response = self.next.send(request, **kwargs)
-        self.post_send(request, response, **kwargs)
+        self._policy.post_send(request, response, **kwargs)
 
 
 class ClientRequest(object):
@@ -172,7 +173,7 @@ class ClientRequest(object):
         # type: (str, str, Dict[str, str], Any, Union[str, bytes]) -> None
         self.method = method
         self.url = url
-        self.headers = headers
+        self.headers = headers or {}
         self.files = files
         self.data = data
         self.pipeline_context = None

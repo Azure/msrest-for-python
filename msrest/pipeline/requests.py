@@ -164,6 +164,17 @@ class RequestsHTTPSender(HTTPSender):
 
     _protocols = ['http://', 'https://']
 
+    # Set of authorized kwargs at the operation level
+    _REQUESTS_KWARGS = [
+        'cookies',
+        'verify',
+        'timeout',
+        'allow_redirects',
+        'proxies',
+        'verify',
+        'cert'
+    ]
+
     def __init__(self, config):
         # type: (Configuration) -> None
         self.config = config
@@ -191,7 +202,7 @@ class RequestsHTTPSender(HTTPSender):
         """Init session level configuration of requests.
         """
         self.session.max_redirects = int(self.config.redirect_policy())
-        self.session.trust_env = bool(self.config.get('use_env_proxies', self.config.proxies.use_env_settings))
+        self.session.trust_env = bool(self.config.proxies.use_env_settings)
 
         # Patch the redirect method directly
         redirect_logic = self.session.resolve_redirects
@@ -203,64 +214,9 @@ class RequestsHTTPSender(HTTPSender):
         self.session.resolve_redirects = wrapped_redirect  # type: ignore
 
         # Change max_retries in current all installed adapters
-        max_retries = self.config.get('retries', self.config.retry_policy())
+        max_retries = self.config.retry_policy()
         for protocol in self._protocols:
             self.session.adapters[protocol].max_retries=max_retries
-
-    def configure_session(self, **config):
-        # type: (str) -> Dict[str, Any]
-        """Apply configuration to session.
-
-        :param config: Specific configuration overrides.
-        :rtype: dict
-        :return: A dict that will be kwarg-send to session.request
-        """
-        kwargs = self.config.connection()  # type: Dict[str, Any]
-        for opt in ['timeout', 'verify', 'cert']:
-            kwargs[opt] = config.get(opt, kwargs[opt])
-        kwargs.update({k:config[k] for k in ['cookies'] if k in config})
-        kwargs['allow_redirects'] = config.get(
-            'allow_redirects', bool(self.config.redirect_policy))
-
-        kwargs['headers'] = self.config.headers.copy()
-        proxies = config.get('proxies', self.config.proxies())
-        if proxies:
-            kwargs['proxies'] = proxies
-
-        kwargs['stream'] = config.get('stream', True)
-
-        # if "enable_http_logger" is defined at the operation level, take the value.
-        # if not, take the one in the client config
-        # if not, disable http_logger
-        hooks = []
-        if config.get("enable_http_logger", self.config.enable_http_logger):
-            def log_hook(r, *args, **kwargs):
-                log_request(None, r.request)
-                log_response(None, r.request, r, result=r)
-            hooks.append(log_hook)
-
-        def make_user_hook_cb(user_hook, session):
-            def user_hook_cb(r, *args, **kwargs):
-                kwargs.setdefault("msrest", {})['session'] = session
-                return user_hook(r, *args, **kwargs)
-            return user_hook_cb
-
-        for user_hook in self.config.hooks:
-            hooks.append(make_user_hook_cb(user_hook, self.session))
-
-        if hooks:
-            kwargs['hooks'] = {'response': hooks}
-
-        output_kwargs = self.config.session_configuration_callback(
-            self.session,
-            self.config,
-            config,
-            **kwargs
-        )
-        if output_kwargs is not None:
-            kwargs = output_kwargs
-
-        return kwargs
 
     def send(self, request, **kwargs):
         # type: (ClientRequest, Any) -> RequestsClientResponse
@@ -268,12 +224,60 @@ class RequestsHTTPSender(HTTPSender):
 
         :param ClientRequest request: The request object to be sent.
         """
-        kwargs = request.pipeline_context.kwargs
+        session = request.pipeline_context.session
+
+        # Initialize requests_kwargs with "config" value
+        requests_kwargs = self.config.connection()  # type: Dict[str, Any]
+        requests_kwargs['allow_redirects'] = bool(self.config.redirect_policy)
+        requests_kwargs['headers'] = self.config.headers.copy()
+
+        proxies = self.config.proxies()
+        if proxies:
+            requests_kwargs['proxies'] = proxies
+
+        # Replace by pipeline kwargs
+        requests_kwargs.update(request.pipeline_context.kwargs.copy())
+
+        # Replace by operation level kwargs
+        # We allow some of them, since some like stream or json are controled by msrest
+        for key in kwargs:
+            if key in self._REQUESTS_KWARGS:
+                requests_kwargs[key] = kwargs[key]
+
+        # Hooks. Deprecated, should be a policy
+        def make_user_hook_cb(user_hook, session):
+            def user_hook_cb(r, *args, **kwargs):
+                kwargs.setdefault("msrest", {})['session'] = session
+                return user_hook(r, *args, **kwargs)
+            return user_hook_cb
+
+        hooks = []
+        for user_hook in self.config.hooks:
+            hooks.append(make_user_hook_cb(user_hook, self.session))
+
+        if hooks:
+            kwargs['hooks'] = {'response': hooks}
+
+        # Configuration callback. Deprecated, should be a policy
+        output_kwargs = self.config.session_configuration_callback(
+            session,
+            self.config,
+            kwargs,
+            **requests_kwargs
+        )
+        if output_kwargs is not None:
+            requests_kwargs = output_kwargs
+
+        ### Autorest forced kwargs now ###
+
+        # If Autorest needs this response to be streamable. True for compat.
+        requests_kwargs['stream'] = kwargs.get('stream', True)
+
         if request.files:
-            kwargs['files'] = request.files
+            requests_kwargs['files'] = request.files
         elif request.data:
-            kwargs['data'] = request.data
-        kwargs.setdefault("headers", {}).update(request.headers)
+            requests_kwargs['data'] = request.data
+        requests_kwargs.setdefault("headers", {}).update(request.headers)
 
         # Tag the request as sent by "requests", to help debugging depending of the driver used.
         kwargs['headers']['User-Agent'] += " requests/{}".format(requests.__version__)
@@ -281,8 +285,9 @@ class RequestsHTTPSender(HTTPSender):
         response = self.session.request(
             request.method,
             request.url,
-            **kwargs)
+            **requests_kwargs)
         return RequestsClientResponse(request, response)
+
 
 class ClientRetryPolicy(object):
     """Retry configuration settings.

@@ -38,17 +38,20 @@ from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
 if TYPE_CHECKING:
     from .configuration import Configuration
 
-from oauthlib import oauth2
-import requests.adapters
-
 from .authentication import Authentication
 from .pipeline import ClientRequest, Pipeline
-from .pipeline.requests import RequestsHTTPSender, RequestsCredentialsPolicy
-from .pipeline.universal import UserAgentPolicy
+from .pipeline.requests import (
+    RequestsHTTPSender,
+    RequestsCredentialsPolicy,
+    RequestsPatchSession
+)
+from .pipeline.universal import (
+    HTTPLogger
+)
 from .exceptions import (
-    TokenExpiredError,
     ClientRequestError,
-    raise_with_traceback)
+    raise_with_traceback
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -93,9 +96,11 @@ class ServiceClient(object):
     def _create_pipeline(self):
         # type: () -> Pipeline
         return Pipeline([
-            self.config._user_agent,
-            RequestsCredentialsPolicy(self.creds),
-            RequestsHTTPSender(self.config)
+            self.config._user_agent,                # UserAgent policy
+            RequestsCredentialsPolicy(self.creds),  # Set credentials for requests based session
+            RequestsPatchSession(),                 # Support deprecated operation config at the session level
+            HTTPLogger(self.config),                # Log request
+            RequestsHTTPSender(self.config)         # Send HTTP request using requests
         ])
 
     def __enter__(self):
@@ -164,7 +169,7 @@ class ServiceClient(object):
         request.add_formdata(content)
         return self.send(request, **config)
 
-    def send(self, request, headers=None, content=None, **config):
+    def send(self, request, headers=None, content=None, **kwargs):
         """Prepare and send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
@@ -177,8 +182,6 @@ class ServiceClient(object):
         else:
             pipeline = self._create_pipeline()
 
-        kwargs = pipeline.configure_session(**config)
-
         # "content" and "headers" are deprecated, only old SDK
         if headers:
             request.headers.update(headers)
@@ -187,6 +190,7 @@ class ServiceClient(object):
         # End of deprecation
 
         response = None
+        kwargs.setdefault('stream', True)
         try:
             response = pipeline.run(request, **kwargs)
         except Exception as err:
@@ -201,7 +205,7 @@ class ServiceClient(object):
             return
         # Here, it's a local session, I might close it.
         if not response or not stream:
-            pipeline.session.close()
+            pipeline._impl_policies[-1].session.close()
 
     def stream_download(self, data, callback):
         """Generator for streaming request body data.

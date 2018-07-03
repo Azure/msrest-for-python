@@ -28,7 +28,7 @@ This module represents universal policy that works whatever the HTTPSender imple
 """
 import platform
 
-from .. import __version__ as _msrest_version
+from ..version import msrest_version as _msrest_version
 from . import ClientRequest, ClientRawResponse, SansIOHTTPPolicy
 from . import HTTPPolicy
 from ..http_logger import log_request, log_response
@@ -41,7 +41,7 @@ class HeadersPolicy(SansIOHTTPPolicy):
     def __init__(self, headers):
         self.headers = headers
 
-    def prepare(self, request):
+    def prepare(self, request, **kwargs):
         request.headers.update(self.headers)
 
 class UserAgentPolicy(HeadersPolicy):

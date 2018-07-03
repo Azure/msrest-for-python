@@ -24,10 +24,10 @@
 #
 # --------------------------------------------------------------------------
 
+from .version import msrest_version
 from .configuration import Configuration
 from .service_client import ServiceClient, SDKClient
 from .serialization import Serializer, Deserializer
-from .version import msrest_version
 
 __all__ = [
     "ServiceClient",
