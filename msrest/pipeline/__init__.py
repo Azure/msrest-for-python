@@ -67,6 +67,8 @@ class Pipeline:
                 self._impl_policies.append(_SansIOHTTPPolicyRunner(policy))
             else:
                 self._impl_policies.append(policy)
+        for index in range(len(self._impl_policies)-1):
+            self._impl_policies[index].next = self._impl_policies[index+1]
 
     def __enter__(self):
         # type: () -> Pipeline
@@ -106,6 +108,8 @@ class HTTPSender(ABC):
 class HTTPPolicy(ABC):
     """An http policy ABC.
     """
+    def __init__(self):
+        self.next = None
 
     @abc.abstractmethod
     def send(self, request, **kwargs):
@@ -151,6 +155,7 @@ class _SansIOHTTPPolicyRunner(HTTPPolicy):
         self._policy.prepare(request, **kwargs)
         response = self.next.send(request, **kwargs)
         self._policy.post_send(request, response, **kwargs)
+        return response
 
 
 class ClientRequest(object):

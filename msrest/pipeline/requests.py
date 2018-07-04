@@ -26,7 +26,6 @@
 """
 This module is the requests implementation of Pipeline ABC
 """
-from collections import namedtuple
 import logging
 from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
 import warnings
@@ -57,7 +56,7 @@ class RequestsCredentialsPolicy(HTTPPolicy):
     def send(self, request, **kwargs):
         session = request.pipeline_context.session
         try:
-            self.creds.signed_session(session)
+            self._creds.signed_session(session)
         except TypeError: # Credentials does not support session injection
             _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
             request.pipeline_context.session = session = self.creds.signed_session()
@@ -72,7 +71,7 @@ class RequestsCredentialsPolicy(HTTPPolicy):
 
             try:
                 try:
-                    self.creds.refresh_session(session)
+                    self._creds.refresh_session(session)
                 except TypeError: # Credentials does not support session injection
                     _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
                     request.pipeline_context.session = session = self.creds.refresh_session()
@@ -141,24 +140,28 @@ class RequestsPatchSession(HTTPPolicy):
                 for protocol in self._protocols:
                     session.adapters[protocol].max_retries = old_retries[protocol]
 
-RequestsContext = namedtuple('RequestsContext', ['session', 'kwargs'])
+class RequestsContext(object):
+    def __init__(self, session, kwargs):
+        self.session = session
+        self.kwargs = kwargs
 
 class RequestsClientResponse(ClientResponse):
     def __init__(self, request, requests_response):
         super(RequestsClientResponse, self).__init__(request)
-        self._requests_response = requests_response
+        self.requests_response = requests_response
+        self.status_code = requests_response.status_code
+        self.content = requests_response.content
+        self.headers = requests_response.headers
+        # Optional, should be removed and use delegation to the real response
+        # Keep it for rapid tests for now
+        self.history = requests_response.history
+        self.is_redirect = requests_response.is_redirect
+        self.request = requests_response.request
 
-    @property
-    def content(self):
-        return self._requests_response.content
-
-    @property
-    def status_code(self):
-        return self._requests_response.status_code
-
-    @property
-    def headers(self):
-        return self._requests_response.headers
+    def json(self):
+        # Optional, should be removed and use delegation to the real response
+        # Keep it for rapid tests for now
+        return self.requests_response.json()
 
 class RequestsHTTPSender(HTTPSender):
 
@@ -280,7 +283,7 @@ class RequestsHTTPSender(HTTPSender):
         requests_kwargs.setdefault("headers", {}).update(request.headers)
 
         # Tag the request as sent by "requests", to help debugging depending of the driver used.
-        kwargs['headers']['User-Agent'] += " requests/{}".format(requests.__version__)
+        requests_kwargs['headers']['User-Agent'] += " requests/{}".format(requests.__version__)
 
         response = self.session.request(
             request.method,

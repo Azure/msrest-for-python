@@ -193,6 +193,7 @@ class ServiceClient(object):
         kwargs.setdefault('stream', True)
         try:
             response = pipeline.run(request, **kwargs)
+            return response
         except Exception as err:
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
