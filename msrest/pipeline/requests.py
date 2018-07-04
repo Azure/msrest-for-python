@@ -230,7 +230,8 @@ class RequestsHTTPSender(HTTPSender):
         session = request.pipeline_context.session
 
         # Initialize requests_kwargs with "config" value
-        requests_kwargs = self.config.connection()  # type: Dict[str, Any]
+        requests_kwargs = {}  # type: Dict[str, Any]
+        requests_kwargs.update(self.config.connection())
         requests_kwargs['allow_redirects'] = bool(self.config.redirect_policy)
         requests_kwargs['headers'] = self.config.headers.copy()
 
@@ -280,7 +281,7 @@ class RequestsHTTPSender(HTTPSender):
             requests_kwargs['files'] = request.files
         elif request.data:
             requests_kwargs['data'] = request.data
-        requests_kwargs.setdefault("headers", {}).update(request.headers)
+        requests_kwargs['headers'].update(request.headers)
 
         # Tag the request as sent by "requests", to help debugging depending of the driver used.
         requests_kwargs['headers']['User-Agent'] += " requests/{}".format(requests.__version__)

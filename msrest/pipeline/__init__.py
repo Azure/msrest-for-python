@@ -34,7 +34,7 @@ except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import Dict, Any, Optional, Union, List, TYPE_CHECKING, cast, IO
+from typing import Dict, Any, Optional, Union, List, Tuple, TYPE_CHECKING, cast, IO
 
 if TYPE_CHECKING:
     import xml.etree.ElementTree as ET
@@ -60,8 +60,8 @@ class Pipeline:
     """
 
     def __init__(self, policies):
-        # type: List[Union[HTTPPolicy, SansIOHTTPPolicy, HTTPSender]] -> None
-        self._impl_policies = []
+        # type: (List[Union[HTTPPolicy, SansIOHTTPPolicy, HTTPSender]]) -> None
+        self._impl_policies = []  # type: List[Union[HTTPPolicy, HTTPSender]]
         for policy in policies:
             if isinstance(policy, SansIOHTTPPolicy):
                 self._impl_policies.append(_SansIOHTTPPolicyRunner(policy))
@@ -79,7 +79,7 @@ class Pipeline:
         self._impl_policies[-1].__exit__(*exc_details)
 
     def run(self, request, **kwargs):
-        # type: (ClientRequest) -> ClientRawResponse
+        # type: (ClientRequest, Any) -> ClientResponse
         context = self._impl_policies[-1].build_context()
         request.pipeline_context = context
         return self._impl_policies[0].send(request, **kwargs)
@@ -90,7 +90,7 @@ class HTTPSender(ABC):
 
     @abc.abstractmethod
     def send(self, request, **config):
-        # type: (ClientRequest, Any) -> requests.Response
+        # type: (ClientRequest, Any) -> ClientResponse
         """Send the request using this HTTP sender.
         """
         pass
@@ -174,7 +174,7 @@ class ClientRequest(object):
     :param data: Body to be sent.
     :type data: bytes or str.
     """
-    def __init__(self, method=None, url=None, headers=None, files=None, data=None):
+    def __init__(self, method, url, headers=None, files=None, data=None):
         # type: (str, str, Dict[str, str], Any, Union[str, bytes]) -> None
         self.method = method
         self.url = url
@@ -226,8 +226,9 @@ class ClientRequest(object):
             return
 
         if isinstance(data, ET.Element):
-            self.data = ET.tostring(data, encoding="utf8")
-            self.headers['Content-Length'] = str(len(self.data))
+            bytes_data = ET.tostring(data, encoding="utf8")
+            self.headers['Content-Length'] = str(len(bytes_data))
+            self.data = bytes_data
             return
 
         # By default, assume JSON
@@ -282,8 +283,8 @@ class ClientResponse(object):
     def __init__(self, request):
         # type: (ClientRequest) -> None
         self.request = request
-        self.status_code = None
-        self.headers = {}
+        self.status_code = None  # type: Optional[int]
+        self.headers = {}  # type: Dict[str, str]
         self.content = None
 
 # ClientRawResponse is in Pipeline for compat, but technically there is nothing Pipeline here, this is deserialization

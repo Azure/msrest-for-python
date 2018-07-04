@@ -119,8 +119,8 @@ class ServiceClient(object):
         """
         self._pipeline.__exit__()
 
-    def _request(self, url, params, headers, content, form_content):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def _request(self, method, url, params, headers, content, form_content):
+        # type: (str, Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create ClientRequest object.
 
         :param str url: URL for the request.
@@ -128,10 +128,7 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = ClientRequest()
-
-        if url:
-            request.url = self.format_url(url)
+        request = ClientRequest(method, self.format_url(url))
 
         if params:
             request.format_parameters(params)
@@ -285,7 +282,7 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = self._request(url, params, headers, content, form_content)
+        request = self._request('GET', url, params, headers, content, form_content)
         request.method = 'GET'
         return request
 
@@ -298,8 +295,7 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = self._request(url, params, headers, content, form_content)
-        request.method = 'PUT'
+        request = self._request('PUT', url, params, headers, content, form_content)
         return request
 
     def post(self, url=None, params=None, headers=None, content=None, form_content=None):
@@ -311,8 +307,7 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = self._request(url, params, headers, content, form_content)
-        request.method = 'POST'
+        request = self._request('POST', url, params, headers, content, form_content)
         return request
 
     def head(self, url=None, params=None, headers=None, content=None, form_content=None):
@@ -324,8 +319,7 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = self._request(url, params, headers, content, form_content)
-        request.method = 'HEAD'
+        request = self._request('HEAD', url, params, headers, content, form_content)
         return request
 
     def patch(self, url=None, params=None, headers=None, content=None, form_content=None):
@@ -337,8 +331,7 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = self._request(url, params, headers, content, form_content)
-        request.method = 'PATCH'
+        request = self._request('PATCH', url, params, headers, content, form_content)
         return request
 
     def delete(self, url=None, params=None, headers=None, content=None, form_content=None):
@@ -350,8 +343,7 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = self._request(url, params, headers, content, form_content)
-        request.method = 'DELETE'
+        request = self._request('DELETE', url, params, headers, content, form_content)
         return request
 
     def merge(self, url=None, params=None, headers=None, content=None, form_content=None):
@@ -363,6 +355,5 @@ class ServiceClient(object):
         :param dict headers: Headers
         :param dict form_content: Form content
         """
-        request = self._request(url, params, headers, content, form_content)
-        request.method = 'MERGE'
+        request = self._request('MERGE', url, params, headers, content, form_content)
         return request
