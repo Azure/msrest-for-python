@@ -88,6 +88,8 @@ class ServiceClient(object):
 
     def __init__(self, creds, config):
         # type: (Any, Configuration) -> None
+        if config is None:
+            raise ValueError("Config is a required parameter")
         self.config = config
         self.creds = creds if creds else Authentication()
 
@@ -120,7 +122,7 @@ class ServiceClient(object):
         self._pipeline.__exit__()
 
     def _request(self, method, url, params, headers, content, form_content):
-        # type: (str, Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+        # type: (str, str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create ClientRequest object.
 
         :param str url: URL for the request.
@@ -182,7 +184,7 @@ class ServiceClient(object):
         # "content" and "headers" are deprecated, only old SDK
         if headers:
             request.headers.update(headers)
-        if not request.files and request.data == [] and content is not None:
+        if not request.files and request.data is None and content is not None:
             request.add_content(content)
         # End of deprecation
 
@@ -191,9 +193,6 @@ class ServiceClient(object):
         try:
             response = pipeline.run(request, **kwargs)
             return response
-        except Exception as err:
-            msg = "Error occurred in request."
-            raise_with_traceback(ClientRequestError, msg, err)
         finally:
             self._close_local_session_if_necessary(response, pipeline, kwargs['stream'])
 
@@ -273,8 +272,8 @@ class ServiceClient(object):
                       DeprecationWarning)
         self.config.headers[header] = value
 
-    def get(self, url=None, params=None, headers=None, content=None, form_content=None):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def get(self, url, params=None, headers=None, content=None, form_content=None):
+        # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create a GET request object.
 
         :param str url: The request URL.
@@ -286,8 +285,8 @@ class ServiceClient(object):
         request.method = 'GET'
         return request
 
-    def put(self, url=None, params=None, headers=None, content=None, form_content=None):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def put(self, url, params=None, headers=None, content=None, form_content=None):
+        # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create a PUT request object.
 
         :param str url: The request URL.
@@ -298,8 +297,8 @@ class ServiceClient(object):
         request = self._request('PUT', url, params, headers, content, form_content)
         return request
 
-    def post(self, url=None, params=None, headers=None, content=None, form_content=None):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def post(self, url, params=None, headers=None, content=None, form_content=None):
+        # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create a POST request object.
 
         :param str url: The request URL.
@@ -310,8 +309,8 @@ class ServiceClient(object):
         request = self._request('POST', url, params, headers, content, form_content)
         return request
 
-    def head(self, url=None, params=None, headers=None, content=None, form_content=None):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def head(self, url, params=None, headers=None, content=None, form_content=None):
+        # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create a HEAD request object.
 
         :param str url: The request URL.
@@ -322,8 +321,8 @@ class ServiceClient(object):
         request = self._request('HEAD', url, params, headers, content, form_content)
         return request
 
-    def patch(self, url=None, params=None, headers=None, content=None, form_content=None):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def patch(self, url, params=None, headers=None, content=None, form_content=None):
+        # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create a PATCH request object.
 
         :param str url: The request URL.
@@ -334,8 +333,8 @@ class ServiceClient(object):
         request = self._request('PATCH', url, params, headers, content, form_content)
         return request
 
-    def delete(self, url=None, params=None, headers=None, content=None, form_content=None):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def delete(self, url, params=None, headers=None, content=None, form_content=None):
+        # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create a DELETE request object.
 
         :param str url: The request URL.
@@ -346,8 +345,8 @@ class ServiceClient(object):
         request = self._request('DELETE', url, params, headers, content, form_content)
         return request
 
-    def merge(self, url=None, params=None, headers=None, content=None, form_content=None):
-        # type: (Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
+    def merge(self, url, params=None, headers=None, content=None, form_content=None):
+        # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
         """Create a MERGE request object.
 
         :param str url: The request URL.

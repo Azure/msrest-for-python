@@ -238,7 +238,8 @@ class ClientRequest(object):
         except TypeError:
             self.data = data
 
-    def _format_data(self, data):
+    @staticmethod
+    def _format_data(data):
         # type: (Union[str, IO]) -> Union[Tuple[None, str], Tuple[Optional[str], IO, str]]
         """Format field data according to whether it is a stream or
         a string for a form-data request.

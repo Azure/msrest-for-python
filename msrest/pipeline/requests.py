@@ -128,7 +128,7 @@ class RequestsPatchSession(HTTPPolicy):
                 session.adapters[protocol].max_retries = max_retries
 
         try:
-            return self.next.send(request)
+            return self.next.send(request, **kwargs)
         finally:
             if old_max_redirects:
                 session.max_redirects = old_max_redirects
@@ -162,6 +162,12 @@ class RequestsClientResponse(ClientResponse):
         # Optional, should be removed and use delegation to the real response
         # Keep it for rapid tests for now
         return self.requests_response.json()
+
+    @property
+    def text(self):
+        # Optional, should be removed and use delegation to the real response
+        # Keep it for rapid tests for now
+        return self.requests_response.text
 
 class RequestsHTTPSender(HTTPSender):
 
@@ -213,6 +219,7 @@ class RequestsHTTPSender(HTTPSender):
         def wrapped_redirect(resp, req, **kwargs):
             attempt = self.config.redirect_policy.check_redirect(resp, req)
             return redirect_logic(resp, req, **kwargs) if attempt else []
+        wrapped_redirect.is_mrest_patched = True  # type: ignore
 
         self.session.resolve_redirects = wrapped_redirect  # type: ignore
 
@@ -221,11 +228,13 @@ class RequestsHTTPSender(HTTPSender):
         for protocol in self._protocols:
             self.session.adapters[protocol].max_retries=max_retries
 
-    def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> RequestsClientResponse
-        """Send request object according to configuration.
+    def _configure_send(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> Dict[str, str]
+        """Configure the kwargs to use with requests.
 
         :param ClientRequest request: The request object to be sent.
+        :returns: The requests.Session.request kwargs
+        :rtype: dict[str,str]
         """
         session = request.pipeline_context.session
 
@@ -284,9 +293,19 @@ class RequestsHTTPSender(HTTPSender):
         requests_kwargs['headers'].update(request.headers)
 
         # Tag the request as sent by "requests", to help debugging depending of the driver used.
-        requests_kwargs['headers']['User-Agent'] += " requests/{}".format(requests.__version__)
+        current_user_agent = requests_kwargs['headers'].setdefault('User-Agent', "")
+        requests_kwargs['headers']['User-Agent'] = " ".join([current_user_agent, "requests/{}".format(requests.__version__)])
+        return requests_kwargs
 
-        response = self.session.request(
+    def send(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> RequestsClientResponse
+        """Send request object according to configuration.
+
+        :param ClientRequest request: The request object to be sent.
+        """
+        session = request.pipeline_context.session
+        requests_kwargs = self._configure_send(request, **kwargs)
+        response = session.request(
             request.method,
             request.url,
             **requests_kwargs)

@@ -1,6 +1,6 @@
 #--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -34,6 +34,7 @@ import pytest
 from msrest.polling import *
 from msrest.service_client import ServiceClient
 from msrest.serialization import Model
+from msrest.configuration import Configuration
 
 
 def test_abc_polling():
@@ -103,11 +104,13 @@ class PollingTwoSteps(PollingMethod):
     def resource(self):
         return self._deserialization_callback(self._initial_response)
 
-def test_poller():
-
+@pytest.fixture
+def client():
     # We need a ServiceClient instance, but the poller itself don't use it, so we don't need
     # Something functionnal
-    client = ServiceClient(None, None)
+    return ServiceClient(None, Configuration("http://example.org"))
+
+def test_poller(client):
 
     # Same the poller itself doesn't care about the initial_response, and there is no type constraint here
     initial_response = "Initial response"
@@ -115,7 +118,7 @@ def test_poller():
     # Same for deserialization_callback, just pass to the polling_method
     def deserialization_callback(response):
         assert response == initial_response
-        return "Treated: "+response        
+        return "Treated: "+response
 
     method = NoPolling()
 
@@ -135,7 +138,7 @@ def test_poller():
     assert poller._polling_method._deserialization_callback == Model.deserialize
 
     # Test poller that method do a run
-    method = PollingTwoSteps(sleep=2)
+    method = PollingTwoSteps(sleep=1)
     poller = LROPoller(client, initial_response, deserialization_callback, method)
 
     done_cb = mock.MagicMock()
@@ -153,7 +156,7 @@ def test_poller():
         poller.remove_done_callback(done_cb)
     assert "Process is complete" in str(excinfo.value)
 
-def test_broken_poller():
+def test_broken_poller(client):
 
     with pytest.raises(ValueError):
         LROPoller(None, None, None, None)
@@ -162,10 +165,9 @@ def test_broken_poller():
         def run(self):
             raise ValueError("Something bad happened")
 
-    client = ServiceClient(None, None)
     initial_response = "Initial response"
     def deserialization_callback(response):
-        return "Treated: "+response        
+        return "Treated: "+response
 
     method = NoPollingError()
     poller = LROPoller(client, initial_response, deserialization_callback, method)
@@ -173,4 +175,3 @@ def test_broken_poller():
     with pytest.raises(ValueError) as excinfo:
         poller.result()
     assert "Something bad happened" in str(excinfo.value)
-    

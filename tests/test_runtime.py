@@ -1,6 +1,6 @@
 ﻿#--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -59,7 +59,7 @@ class TestRuntime(unittest.TestCase):
 
     @httpretty.activate
     def test_credential_headers(self):
-        
+
         httpretty.register_uri(httpretty.GET, "https://my_service.com/get_endpoint",
                            body='[{"title": "Test Data"}]',
                            content_type="application/json")
@@ -81,7 +81,7 @@ class TestRuntime(unittest.TestCase):
         response = client.send(request)
         self.assertTrue('Authorization' in response.request.headers)
         self.assertEqual(response.request.headers['Authorization'], 'Bearer eswfld123kjhn1v5423')
-        check = httpretty.last_request()
+        httpretty.has_request()
         self.assertEqual(response.json(), [{"title": "Test Data"}])
 
         token['expires_in'] = '-30'
@@ -96,7 +96,7 @@ class TestRuntime(unittest.TestCase):
     @mock.patch.object(requests, 'Session')
     def test_request_fail(self, mock_requests):
 
-        mock_requests.return_value.request.return_value = mock.Mock(_content_consumed=True)
+        mock_requests.return_value.request.return_value = mock.Mock(text="text")
 
         cfg = Configuration("https://my_service.com")
         creds = Authentication()
@@ -106,9 +106,7 @@ class TestRuntime(unittest.TestCase):
         request = client.get(url, {'check':True})
         response = client.send(request)
 
-        check = httpretty.last_request()
-
-        self.assertTrue(response._content_consumed)
+        assert response.text == "text"
 
         mock_requests.return_value.request.side_effect = requests.RequestException
         with self.assertRaises(ClientRequestError):
@@ -171,8 +169,8 @@ class TestRedirect(unittest.TestCase):
                                 responses=[
                                 httpretty.Response(body="", status=303, method='POST', location='/http/success/get/200'),
                                 ])
-        
-        
+
+
         response = self.client.send(request)
         self.assertEqual(response.status_code, 200, msg="Should redirect with GET on 303 with location header")
         self.assertEqual(response.request.method, 'GET')
@@ -202,8 +200,8 @@ class TestRedirect(unittest.TestCase):
                                 responses=[
                                 httpretty.Response(body="", status=307, method='HEAD', location='/http/success/200'),
                                 ])
-        
-        
+
+
         response = self.client.send(request)
         self.assertEqual(response.status_code, 200, msg="Should redirect on 307 with location header")
         self.assertEqual(response.request.method, 'HEAD')
@@ -233,8 +231,8 @@ class TestRedirect(unittest.TestCase):
                                 responses=[
                                 httpretty.Response(body="", status=307, method='DELETE', location='/http/success/200'),
                                 ])
-        
-        
+
+
         response = self.client.send(request)
         self.assertEqual(response.status_code, 200, msg="Should redirect on 307 with location header")
         self.assertEqual(response.request.method, 'DELETE')
@@ -301,7 +299,7 @@ class TestRedirect(unittest.TestCase):
                         ])
 
         with self.assertRaises(ClientRequestError, msg="Should exceed maximum redirects"):
-            response = self.client.send(request)
+            self.client.send(request)
 
 
 
@@ -325,8 +323,8 @@ class TestRuntimeRetry(unittest.TestCase):
                                 httpretty.Response(body="retry response", status=502),
                                 httpretty.Response(body='success response', status=202),
                                 ])
-        
-        
+
+
         response = self.client.send(self.request)
         self.assertEqual(response.status_code, 202, msg="Should retry on 502")
 
@@ -364,8 +362,8 @@ class TestRuntimeRetry(unittest.TestCase):
                                 ])
 
         with self.assertRaises(ClientRequestError, msg="Max retries reached"):
-            response = self.client.send(self.request)
-        
+            self.client.send(self.request)
+
     @httpretty.activate
     def test_request_retry_404(self):
         httpretty.register_uri(httpretty.GET, "https://my_service.com/get_endpoint",
@@ -399,6 +397,6 @@ class TestRuntimeRetry(unittest.TestCase):
         response = self.client.send(self.request)
         self.assertEqual(response.status_code, 505, msg="Shouldn't retry on 505")
 
-        
+
 if __name__ == '__main__':
     unittest.main()
