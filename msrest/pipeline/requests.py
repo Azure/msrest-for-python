@@ -201,6 +201,7 @@ class RequestsHTTPSender(HTTPSender):
         self.session.close()
 
     def build_context(self):
+        # type: () -> RequestsContext
         return RequestsContext(
             session=self.session,
             kwargs={}
@@ -236,10 +237,13 @@ class RequestsHTTPSender(HTTPSender):
         :returns: The requests.Session.request kwargs
         :rtype: dict[str,str]
         """
+        if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
+            request.pipeline_context = self.build_context()
+
         session = request.pipeline_context.session
 
         # Initialize requests_kwargs with "config" value
-        requests_kwargs = {}  # type: Dict[str, Any]
+        requests_kwargs = {}  # type: Any
         requests_kwargs.update(self.config.connection())
         requests_kwargs['allow_redirects'] = bool(self.config.redirect_policy)
         requests_kwargs['headers'] = self.config.headers.copy()

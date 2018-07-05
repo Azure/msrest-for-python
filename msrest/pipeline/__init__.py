@@ -52,6 +52,19 @@ try:
 except ImportError: # Python 2.7
     ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})  # type: ignore
 
+try:
+    from contextlib import AbstractContextManager  # type: ignore
+except ImportError: # Python <= 3.5
+    class AbstractContextManager(object):  # type: ignore
+        def __enter__(self):
+            """Return `self` upon entering the runtime context."""
+            return self
+
+        @abc.abstractmethod
+        def __exit__(self, exc_type, exc_value, traceback):
+            """Raise any exception triggered within the runtime context."""
+            return None
+
 class Pipeline:
     """A pipeline implementation.
 
@@ -59,9 +72,10 @@ class Pipeline:
     of the HTTP sender.
     """
 
-    def __init__(self, policies):
-        # type: (List[Union[HTTPPolicy, SansIOHTTPPolicy, HTTPSender]]) -> None
-        self._impl_policies = []  # type: List[Union[HTTPPolicy, HTTPSender]]
+    def __init__(self, policies, sender):
+        # type: (List[Union[HTTPPolicy, SansIOHTTPPolicy]], HTTPSender) -> None
+        self._impl_policies = []  # type: List[HTTPPolicy]
+        self._sender = sender
         for policy in policies:
             if isinstance(policy, SansIOHTTPPolicy):
                 self._impl_policies.append(_SansIOHTTPPolicyRunner(policy))
@@ -69,22 +83,23 @@ class Pipeline:
                 self._impl_policies.append(policy)
         for index in range(len(self._impl_policies)-1):
             self._impl_policies[index].next = self._impl_policies[index+1]
+        self._impl_policies[-1].next = self._sender
 
     def __enter__(self):
         # type: () -> Pipeline
-        self._impl_policies[-1].__enter__()
+        self._sender.__enter__()
         return self
 
     def __exit__(self, *exc_details):
-        self._impl_policies[-1].__exit__(*exc_details)
+        self._sender.__exit__(*exc_details)
 
     def run(self, request, **kwargs):
         # type: (ClientRequest, Any) -> ClientResponse
-        context = self._impl_policies[-1].build_context()
+        context = self._sender.build_context()
         request.pipeline_context = context
         return self._impl_policies[0].send(request, **kwargs)
 
-class HTTPSender(ABC):
+class HTTPSender(AbstractContextManager, ABC):
     """An http sender ABC.
     """
 
@@ -175,13 +190,13 @@ class ClientRequest(object):
     :type data: bytes or str.
     """
     def __init__(self, method, url, headers=None, files=None, data=None):
-        # type: (str, str, Dict[str, str], Any, Union[str, bytes]) -> None
+        # type: (str, str, Dict[str, str], Any, Any) -> None
         self.method = method
         self.url = url
         self.headers = headers or {}
         self.files = files
         self.data = data
-        self.pipeline_context = None
+        self.pipeline_context = None  # type: Any
 
     def __repr__(self):
         return '<ClientRequest [%s]>' % (self.method)

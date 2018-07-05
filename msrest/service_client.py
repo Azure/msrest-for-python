@@ -97,13 +97,15 @@ class ServiceClient(object):
 
     def _create_pipeline(self):
         # type: () -> Pipeline
-        return Pipeline([
-            self.config._user_agent,                # UserAgent policy
-            RequestsCredentialsPolicy(self.creds),  # Set credentials for requests based session
-            RequestsPatchSession(),                 # Support deprecated operation config at the session level
-            HTTPLogger(self.config),                # Log request
-            RequestsHTTPSender(self.config)         # Send HTTP request using requests
-        ])
+        return Pipeline(
+            [
+                self.config._user_agent,                # UserAgent policy
+                RequestsCredentialsPolicy(self.creds),  # Set credentials for requests based session
+                RequestsPatchSession(),                 # Support deprecated operation config at the session level
+                HTTPLogger(self.config),                # Log request
+            ],
+            RequestsHTTPSender(self.config)             # Send HTTP request using requests
+        )
 
     def __enter__(self):
         # type: () -> ServiceClient
@@ -202,7 +204,7 @@ class ServiceClient(object):
             return
         # Here, it's a local session, I might close it.
         if not response or not stream:
-            pipeline._impl_policies[-1].session.close()
+            pipeline._sender.session.close()
 
     def stream_download(self, data, callback):
         """Generator for streaming request body data.
