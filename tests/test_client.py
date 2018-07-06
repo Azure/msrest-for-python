@@ -316,7 +316,7 @@ class TestServiceClient(unittest.TestCase):
 
 
     def test_client_send(self):
-        current_ua = self.cfg.user_agent+" requests/{}".format(requests.__version__)
+        current_ua = self.cfg.user_agent
 
         class MockHTTPDriver(object):
             def configure_session(self, **config):

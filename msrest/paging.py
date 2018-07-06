@@ -32,7 +32,7 @@ except ImportError:
 from typing import Dict, Any, List, Callable, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import requests
+    from .pipeline import ClientResponse
 
 from .serialization import Deserializer, Model
 from .pipeline import ClientRawResponse
@@ -41,7 +41,7 @@ from .pipeline import ClientRawResponse
 class Paged(Iterator):
     """A container for paged REST responses.
 
-    :param requests.Response response: server response object.
+    :param ClientResponse response: server response object.
     :param callable command: Function to retrieve the next page of items.
     :param dict classes: A dictionary of class dependencies for
      deserialization.
@@ -50,12 +50,12 @@ class Paged(Iterator):
     _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, command, classes, raw_headers=None):
-        # type: (Callable[[str], requests.Response], Dict[str, Model], Dict[str, str]) -> None
+        # type: (Callable[[str], ClientResponse], Dict[str, Model], Dict[str, str]) -> None
         # Sets next_link, current_page, and _current_page_iter_index.
         self.reset()
         self._derserializer = Deserializer(classes)
         self._get_next = command
-        self._response = None  # type: Optional[requests.Response]
+        self._response = None  # type: Optional[ClientResponse]
         self._raw_headers = raw_headers
 
     def __iter__(self):

@@ -31,13 +31,13 @@ import types
 from typing import Any, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import requests
+    from .pipeline import ClientRequest, ClientResponse
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def log_request(_, request, *args, **kwargs):
-    # type: (Any, requests.PreparedRequest, str, str) -> None
+    # type: (Any, ClientRequest, str, str) -> None
     """Log a client request.
 
     :param _: Unused in current version (will be None)
@@ -66,7 +66,7 @@ def log_request(_, request, *args, **kwargs):
 
 
 def log_response(_, request, response, *args, **kwargs):
-    # type: (Any, requests.PreparedRequest, requests.Response, str, str) -> Optional[requests.Response]
+    # type: (Any, ClientRequest, ClientResponse, str, Any) -> Optional[ClientResponse]
     """Log a server response.
 
     :param _: Unused in current version (will be None)
@@ -95,7 +95,7 @@ def log_response(_, request, response, *args, **kwargs):
         elif response.headers.get("content-type", "").startswith("image"):
             _LOGGER.debug("Body contains image data.")
         else:
-            _LOGGER.debug(str(response.content))
+            _LOGGER.debug(response.text())
         return response
     except Exception as err:
         _LOGGER.debug("Failed to log response: " + repr(err))

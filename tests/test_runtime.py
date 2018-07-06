@@ -106,7 +106,7 @@ class TestRuntime(unittest.TestCase):
         request = client.get(url, {'check':True})
         response = client.send(request)
 
-        assert response.text == "text"
+        assert response.text() == "text"
 
         mock_requests.return_value.request.side_effect = requests.RequestException
         with self.assertRaises(ClientRequestError):

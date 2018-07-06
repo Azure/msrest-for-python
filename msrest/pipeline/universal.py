@@ -28,26 +28,35 @@ This module represents universal policy that works whatever the HTTPSender imple
 """
 import platform
 
+from typing import Mapping, Any, Optional, TYPE_CHECKING
+
 from ..version import msrest_version as _msrest_version
-from . import ClientRequest, ClientRawResponse, SansIOHTTPPolicy
-from . import HTTPPolicy
+from . import SansIOHTTPPolicy
 from ..http_logger import log_request, log_response
 
+if TYPE_CHECKING:
+    from . import ClientRequest, ClientResponse
 
 class HeadersPolicy(SansIOHTTPPolicy):
     """A simple policy that sends the given headers
     with the request.
+
+    This overwrite any headers already defined in the request.
     """
     def __init__(self, headers):
+        # type: (Mapping[str, str]) -> None
         self.headers = headers
 
     def prepare(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> None
         request.headers.update(self.headers)
 
-class UserAgentPolicy(HeadersPolicy):
+class UserAgentPolicy(SansIOHTTPPolicy):
     _USERAGENT = "User-Agent"
 
-    def __init__(self, user_agent=None):
+    def __init__(self, user_agent=None, overwrite=False):
+        # type: (Optional[str], bool) -> None
+        self._overwrite = overwrite
         if user_agent is None:
             self._user_agent = "python/{} ({}) msrest/{}".format(
                 platform.python_version(),
@@ -56,9 +65,6 @@ class UserAgentPolicy(HeadersPolicy):
             )
         else:
             self._user_agent = user_agent
-        super(UserAgentPolicy, self).__init__({
-            self._USERAGENT: self._user_agent
-        })
 
     @property
     def user_agent(self):
@@ -73,16 +79,22 @@ class UserAgentPolicy(HeadersPolicy):
         :param str value: value to add to user agent.
         """
         self._user_agent = "{} {}".format(self._user_agent, value)
-        self.headers[self._USERAGENT] = self._user_agent
+
+    def prepare(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> None
+        if self._overwrite or self._USERAGENT not in request.headers:
+            request.headers[self._USERAGENT] = self._user_agent
 
 class HTTPLogger(SansIOHTTPPolicy):
     def __init__(self, config):
         self._config = config
 
     def prepare(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> None
         if kwargs.get("enable_http_logger", self._config.enable_http_logger):
             log_request(None, request)
 
     def post_send(self, request, response, **kwargs):
+        # type: (ClientRequest, ClientResponse, Any) -> None
         if kwargs.get("enable_http_logger", self._config.enable_http_logger):
             log_response(None, request, response, result=response)

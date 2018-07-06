@@ -151,13 +151,21 @@ class RequestsClientResponse(ClientResponse):
         super(RequestsClientResponse, self).__init__(request)
         self.requests_response = requests_response
         self.status_code = requests_response.status_code
-        self.content = requests_response.content
         self.headers = requests_response.headers
         # Optional, should be removed and use delegation to the real response
         # Keep it for rapid tests for now
         self.history = requests_response.history
         self.is_redirect = requests_response.is_redirect
         self.request = requests_response.request
+        self.reason = requests_response.reason
+
+    def body(self):
+        return self.requests_response.content
+
+    def text(self, encoding=None):
+        if encoding:
+            self.requests_response.encoding = encoding
+        return self.requests_response.text
 
     def json(self):
         # Optional, should be removed and use delegation to the real response
@@ -165,10 +173,10 @@ class RequestsClientResponse(ClientResponse):
         return self.requests_response.json()
 
     @property
-    def text(self):
+    def content(self):
         # Optional, should be removed and use delegation to the real response
         # Keep it for rapid tests for now
-        return self.requests_response.text
+        return self.body()
 
     def stream_download(self, callback, chunk_size):
         # type: (Callable, int) -> Generator[bytes, None, None]
@@ -185,6 +193,11 @@ class RequestsClientResponse(ClientResponse):
                 if callback and callable(callback):
                     callback(chunk, response=response)
                 yield chunk
+
+    def raise_for_status(self):
+        # Optional, should be removed and use delegation to the real response
+        # Keep it for rapid tests for now
+        self.requests_response.raise_for_status()
 
 
 class RequestsHTTPSender(HTTPSender):
@@ -314,9 +327,6 @@ class RequestsHTTPSender(HTTPSender):
             requests_kwargs['data'] = request.data
         requests_kwargs['headers'].update(request.headers)
 
-        # Tag the request as sent by "requests", to help debugging depending of the driver used.
-        current_user_agent = requests_kwargs['headers'].setdefault('User-Agent', "")
-        requests_kwargs['headers']['User-Agent'] = " ".join([current_user_agent, "requests/{}".format(requests.__version__)])
         return requests_kwargs
 
     def send(self, request, **kwargs):

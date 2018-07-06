@@ -1307,23 +1307,27 @@ class Deserializer(object):
         :raises JSONDecodeError: If JSON is requested and parsing is impossible.
         :raises UnicodeDecodeError: If bytes is not UTF8
         """
+        # Could be requests.Response (old usage) or ClientResponse (new generic type)
+        if hasattr(raw_data, 'headers') and hasattr(raw_data, 'text'):
+            # ClientResponse is callable, requests.Response is not. Keep both for backward compat
+            get_str_text = lambda x: x.text() if callable(x.text) else x.text
 
-        if hasattr(raw_data, 'text'): # Our requests.Response test
             # Try to use content-type from headers if available
             if 'content-type' in raw_data.headers:
                 content_type = raw_data.headers['content-type'].split(";")[0].strip().lower()
             # Ouch, this server did not declare what it sent...
-            # Use Swagger "produces", which will be passed to "content_type" here
+            # Use Swagger "produces", which will be passed to "content_type" here.
             # If "content_type" also is empty, this means that it's an old version
             # of Autorest for Python, let's guess it's JSON...
             # Also, since Autorest was considering that an empty body was a valid JSON,
             # need that test as well....
             elif not content_type:
-                if not raw_data.text:
+                if not get_str_text(raw_data):
                     return None
                 content_type = "application/json"
             # Whatever content type, data is readable (not bytes). Get it as a string.
-            data = raw_data.text
+            data = get_str_text(raw_data)
+
         elif raw_data and isinstance(raw_data, bytes):
             data = raw_data.decode(encoding='utf-8-sig')
         else:

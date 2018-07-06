@@ -35,13 +35,16 @@ except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import Dict, Any, Optional, Union, List, Tuple, Callable, Generator, TYPE_CHECKING, cast, IO
+from typing import Dict, Any, Optional, Union, List, Tuple, Callable, Generator, Mapping, TYPE_CHECKING, cast, IO
 
 if TYPE_CHECKING:
     import xml.etree.ElementTree as ET
 
-import requests
-from urllib3 import Retry  # Needs requests 2.16 at least to be safe
+# This file is NOT using any "requests" HTTP implementation
+# However, the CaseInsensitiveDict is handy.
+# If one day we reach the point where "requests" can be skip totally,
+# might provide our own implementation
+from requests.structures import CaseInsensitiveDict
 
 from ..serialization import Deserializer, Model
 
@@ -191,10 +194,10 @@ class ClientRequest(object):
     :type data: bytes or str.
     """
     def __init__(self, method, url, headers=None, files=None, data=None):
-        # type: (str, str, Dict[str, str], Any, Any) -> None
+        # type: (str, str, Mapping[str, str], Any, Any) -> None
         self.method = method
         self.url = url
-        self.headers = headers or {}
+        self.headers = CaseInsensitiveDict(headers)
         self.files = files
         self.data = data
         self.pipeline_context = None  # type: Any
@@ -296,13 +299,30 @@ class ClientRequest(object):
 
 class ClientResponse(object):
     """Represent a HTTP response.
+
+    You have two differents types of body:
+    - Full in-memory using "body" as bytes
+    - Stream body using stream_download
     """
     def __init__(self, request):
         # type: (ClientRequest) -> None
         self.request = request
         self.status_code = None  # type: Optional[int]
         self.headers = {}  # type: Dict[str, str]
-        self.content = None
+
+    def body(self):
+        # type: () -> bytes
+        """Return the whole body as bytes in memory.
+        """
+        pass
+
+    def text(self, encoding=None):
+        # type: (str) -> str
+        """Return the whole body as a string.
+
+        :param str encoding: The encoding to apply if None, use "utf-8". Implementation can be smarter if they want (using headers).
+        """
+        return self.body().decode(encoding or "utf-8")
 
     def stream_download(self, callback, chunk_size):
         # type: (Callable, int) -> Generator[bytes, None, None]
@@ -330,7 +350,7 @@ class ClientRawResponse(object):
     """
 
     def __init__(self, output, response):
-        # type: (Union[Model, List[Model]], Optional[requests.Response]) -> None
+        # type: (Union[Model, List[Model]], Optional[ClientResponse]) -> None
         self.response = response
         self.output = output
         self.headers = {}  # type: Dict[str, Optional[Any]]
