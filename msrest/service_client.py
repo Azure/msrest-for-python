@@ -33,10 +33,11 @@ except ImportError:
     from urllib.parse import urljoin, urlparse
 import warnings
 
-from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
+from typing import Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .configuration import Configuration
+    from .pipeline import ClientResponse
 
 from .authentication import Authentication
 from .pipeline import ClientRequest, Pipeline
@@ -207,28 +208,14 @@ class ServiceClient(object):
             pipeline._sender.session.close()
 
     def stream_download(self, data, callback):
+        # type: (ClientResponse, Callable) -> Generator[bytes, None, None]
         """Generator for streaming request body data.
 
         :param data: A response object to be streamed.
         :param callback: Custom callback for monitoring progress.
         """
         block = self.config.connection.data_block_size
-        if not data._content_consumed:
-            with contextlib.closing(data) as response:
-                for chunk in response.iter_content(block):
-                    if not chunk:
-                        break
-                    if callback and callable(callback):
-                        callback(chunk, response=response)
-                    yield chunk
-        else:
-            for chunk in data.iter_content(block):
-                if not chunk:
-                    break
-                if callback and callable(callback):
-                    callback(chunk, response=data)
-                yield chunk
-        data.close()
+        return data.stream_download(callback, block)
 
     def stream_upload(self, data, callback):
         """Generator for streaming request body data.

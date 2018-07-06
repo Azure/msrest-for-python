@@ -24,6 +24,7 @@
 #
 # --------------------------------------------------------------------------
 import abc
+import contextlib
 import functools
 import json
 import logging
@@ -34,7 +35,7 @@ except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import Dict, Any, Optional, Union, List, Tuple, TYPE_CHECKING, cast, IO
+from typing import Dict, Any, Optional, Union, List, Tuple, Callable, Generator, TYPE_CHECKING, cast, IO
 
 if TYPE_CHECKING:
     import xml.etree.ElementTree as ET
@@ -302,6 +303,19 @@ class ClientResponse(object):
         self.status_code = None  # type: Optional[int]
         self.headers = {}  # type: Dict[str, str]
         self.content = None
+
+    def stream_download(self, callback, chunk_size):
+        # type: (Callable, int) -> Generator[bytes, None, None]
+        """Generator for streaming request body data.
+
+        Should be implemented by sub-classes if streaming download
+        is supported.
+
+        :param callback: Custom callback for monitoring progress.
+        :param int chunk_size:
+        """
+        pass
+
 
 # ClientRawResponse is in Pipeline for compat, but technically there is nothing Pipeline here, this is deserialization
 

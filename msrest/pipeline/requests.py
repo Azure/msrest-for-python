@@ -26,8 +26,9 @@
 """
 This module is the requests implementation of Pipeline ABC
 """
+import contextlib
 import logging
-from typing import Any, Dict, Union, IO, Tuple, Optional, cast, TYPE_CHECKING
+from typing import Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING
 import warnings
 
 if TYPE_CHECKING:
@@ -168,6 +169,23 @@ class RequestsClientResponse(ClientResponse):
         # Optional, should be removed and use delegation to the real response
         # Keep it for rapid tests for now
         return self.requests_response.text
+
+    def stream_download(self, callback, chunk_size):
+        # type: (Callable, int) -> Generator[bytes, None, None]
+        """Generator for streaming request body data.
+
+        :param callback: Custom callback for monitoring progress.
+        :param int chunk_size:
+        """
+        with contextlib.closing(self.requests_response) as response:
+            # https://github.com/PyCQA/pylint/issues/1437
+            for chunk in response.iter_content(chunk_size):  # pylint: disable=no-member
+                if not chunk:
+                    break
+                if callback and callable(callback):
+                    callback(chunk, response=response)
+                yield chunk
+
 
 class RequestsHTTPSender(HTTPSender):
 
