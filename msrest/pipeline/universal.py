@@ -28,14 +28,14 @@ This module represents universal policy that works whatever the HTTPSender imple
 """
 import platform
 
-from typing import Mapping, Any, Optional, TYPE_CHECKING
+from typing import Mapping, Any, Optional, TYPE_CHECKING  # pylint: disable=unused-import
 
 from ..version import msrest_version as _msrest_version
 from . import SansIOHTTPPolicy
 from ..http_logger import log_request, log_response
 
 if TYPE_CHECKING:
-    from . import ClientRequest, ClientResponse
+    from . import ClientRequest, ClientResponse  # pylint: disable=unused-import
 
 class HeadersPolicy(SansIOHTTPPolicy):
     """A simple policy that sends the given headers

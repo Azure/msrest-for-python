@@ -29,13 +29,14 @@ try:
 except ImportError:
     from collections import Iterator
 
-from typing import Dict, Any, List, Callable, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Callable, Optional, TYPE_CHECKING  # pylint: disable=unused-import
+
+from .serialization import Deserializer
+from .pipeline import ClientRawResponse
 
 if TYPE_CHECKING:
-    from .pipeline import ClientResponse
-
-from .serialization import Deserializer, Model
-from .pipeline import ClientRawResponse
+    from .pipeline import ClientResponse  # pylint: disable=unused-import
+    from .serialization import Model  # pylint: disable=unused-import
 
 
 class Paged(Iterator):
@@ -52,6 +53,8 @@ class Paged(Iterator):
     def __init__(self, command, classes, raw_headers=None):
         # type: (Callable[[str], ClientResponse], Dict[str, Model], Dict[str, str]) -> None
         # Sets next_link, current_page, and _current_page_iter_index.
+        self.next_link = ""
+        self._current_page_iter_index = 0
         self.reset()
         self._derserializer = Deserializer(classes)
         self._get_next = command

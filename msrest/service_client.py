@@ -24,20 +24,14 @@
 #
 # --------------------------------------------------------------------------
 
-import contextlib
 import logging
-import os
 try:
     from urlparse import urljoin, urlparse
 except ImportError:
     from urllib.parse import urljoin, urlparse
 import warnings
 
-from typing import Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .configuration import Configuration
-    from .pipeline import ClientResponse
+from typing import Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
 from .authentication import Authentication
 from .pipeline import ClientRequest, Pipeline
@@ -49,10 +43,11 @@ from .pipeline.requests import (
 from .pipeline.universal import (
     HTTPLogger
 )
-from .exceptions import (
-    ClientRequestError,
-    raise_with_traceback
-)
+
+
+if TYPE_CHECKING:
+    from .configuration import Configuration  # pylint: disable=unused-import
+    from .pipeline import ClientResponse  # pylint: disable=unused-import
 
 
 _LOGGER = logging.getLogger(__name__)

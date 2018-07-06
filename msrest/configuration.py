@@ -31,23 +31,22 @@ try:
 except ImportError:
     import ConfigParser as configparser  # type: ignore
     from ConfigParser import NoOptionError  # type: ignore
-import platform
 
-from typing import Dict, List, Any, Callable
-
-import requests
+from typing import TYPE_CHECKING, Dict, List, Any, Callable  # pylint: disable=unused-import
 
 from .exceptions import raise_with_traceback
-from .pipeline import (
+from .pipeline.requests import (
     ClientRetryPolicy,
     ClientRedirectPolicy,
     ClientProxies,
     ClientConnection)
 from .pipeline.universal import UserAgentPolicy
-from .version import msrest_version
 
 
-def default_session_configuration_callback(session, global_config, local_config, **kwargs):
+if TYPE_CHECKING:
+    import requests  # pylint: disable=unused-import
+
+def default_session_configuration_callback(session, global_config, local_config, **kwargs):  # pylint: disable=unused-argument
     # type: (requests.Session, Configuration, Dict[str,str], str) -> Dict[str, str]
     """Configuration callback if you need to change default session configuration.
 
@@ -179,6 +178,7 @@ class Configuration(object):
         :param str filepath: Path to existing config file.
         :raises: ValueError if supplied config file is invalid.
         """
+        import ast
         try:
             self._config.read(filepath)
 
@@ -192,7 +192,7 @@ class Configuration(object):
                 self._config.get("Connection", "cert")
 
             self.proxies.proxies = \
-                eval(self._config.get("Proxies", "proxies"))
+                ast.literal_eval(self._config.get("Proxies", "proxies"))
             self.proxies.use_env_settings = \
                 self._config.getboolean("Proxies", "env_settings")
 

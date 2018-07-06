@@ -25,7 +25,10 @@
 # --------------------------------------------------------------------------
 import abc
 
-from . import ClientRequest, ClientRawResponse
+from typing import TYPE_CHECKING  # pylint: disable=unused-import
+
+if TYPE_CHECKING:
+    from . import ClientRequest, ClientResponse  # pylint: disable=unused-import
 
 class AsyncHTTPPolicy(abc.ABC):
     """An http policy ABC.
@@ -33,7 +36,7 @@ class AsyncHTTPPolicy(abc.ABC):
 
     @abc.abstractmethod
     async def send(self, request):
-        # type: (ClientRequest) -> ClientRawResponse
+        # type: (ClientRequest) -> ClientResponse
         """Mutate the request.
         """
         pass

@@ -24,8 +24,6 @@
 #
 # --------------------------------------------------------------------------
 import abc
-import contextlib
-import functools
 import json
 import logging
 import os.path
@@ -35,10 +33,7 @@ except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import Dict, Any, Optional, Union, List, Tuple, Callable, Generator, Mapping, TYPE_CHECKING, cast, IO
-
-if TYPE_CHECKING:
-    import xml.etree.ElementTree as ET
+from typing import TYPE_CHECKING, cast, IO, List, Union, Any, Mapping, Dict, Optional, Tuple, Callable, Generator  # pylint: disable=unused-import
 
 # This file is NOT using any "requests" HTTP implementation
 # However, the CaseInsensitiveDict is handy.
@@ -46,7 +41,10 @@ if TYPE_CHECKING:
 # might provide our own implementation
 from requests.structures import CaseInsensitiveDict
 
-from ..serialization import Deserializer, Model
+from ..serialization import Deserializer
+
+if TYPE_CHECKING:
+    from ..serialization import Model  # pylint: disable=unused-import
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -165,8 +163,10 @@ class SansIOHTTPPolicy:
 class _SansIOHTTPPolicyRunner(HTTPPolicy):
     """Sync implementation of the SansIO policy.
     """
+
     def __init__(self, policy):
         # type: (SansIOHTTPPolicy) -> None
+        super(_SansIOHTTPPolicyRunner, self).__init__()
         self._policy = policy
 
     def send(self, request, **kwargs):
@@ -320,7 +320,8 @@ class ClientResponse(object):
         # type: (str) -> str
         """Return the whole body as a string.
 
-        :param str encoding: The encoding to apply if None, use "utf-8". Implementation can be smarter if they want (using headers).
+        :param str encoding: The encoding to apply. If None, use "utf-8".
+         Implementation can be smarter if they want (using headers).
         """
         return self.body().decode(encoding or "utf-8")
 
@@ -369,6 +370,3 @@ class ClientRawResponse(object):
             value = self.response.headers.get(name)
             value = self._deserialize(data_type, value)
             self.headers[name] = value
-
-# For backward compat, import requests basic policy
-from .requests import ClientConnection, ClientProxies, ClientRedirectPolicy, ClientRetryPolicy

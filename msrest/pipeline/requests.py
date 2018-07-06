@@ -28,11 +28,8 @@ This module is the requests implementation of Pipeline ABC
 """
 import contextlib
 import logging
-from typing import Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Generator, Any, Union, Dict, Optional  # pylint: disable=unused-import
 import warnings
-
-if TYPE_CHECKING:
-    from ..configuration import Configuration
 
 from oauthlib import oauth2
 import requests
@@ -42,7 +39,11 @@ from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
-from . import HTTPSender, HTTPPolicy, ClientRequest, ClientResponse
+from . import HTTPSender, HTTPPolicy, ClientResponse
+
+if TYPE_CHECKING:
+    from ..configuration import Configuration  # pylint: disable=unused-import
+    from . import ClientRequest  # pylint: disable=unused-import
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,6 +53,7 @@ class RequestsCredentialsPolicy(HTTPPolicy):
     """Implementation of request-oauthlib except and retry logic.
     """
     def __init__(self, credentials):
+        super(RequestsCredentialsPolicy, self).__init__()
         self._creds = credentials
 
     def send(self, request, **kwargs):
@@ -225,7 +227,7 @@ class RequestsHTTPSender(HTTPSender):
         # type: () -> RequestsHTTPSender
         return self
 
-    def __exit__(self, *exc_details):
+    def __exit__(self, *exc_details):  # pylint: disable=arguments-differ
         self.close()
 
     def close(self):
@@ -258,7 +260,7 @@ class RequestsHTTPSender(HTTPSender):
         # Change max_retries in current all installed adapters
         max_retries = self.config.retry_policy()
         for protocol in self._protocols:
-            self.session.adapters[protocol].max_retries=max_retries
+            self.session.adapters[protocol].max_retries = max_retries
 
     def _configure_send(self, request, **kwargs):
         # type: (ClientRequest, Any) -> Dict[str, str]
