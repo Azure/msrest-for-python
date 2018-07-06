@@ -215,9 +215,9 @@ class TestServiceClient(unittest.TestCase):
 
         # I can enable it per request
         http_logger.prepare(request, **{"enable_http_logger": True})
-        mock_http_logger.debug.assert_called()
+        assert mock_http_logger.debug.call_count >= 1
         http_logger.post_send(request, response, **{"enable_http_logger": True})
-        mock_http_logger.debug.assert_called()
+        assert mock_http_logger.debug.call_count >= 1
         mock_http_logger.reset_mock()
 
         # I can enable it per request (bool value should be honored)
@@ -230,9 +230,9 @@ class TestServiceClient(unittest.TestCase):
         # I can enable it globally
         self.cfg.enable_http_logger = True
         http_logger.prepare(request)
-        mock_http_logger.debug.assert_called()
+        assert mock_http_logger.debug.call_count >= 1
         http_logger.post_send(request, response)
-        mock_http_logger.debug.assert_called()
+        assert mock_http_logger.debug.call_count >= 1
         mock_http_logger.reset_mock()
 
         # I can enable it globally and override it locally
