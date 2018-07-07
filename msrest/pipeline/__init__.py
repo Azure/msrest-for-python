@@ -52,7 +52,7 @@ _LOGGER = logging.getLogger(__name__)
 
 try:
     ABC = abc.ABC
-except ImportError: # Python 2.7
+except AttributeError: # Python 2.7, abc exists, but not ABC
     ABC = abc.ABCMeta('ABC', (object,), {'__slots__': ()})  # type: ignore
 
 try:
