@@ -23,6 +23,7 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
+from __future__ import absolute_import  # we have a "requests" module that conflicts with "requests" on Py2.7
 import abc
 import json
 import logging
