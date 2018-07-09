@@ -20,6 +20,19 @@ To install:
 Release History
 ---------------
 
+2018-07-09 Version 0.5.2
+++++++++++++++++++++++++
+
+**Features**
+
+- deserialize/from_dict now accepts a content-type parameter to parse XML strings
+
+**Bugfixes**
+
+- Fix some complex XML Swagger definitions.
+
+This release likely breaks already generated XML SDKs, that needs to be regenerated with autorest.python 3.0.58
+
 2018-06-21 Version 0.5.1
 ++++++++++++++++++++++++
 
