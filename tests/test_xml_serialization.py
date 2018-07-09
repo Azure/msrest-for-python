@@ -370,6 +370,7 @@ class TestXmlDeserialization:
 
         assert result.age == 37
 
+
 class TestXmlSerialization:
 
     def test_basic(self):

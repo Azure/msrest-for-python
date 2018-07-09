@@ -192,7 +192,7 @@ class Model(object):
             raise ValueError("This model has no XML definition")
 
         return _create_xml_node(
-            xml_map['name'],
+            xml_map.get('name', cls.__name__),
             xml_map.get("prefix", None),
             xml_map.get("ns", None)
         )
@@ -278,18 +278,19 @@ class Model(object):
         return client_models
 
     @classmethod
-    def deserialize(cls, data):
-        """Parse a dict using the RestAPI syntax and return a model.
+    def deserialize(cls, data, content_type=None):
+        """Parse a str using the RestAPI syntax and return a model.
 
-        :param dict data: A dict using RestAPI structure
+        :param str data: A str using RestAPI structure. JSON by default.
+        :param str content_type: JSON by default, set application/xml if XML.
         :returns: An instance of this model
         :raises: DeserializationError if something went wrong
         """
         deserializer = Deserializer(cls._infer_class_models())
-        return deserializer(cls.__name__, data)
+        return deserializer(cls.__name__, data, content_type=content_type)
 
     @classmethod
-    def from_dict(cls, data, key_extractors=None):
+    def from_dict(cls, data, key_extractors=None, content_type=None):
         """Parse a dict using given key extractor return a model.
 
         By default consider key
@@ -297,6 +298,7 @@ class Model(object):
         and last_rest_key_case_insensitive_extractor)
 
         :param dict data: A dict using RestAPI structure
+        :param str content_type: JSON by default, set application/xml if XML.
         :returns: An instance of this model
         :raises: DeserializationError if something went wrong
         """
@@ -306,7 +308,7 @@ class Model(object):
             attribute_key_case_insensitive_extractor,
             last_rest_key_case_insensitive_extractor
         ] if key_extractors is None else key_extractors
-        return deserializer(cls.__name__, data)
+        return deserializer(cls.__name__, data, content_type=content_type)
 
     @classmethod
     def _flatten_subtype(cls, key, objects):
@@ -1096,8 +1098,18 @@ def xml_key_extractor(attr, attr_desc, data):
     is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
     internal_type = attr_desc.get("internalType", None)
 
-    if is_wrapped or not is_iter_type:
+    # Scenario where I take the local name:
+    # - Wrapped node
+    # - Internal type is an enum (considered basic types)
+    # - Internal type has no XML/Name node
+    if is_wrapped or (internal_type and (issubclass(internal_type, Enum) or 'name' not in internal_type._xml_map)):
         children = data.findall(xml_name, ns)
+    # If internal type has a local name and it's not a list, I use that name
+    elif not is_iter_type and internal_type and 'name' in internal_type._xml_map:
+        xml_name = internal_type._xml_map["name"]
+        ns = internal_type._xml_map.get("ns", None)
+        children = data.findall(xml_name, ns)
+    # That's an array
     else:
         if internal_type: # Complex type, ignore itemsName and use the complex type name
             items_name = internal_type._xml_map["name"]
@@ -1412,6 +1424,8 @@ class Deserializer(object):
             if data_type in self.deserialize_type:
                 if isinstance(data, self.deserialize_expected_types.get(data_type, tuple())):
                     return data
+                if isinstance(data, ET.Element) and not data.text:
+                    return None
                 data_val = self.deserialize_type[data_type](data)
                 return data_val
 
