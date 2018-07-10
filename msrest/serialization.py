@@ -491,12 +491,13 @@ class Serializer(object):
                         if isinstance(new_attr, list):
                             serialized.extend(new_attr)
                         elif isinstance(new_attr, ET.Element):
-                            # We MUST replace the tag with the local tag. But keeping the namespaces.
-                            splitted_tag = new_attr.tag.split("}")
-                            if len(splitted_tag) == 2: # Namespace
-                                new_attr.tag = "}".join([splitted_tag[0], xml_name])
-                            else:
-                                new_attr.tag = xml_name
+                            # If the down XML has no XML/Name, we MUST replace the tag with the local tag. But keeping the namespaces.
+                            if 'name' not in getattr(orig_attr, '_xml_map', {}):
+                                splitted_tag = new_attr.tag.split("}")
+                                if len(splitted_tag) == 2: # Namespace
+                                    new_attr.tag = "}".join([splitted_tag[0], xml_name])
+                                else:
+                                    new_attr.tag = xml_name
                             serialized.append(new_attr)
                         else:  # That's a basic type
                             # Integrate namespace if necessary
