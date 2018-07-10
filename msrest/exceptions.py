@@ -140,7 +140,7 @@ class HttpOperationError(ClientException):
 
     def __init__(self, deserialize, response,
                  resp_type=None, *args, **kwargs):
-        # type: (Deserializer, requests.Response, Optional[str], str, str) -> None
+        # type: (Deserializer, Any, Optional[str], str, str) -> None
         self.error = None
         self.message = self._DEFAULT_MESSAGE
         if hasattr(response, 'internal_response'):
