@@ -183,7 +183,55 @@ class RequestsClientResponse(ClientResponse):
     def raise_for_status(self):
         self.internal_response.raise_for_status()
 
-class RequestsHTTPSender(HTTPSender):
+class BasicRequestsHTTPSender(HTTPSender):
+    """Implements a basic requests HTTP sender.
+
+    In this simple implementation:
+    - You provide the configured session if you want to, or a basic session is created.
+    - All kwargs received by "send" are sent to session.request directly
+    """
+
+    def __init__(self, session=None):
+        # type: (Optional[requests.Session]) -> None
+        self.session = session or requests.Session()
+
+    def __enter__(self):
+        # type: () -> BasicRequestsHTTPSender
+        return self
+
+    def __exit__(self, *exc_details):  # pylint: disable=arguments-differ
+        self.close()
+
+    def close(self):
+        self.session.close()
+
+    def build_context(self):
+        # type: () -> RequestsContext
+        return RequestsContext(
+            session=self.session,
+            kwargs={}
+        )
+
+    def send(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> RequestsClientResponse
+        """Send request object according to configuration.
+
+        :param ClientRequest request: The request object to be sent.
+        """
+        if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
+            request.pipeline_context = self.build_context()
+
+        session = request.pipeline_context.session
+        response = session.request(
+            request.method,
+            request.url,
+            **kwargs)
+        return RequestsClientResponse(request, response)
+
+class RequestsHTTPSender(BasicRequestsHTTPSender):
+    """A requests HTTP sender that can consume a msrest.Configuration object.
+
+    """
 
     _protocols = ['http://', 'https://']
 
@@ -200,26 +248,9 @@ class RequestsHTTPSender(HTTPSender):
 
     def __init__(self, config):
         # type: (Configuration) -> None
+        super(RequestsHTTPSender, self).__init__()
         self.config = config
-        self.session = requests.Session()
         self._init_session()
-
-    def __enter__(self):
-        # type: () -> RequestsHTTPSender
-        return self
-
-    def __exit__(self, *exc_details):  # pylint: disable=arguments-differ
-        self.close()
-
-    def close(self):
-        self.session.close()
-
-    def build_context(self):
-        # type: () -> RequestsContext
-        return RequestsContext(
-            session=self.session,
-            kwargs={}
-        )
 
     def _init_session(self):
         # type: () -> None
@@ -318,13 +349,8 @@ class RequestsHTTPSender(HTTPSender):
 
         :param ClientRequest request: The request object to be sent.
         """
-        session = request.pipeline_context.session
         requests_kwargs = self._configure_send(request, **kwargs)
-        response = session.request(
-            request.method,
-            request.url,
-            **requests_kwargs)
-        return RequestsClientResponse(request, response)
+        return super(RequestsHTTPSender, self).send(request, **requests_kwargs)
 
 
 class ClientRetryPolicy(object):
