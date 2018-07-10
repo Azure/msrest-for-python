@@ -151,35 +151,17 @@ class RequestsContext(object):
 
 class RequestsClientResponse(ClientResponse):
     def __init__(self, request, requests_response):
-        super(RequestsClientResponse, self).__init__(request)
-        self.requests_response = requests_response
+        super(RequestsClientResponse, self).__init__(request, requests_response)
         self.status_code = requests_response.status_code
         self.headers = requests_response.headers
-        # Optional, should be removed and use delegation to the real response
-        # Keep it for rapid tests for now
-        self.history = requests_response.history
-        self.is_redirect = requests_response.is_redirect
-        self.request = requests_response.request
-        self.reason = requests_response.reason
 
     def body(self):
-        return self.requests_response.content
+        return self.internal_response.content
 
     def text(self, encoding=None):
         if encoding:
-            self.requests_response.encoding = encoding
-        return self.requests_response.text
-
-    def json(self):
-        # Optional, should be removed and use delegation to the real response
-        # Keep it for rapid tests for now
-        return self.requests_response.json()
-
-    @property
-    def content(self):
-        # Optional, should be removed and use delegation to the real response
-        # Keep it for rapid tests for now
-        return self.body()
+            self.internal_response.encoding = encoding
+        return self.internal_response.text
 
     def stream_download(self, callback, chunk_size):
         # type: (Callable, int) -> Generator[bytes, None, None]
@@ -188,7 +170,7 @@ class RequestsClientResponse(ClientResponse):
         :param callback: Custom callback for monitoring progress.
         :param int chunk_size:
         """
-        with contextlib.closing(self.requests_response) as response:
+        with contextlib.closing(self.internal_response) as response:
             # https://github.com/PyCQA/pylint/issues/1437
             for chunk in response.iter_content(chunk_size):  # pylint: disable=no-member
                 if not chunk:
@@ -196,11 +178,6 @@ class RequestsClientResponse(ClientResponse):
                 if callback and callable(callback):
                     callback(chunk, response=response)
                 yield chunk
-
-    def raise_for_status(self):
-        # Optional, should be removed and use delegation to the real response
-        # Keep it for rapid tests for now
-        self.requests_response.raise_for_status()
 
 
 class RequestsHTTPSender(HTTPSender):

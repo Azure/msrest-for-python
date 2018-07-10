@@ -307,9 +307,10 @@ class ClientResponse(object):
     - Full in-memory using "body" as bytes
     - Stream body using stream_download
     """
-    def __init__(self, request):
-        # type: (ClientRequest) -> None
+    def __init__(self, request, internal_response):
+        # type: (ClientRequest, Any) -> None
         self.request = request
+        self.internal_response = internal_response
         self.status_code = None  # type: Optional[int]
         self.headers = {}  # type: Dict[str, str]
 
@@ -355,7 +356,11 @@ class ClientRawResponse(object):
 
     def __init__(self, output, response):
         # type: (Union[Model, List[Model]], Optional[ClientResponse]) -> None
-        self.response = response
+        if isinstance(response, ClientResponse):
+            # Let's not do too much layers
+            self.response = response.internal_response
+        else:
+            self.response = response
         self.output = output
         self.headers = {}  # type: Dict[str, Optional[Any]]
         self._deserialize = Deserializer()

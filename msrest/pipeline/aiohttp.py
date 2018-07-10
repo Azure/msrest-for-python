@@ -63,7 +63,7 @@ class AioHTTPSender(AsyncHTTPSender):
 
 class AioHttpClientResponse(ClientResponse):
     def __init__(self, request: ClientRequest, aiohttp_response: aiohttp.ClientResponse) -> None:
-        super(AioHttpClientResponse, self).__init__(request)
+        super(AioHttpClientResponse, self).__init__(request, aiohttp_response)
         # https://aiohttp.readthedocs.io/en/stable/client_reference.html#aiohttp.ClientResponse
         self.status_code = aiohttp_response.status
         self.headers = aiohttp_response.headers
