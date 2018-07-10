@@ -68,6 +68,60 @@ except ImportError: # Python <= 3.5
             """Raise any exception triggered within the runtime context."""
             return None
 
+class HTTPPolicy(ABC):
+    """An http policy ABC.
+    """
+    def __init__(self):
+        self.next = None
+
+    @abc.abstractmethod
+    def send(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> ClientResponse
+        """Mutate the request.
+
+        Context content is dependent of the HTTPSender.
+        """
+        pass
+
+class SansIOHTTPPolicy:
+    """Represents a sans I/O policy.
+
+    This policy can act before the I/O, and after the I/O.
+    Use this policy if the actual I/O in the middle is an implementation
+    detail.
+
+    Context is not available, since it's implementation dependent.
+    if a policy needs a context of the Sender, it can't be universal.
+
+    Example: setting a UserAgent does not need to be tight to
+    sync or async implementation or specific HTTP lib
+    """
+    def prepare(self, request, **kwargs):
+        """Is executed before sending the request to next policy.
+        """
+        pass
+
+    def post_send(self, request, response, **kwargs):
+        """Is executed after the request comes back from the policy.
+        """
+        pass
+
+class _SansIOHTTPPolicyRunner(HTTPPolicy):
+    """Sync implementation of the SansIO policy.
+    """
+
+    def __init__(self, policy):
+        # type: (SansIOHTTPPolicy) -> None
+        super(_SansIOHTTPPolicyRunner, self).__init__()
+        self._policy = policy
+
+    def send(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> ClientResponse
+        self._policy.prepare(request, **kwargs)
+        response = self.next.send(request, **kwargs)
+        self._policy.post_send(request, response, **kwargs)
+        return response
+
 class Pipeline(AbstractContextManager):
     """A pipeline implementation.
 
@@ -122,60 +176,6 @@ class HTTPSender(AbstractContextManager, ABC):
         required and None by default.
         """
         return None
-
-class HTTPPolicy(ABC):
-    """An http policy ABC.
-    """
-    def __init__(self):
-        self.next = None
-
-    @abc.abstractmethod
-    def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> ClientResponse
-        """Mutate the request.
-
-        Context content is dependent of the HTTPSender.
-        """
-        pass
-
-class SansIOHTTPPolicy:
-    """Represents a sans I/O policy.
-
-    This policy can act before the I/O, and after the I/O.
-    Use this policy if the actual I/O in the middle is an implementation
-    detail.
-
-    Context is not available, since it's implementation dependent.
-    if a policy needs a context of the Sender, it can't be universal.
-
-    Example: setting a UserAgent does not need to be tight to
-    sync or async implementation or specific HTTP lib
-    """
-    def prepare(self, request, **kwargs):
-        """Is executed before sending the request to next policy.
-        """
-        pass
-
-    def post_send(self, request, response, **kwargs):
-        """Is executed after the request comes back from the policy.
-        """
-        pass
-
-class _SansIOHTTPPolicyRunner(HTTPPolicy):
-    """Sync implementation of the SansIO policy.
-    """
-
-    def __init__(self, policy):
-        # type: (SansIOHTTPPolicy) -> None
-        super(_SansIOHTTPPolicyRunner, self).__init__()
-        self._policy = policy
-
-    def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> ClientResponse
-        self._policy.prepare(request, **kwargs)
-        response = self.next.send(request, **kwargs)
-        self._policy.post_send(request, response, **kwargs)
-        return response
 
 
 class ClientRequest(object):
@@ -371,3 +371,20 @@ class ClientRawResponse(object):
             value = self.response.headers.get(name)
             value = self._deserialize(data_type, value)
             self.headers[name] = value
+
+__all__ = [
+    'ClientRequest',
+    'ClientResponse',
+    'ClientRawResponse',
+    'Pipeline',
+    'HTTPPolicy',
+    'SansIOHTTPPolicy',
+    'HTTPSender'
+]
+
+try:
+    from .async_abc import AsyncPipeline, AsyncHTTPPolicy, AsyncHTTPSender  # pylint: disable=unused-import
+    from .async_abc import __all__ as _async_all
+    __all__ += _async_all
+except SyntaxError: # Python 2
+    pass
