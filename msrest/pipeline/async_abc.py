@@ -115,11 +115,11 @@ class AsyncPipeline(AbstractAsyncContextManager):
             self._impl_policies[-1].next = self._sender
 
     async def __aenter__(self) -> 'AsyncPipeline':
-        await self._sender.__enter__()
+        await self._sender.__aenter__()
         return self
 
     async def __exit__(self, *exc_details):  # pylint: disable=arguments-differ
-        await self._sender.__exit__(*exc_details)
+        await self._sender.__aexit__(*exc_details)
 
     async def run(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
         context = self._sender.build_context()
