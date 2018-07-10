@@ -33,14 +33,14 @@ class AioHTTPSender(AsyncHTTPSender):
     """AioHttp HTTP sender implementation.
     """
 
-    def __init__(self):
-        self._session = aiohttp.ClientSession()
+    def __init__(self, *, loop=None):
+        self._session = aiohttp.ClientSession(loop=loop)
 
     async def __aenter__(self):
         await self._session.__aenter__()
 
-    async def __exit__(self, *exc_details):  # pylint: disable=arguments-differ
-        await self._session.__exit__(*exc_details)
+    async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
+        await self._session.__aexit__(*exc_details)
 
     async def send(self, request: ClientRequest, **config: Any) -> ClientResponse:
         """Send the request using this HTTP sender.
@@ -67,3 +67,7 @@ class AioHttpClientResponse(ClientResponse):
         # https://aiohttp.readthedocs.io/en/stable/client_reference.html#aiohttp.ClientResponse
         self.status_code = aiohttp_response.status
         self.headers = aiohttp_response.headers
+        self.reason = aiohttp_response.reason
+
+    def raise_for_status(self):
+        self.internal_response.raise_for_status()

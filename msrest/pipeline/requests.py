@@ -154,6 +154,7 @@ class RequestsClientResponse(ClientResponse):
         super(RequestsClientResponse, self).__init__(request, requests_response)
         self.status_code = requests_response.status_code
         self.headers = requests_response.headers
+        self.reason = requests_response.reason
 
     def body(self):
         return self.internal_response.content
@@ -179,6 +180,8 @@ class RequestsClientResponse(ClientResponse):
                     callback(chunk, response=response)
                 yield chunk
 
+    def raise_for_status(self):
+        self.internal_response.raise_for_status()
 
 class RequestsHTTPSender(HTTPSender):
 

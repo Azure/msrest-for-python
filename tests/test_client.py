@@ -204,7 +204,7 @@ class TestServiceClient(unittest.TestCase):
     def test_no_log(self, mock_http_logger):
         request = ClientRequest('GET', 'http://127.0.0.1/')
         http_logger = HTTPLogger(self.cfg)
-        response = ClientResponse(request)
+        response = ClientResponse(request, None)
 
         # By default, no log handler for HTTP
         http_logger.prepare(request)

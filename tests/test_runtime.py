@@ -79,6 +79,7 @@ class TestRuntime(unittest.TestCase):
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
+        response = response.internal_response
         self.assertTrue('Authorization' in response.request.headers)
         self.assertEqual(response.request.headers['Authorization'], 'Bearer eswfld123kjhn1v5423')
         httpretty.has_request()
@@ -129,6 +130,7 @@ class TestRuntime(unittest.TestCase):
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
+        response = response.internal_response
         self.assertEqual(response.json(), "Mocked body")
 
         with mock.patch.dict('os.environ', {'HTTP_PROXY': "http://localhost:1987"}):
@@ -142,6 +144,7 @@ class TestRuntime(unittest.TestCase):
             url = client.format_url("/get_endpoint")
             request = client.get(url, {'check':True})
             response = client.send(request)
+            response = response.internal_response
             self.assertEqual(response.json(), "Mocked body")
 
 
@@ -172,6 +175,7 @@ class TestRedirect(unittest.TestCase):
 
 
         response = self.client.send(request)
+        response = response.internal_response
         self.assertEqual(response.status_code, 200, msg="Should redirect with GET on 303 with location header")
         self.assertEqual(response.request.method, 'GET')
 
@@ -185,6 +189,7 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
+        response = response.internal_response
         self.assertEqual(response.status_code, 303, msg="Should not redirect on 303 without location header")
         self.assertEqual(response.history, [])
         self.assertFalse(response.is_redirect)
@@ -203,6 +208,7 @@ class TestRedirect(unittest.TestCase):
 
 
         response = self.client.send(request)
+        response = response.internal_response
         self.assertEqual(response.status_code, 200, msg="Should redirect on 307 with location header")
         self.assertEqual(response.request.method, 'HEAD')
 
@@ -216,6 +222,7 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
+        response = response.internal_response
         self.assertEqual(response.status_code, 307, msg="Should not redirect on 307 without location header")
         self.assertEqual(response.history, [])
         self.assertFalse(response.is_redirect)
@@ -234,6 +241,7 @@ class TestRedirect(unittest.TestCase):
 
 
         response = self.client.send(request)
+        response = response.internal_response
         self.assertEqual(response.status_code, 200, msg="Should redirect on 307 with location header")
         self.assertEqual(response.request.method, 'DELETE')
 
@@ -247,6 +255,7 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
+        response = response.internal_response
         self.assertEqual(response.status_code, 307, msg="Should not redirect on 307 without location header")
         self.assertEqual(response.history, [])
         self.assertFalse(response.is_redirect)
@@ -263,6 +272,7 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
+        response = response.internal_response
         self.assertEqual(response.status_code, 305, msg="Should not redirect on 305")
         self.assertEqual(response.history, [])
         self.assertFalse(response.is_redirect)

@@ -43,6 +43,7 @@ from typing import TYPE_CHECKING, cast, IO, List, Union, Any, Mapping, Dict, Opt
 from requests.structures import CaseInsensitiveDict
 
 from ..serialization import Deserializer
+from ..exceptions import ClientRequestError
 
 if TYPE_CHECKING:
     from ..serialization import Model  # pylint: disable=unused-import
@@ -313,6 +314,7 @@ class ClientResponse(object):
         self.internal_response = internal_response
         self.status_code = None  # type: Optional[int]
         self.headers = {}  # type: Dict[str, str]
+        self.reason = None  # type: Optional[str]
 
     def body(self):
         # type: () -> bytes
@@ -340,6 +342,12 @@ class ClientResponse(object):
         :param int chunk_size:
         """
         pass
+
+    def raise_for_status(self):
+        """Raise for status. Should be overriden, but basic implementation provided.
+        """
+        if self.status_code >= 400:
+            raise ClientRequestError("Received status code {}".format(self.status_code))
 
 
 # ClientRawResponse is in Pipeline for compat, but technically there is nothing Pipeline here, this is deserialization

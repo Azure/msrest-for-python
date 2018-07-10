@@ -36,4 +36,5 @@ async def test_basic():
     async with AsyncPipeline([], AioHTTPSender()) as pipeline:
         response = await pipeline.run(request)
 
+    assert pipeline._sender._session.closed
     assert response.status_code == 200

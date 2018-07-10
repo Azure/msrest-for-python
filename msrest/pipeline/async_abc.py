@@ -93,6 +93,13 @@ class AsyncHTTPSender(AbstractAsyncContextManager, abc.ABC):
         """
         return None
 
+    def __enter__(self):
+        raise TypeError("Use async with instead")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
+
 
 class AsyncPipeline(AbstractAsyncContextManager):
     """A pipeline implementation.
@@ -114,11 +121,18 @@ class AsyncPipeline(AbstractAsyncContextManager):
         if self._impl_policies:
             self._impl_policies[-1].next = self._sender
 
+    def __enter__(self):
+        raise TypeError("Use async with instead")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # __exit__ should exist in pair with __enter__ but never executed
+        pass  # pragma: no cover
+
     async def __aenter__(self) -> 'AsyncPipeline':
         await self._sender.__aenter__()
         return self
 
-    async def __exit__(self, *exc_details):  # pylint: disable=arguments-differ
+    async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         await self._sender.__aexit__(*exc_details)
 
     async def run(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
