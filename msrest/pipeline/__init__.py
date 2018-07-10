@@ -140,7 +140,8 @@ class Pipeline(AbstractContextManager):
                 self._impl_policies.append(policy)
         for index in range(len(self._impl_policies)-1):
             self._impl_policies[index].next = self._impl_policies[index+1]
-        self._impl_policies[-1].next = self._sender
+        if self._impl_policies:
+            self._impl_policies[-1].next = self._sender
 
     def __enter__(self):
         # type: () -> Pipeline
@@ -154,7 +155,8 @@ class Pipeline(AbstractContextManager):
         # type: (ClientRequest, Any) -> ClientResponse
         context = self._sender.build_context()
         request.pipeline_context = context
-        return self._impl_policies[0].send(request, **kwargs)
+        first_node = self._impl_policies[0] if self._impl_policies else self._sender
+        return first_node.send(request, **kwargs)  # type: ignore
 
 class HTTPSender(AbstractContextManager, ABC):
     """An http sender ABC.

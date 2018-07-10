@@ -111,7 +111,8 @@ class AsyncPipeline(AbstractAsyncContextManager):
                 self._impl_policies.append(policy)
         for index in range(len(self._impl_policies)-1):
             self._impl_policies[index].next = self._impl_policies[index+1]
-        self._impl_policies[-1].next = self._sender
+        if self._impl_policies:
+            self._impl_policies[-1].next = self._sender
 
     async def __aenter__(self) -> 'AsyncPipeline':
         await self._sender.__enter__()
@@ -123,7 +124,8 @@ class AsyncPipeline(AbstractAsyncContextManager):
     async def run(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
         context = self._sender.build_context()
         request.pipeline_context = context
-        return await self._impl_policies[0].send(request, **kwargs)
+        first_node = self._impl_policies[0] if self._impl_policies else self._sender
+        return await first_node.send(request, **kwargs)  # type: ignore
 
 __all__ = [
     'AsyncHTTPPolicy',
