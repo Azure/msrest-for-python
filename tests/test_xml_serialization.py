@@ -370,6 +370,7 @@ class TestXmlDeserialization:
 
         assert result.age == 37
 
+
 class TestXmlSerialization:
 
     def test_basic(self):
@@ -711,7 +712,6 @@ class TestXmlSerialization:
                 'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
             }
             _xml_map = {
-                'name': 'Apple'
             }
 
         mymodel = AppleBarrel(
