@@ -9,7 +9,7 @@ name = "pypi"
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
-pytest-asyncio = {version = "*", markers="python_version >= '3.5.2'"}
+pytest-asyncio = {version = "*", markers="python_version >= '3.5'"}
 httpretty = ">=0.8.10"
 mock = {version = "*", markers="python_version <= '2.7'"}
 mypy = {version = "==0.610", markers="python_version > '2.7'"}
