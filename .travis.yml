@@ -19,7 +19,7 @@ _autorest_install: &_autorest_install
 jobs:
   include:
     - stage: MyPy
-      python: 3.5
+      python: 3.6
       install:
         - pip install mypy
       script:
