@@ -68,7 +68,7 @@ except ImportError: # Python <= 3.5
             """Raise any exception triggered within the runtime context."""
             return None
 
-class Pipeline:
+class Pipeline(AbstractContextManager):
     """A pipeline implementation.
 
     This is implemented as a context manager, that will activate the context
@@ -93,7 +93,7 @@ class Pipeline:
         self._sender.__enter__()
         return self
 
-    def __exit__(self, *exc_details):
+    def __exit__(self, *exc_details):  # pylint: disable=arguments-differ
         self._sender.__exit__(*exc_details)
 
     def run(self, request, **kwargs):
