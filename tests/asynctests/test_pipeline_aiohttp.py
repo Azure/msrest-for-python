@@ -24,6 +24,7 @@
 #
 #--------------------------------------------------------------------------
 from msrest.pipeline import AsyncPipeline, ClientRequest
+from msrest.pipeline.universal import UserAgentPolicy
 from msrest.pipeline.aiohttp import AioHTTPSender
 
 import pytest
@@ -32,8 +33,11 @@ import pytest
 @pytest.mark.asyncio
 async def test_basic():
 
-    request = ClientRequest("GET", "http://google.com")
-    async with AsyncPipeline([], AioHTTPSender()) as pipeline:
+    request = ClientRequest("GET", "http://bing.com")
+    policies = [
+        UserAgentPolicy("myusergant")
+    ]
+    async with AsyncPipeline(policies, AioHTTPSender()) as pipeline:
         response = await pipeline.run(request)
 
     assert pipeline._sender._session.closed
