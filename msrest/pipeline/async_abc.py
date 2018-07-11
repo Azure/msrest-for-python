@@ -48,7 +48,8 @@ class AsyncHTTPPolicy(abc.ABC):
     """
     def __init__(self) -> None:
         # next will be set once in the pipeline
-        self.next: Union[AsyncHTTPPolicy, AsyncHTTPSender] = None  # type: ignore
+        # actual type is: Union[AsyncHTTPPolicy, AsyncHTTPSender] but cannot do it in Py3.5
+        self.next = None  # type: ignore
 
     @abc.abstractmethod
     async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
@@ -69,7 +70,7 @@ class _SansIOAsyncHTTPPolicyRunner(AsyncHTTPPolicy):
 
     async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
         self._policy.prepare(request, **kwargs)
-        response = await self.next.send(request, **kwargs)
+        response = await self.next.send(request, **kwargs)  # type: ignore
         self._policy.post_send(request, response, **kwargs)
         return response
 
@@ -109,7 +110,7 @@ class AsyncPipeline(AbstractAsyncContextManager):
     """
 
     def __init__(self, policies: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]], sender: AsyncHTTPSender) -> None:
-        self._impl_policies: List[AsyncHTTPPolicy] = []
+        self._impl_policies = []  # type: List[AsyncHTTPPolicy]
         self._sender = sender
         for policy in policies:
             if isinstance(policy, SansIOHTTPPolicy):
@@ -117,7 +118,7 @@ class AsyncPipeline(AbstractAsyncContextManager):
             else:
                 self._impl_policies.append(policy)
         for index in range(len(self._impl_policies)-1):
-            self._impl_policies[index].next = self._impl_policies[index+1]
+            self._impl_policies[index].next = self._impl_policies[index+1]  # type: ignore
         if self._impl_policies:
             self._impl_policies[-1].next = self._sender
 
