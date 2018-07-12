@@ -69,6 +69,32 @@ class TestXmlDeserialization:
         assert result.age == 37
         assert result.country == "france"
 
+    def test_add_prop(self):
+        """Test addProp as a dict.
+        """
+        basic_xml = """<?xml version="1.0"?>
+            <Data>
+                <Metadata>
+                  <Key1>value1</Key1>
+                  <Key2>value2</Key2>
+                </Metadata>
+            </Data>"""
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'metadata': {'key': 'Metadata', 'type': '{str}', 'xml': {'name': 'Metadata'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        s = Deserializer({"XmlModel": XmlModel})
+        result = s(XmlModel, basic_xml, "application/xml")
+
+        assert len(result.metadata) == 2
+        assert result.metadata['Key1'] == "value1"
+        assert result.metadata['Key2'] == "value2"
+
     def test_object(self):
         basic_xml = """<?xml version="1.0"?>
             <Data country="france">
@@ -392,6 +418,37 @@ class TestXmlSerialization:
         mymodel = XmlModel(
             age=37,
             country="france"
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_add_prop(self):
+        """Test addProp as a dict.
+        """
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data>
+                <Metadata>
+                  <Key1>value1</Key1>
+                  <Key2>value2</Key2>
+                </Metadata>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'metadata': {'key': 'Metadata', 'type': '{str}', 'xml': {'name': 'Metadata'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            metadata={
+                'Key1': 'value1',
+                'Key2': 'value2',
+            }
         )
 
         s = Serializer({"XmlModel": XmlModel})

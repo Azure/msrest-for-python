@@ -819,6 +819,7 @@ class Serializer(object):
          not be None or empty.
         :rtype: dict
         """
+        serialization_ctxt = kwargs.get("serialization_ctxt", {})
         serialized = {}
         for key, value in attr.items():
             try:
@@ -826,6 +827,21 @@ class Serializer(object):
                     value, dict_type, **kwargs)
             except ValueError:
                 serialized[self.serialize_unicode(key)] = None
+
+        if 'xml' in serialization_ctxt:
+            # XML serialization is more complicated
+            xml_desc = serialization_ctxt['xml']
+            xml_name = xml_desc['name']
+
+            final_result = _create_xml_node(
+                xml_name,
+                xml_desc.get('prefix', None),
+                xml_desc.get('ns', None)
+            )
+            for key, value in serialized.items():
+                ET.SubElement(final_result, key).text = value
+            return final_result
+
         return serialized
 
     def serialize_object(self, attr, **kwargs):
@@ -1474,10 +1490,12 @@ class Deserializer(object):
         :rtype: dict
         """
         if isinstance(attr, list):
-            return {x['key']: self.deserialize_data(
-                x['value'], dict_type) for x in attr}
-        return {k: self.deserialize_data(
-            v, dict_type) for k, v in attr.items()}
+            return {x['key']: self.deserialize_data(x['value'], dict_type) for x in attr}
+
+        if isinstance(attr, ET.Element):
+            # Transform <Key>value</Key> into {"Key": "value"}
+            attr = {el.tag: el.text for el in attr}
+        return {k: self.deserialize_data(v, dict_type) for k, v in attr.items()}
 
     def deserialize_object(self, attr, **kwargs):
         """Deserialize a generic object.
