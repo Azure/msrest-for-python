@@ -1441,7 +1441,9 @@ class Deserializer(object):
             if data_type in self.deserialize_type:
                 if isinstance(data, self.deserialize_expected_types.get(data_type, tuple())):
                     return data
-                if isinstance(data, ET.Element) and not data.text:
+
+                is_a_text_parsing_type = lambda x: x not in ["object", "[]", r"{}"]
+                if isinstance(data, ET.Element) and is_a_text_parsing_type(data_type) and not data.text:
                     return None
                 data_val = self.deserialize_type[data_type](data)
                 return data_val
@@ -1555,8 +1557,14 @@ class Deserializer(object):
         # If it's still an XML node, take the text
         if isinstance(attr, ET.Element):
             attr = attr.text
-            if not attr:  # None or '', < node <a/> is empty string.
-                return ''
+            if not attr:
+                if data_type == "str":
+                    # None or '', node <a/> is empty string.
+                    return ''
+                else:
+                    # None or '', node <a/> with a strong type is None.
+                    # Don't try to model "empty bool" or "empty int"
+                    return None
 
         if data_type == 'bool':
             if attr in [True, False, 1, 0]:

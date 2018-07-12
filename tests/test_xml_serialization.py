@@ -53,12 +53,21 @@ class TestXmlDeserialization:
         """Test an ultra basic XML."""
         basic_xml = """<?xml version="1.0"?>
             <Data country="france">
+                <Long>12</Long>
+                <EmptyLong/>
                 <Age>37</Age>
+                <EmptyAge/>
+                <EmptyString/>
             </Data>"""
 
         class XmlModel(Model):
             _attribute_map = {
+                'longnode': {'key': 'longnode', 'type': 'long', 'xml':{'name': 'Long'}},
+                'empty_long': {'key': 'empty_long', 'type': 'long', 'xml':{'name': 'EmptyLong'}},
                 'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age'}},
+                'empty_age': {'key': 'empty_age', 'type': 'int', 'xml':{'name': 'EmptyAge'}},
+                'empty_string': {'key': 'empty_string', 'type': 'str', 'xml':{'name': 'EmptyString'}},
+                'not_set': {'key': 'not_set', 'type': 'str', 'xml':{'name': 'NotSet'}},
                 'country': {'key': 'country', 'type': 'str', 'xml':{'name': 'country', 'attr': True}},
             }
             _xml_map = {
@@ -68,8 +77,13 @@ class TestXmlDeserialization:
         s = Deserializer({"XmlModel": XmlModel})
         result = s(XmlModel, basic_xml, "application/xml")
 
+        assert result.longnode == 12
+        assert result.empty_long is None
         assert result.age == 37
+        assert result.empty_age is None
         assert result.country == "france"
+        assert result.empty_string == ""
+        assert result.not_set is None
 
     def test_add_prop(self):
         """Test addProp as a dict.
@@ -102,6 +116,19 @@ class TestXmlDeserialization:
             <Data country="france">
                 <Age>37</Age>
             </Data>"""
+
+        s = Deserializer()
+        result = s('object', basic_xml, "application/xml")
+
+        # Should be a XML tree
+        assert result.tag == "Data"
+        assert result.get("country") == "france"
+        for child in result:
+            assert child.tag == "Age"
+            assert child.text == "37"
+
+    def test_object_no_text(self):
+        basic_xml = """<?xml version="1.0"?><Data country="france"><Age>37</Age></Data>"""
 
         s = Deserializer()
         result = s('object', basic_xml, "application/xml")
