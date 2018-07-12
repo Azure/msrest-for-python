@@ -819,6 +819,7 @@ class Serializer(object):
          not be None or empty.
         :rtype: dict
         """
+        serialization_ctxt = kwargs.get("serialization_ctxt", {})
         serialized = {}
         for key, value in attr.items():
             try:
@@ -826,6 +827,21 @@ class Serializer(object):
                     value, dict_type, **kwargs)
             except ValueError:
                 serialized[self.serialize_unicode(key)] = None
+
+        if 'xml' in serialization_ctxt:
+            # XML serialization is more complicated
+            xml_desc = serialization_ctxt['xml']
+            xml_name = xml_desc['name']
+
+            final_result = _create_xml_node(
+                xml_name,
+                xml_desc.get('prefix', None),
+                xml_desc.get('ns', None)
+            )
+            for key, value in serialized.items():
+                ET.SubElement(final_result, key).text = value
+            return final_result
+
         return serialized
 
     def serialize_object(self, attr, **kwargs):
@@ -1425,7 +1441,9 @@ class Deserializer(object):
             if data_type in self.deserialize_type:
                 if isinstance(data, self.deserialize_expected_types.get(data_type, tuple())):
                     return data
-                if isinstance(data, ET.Element) and not data.text:
+
+                is_a_text_parsing_type = lambda x: x not in ["object", "[]", r"{}"]
+                if isinstance(data, ET.Element) and is_a_text_parsing_type(data_type) and not data.text:
                     return None
                 data_val = self.deserialize_type[data_type](data)
                 return data_val
@@ -1474,10 +1492,12 @@ class Deserializer(object):
         :rtype: dict
         """
         if isinstance(attr, list):
-            return {x['key']: self.deserialize_data(
-                x['value'], dict_type) for x in attr}
-        return {k: self.deserialize_data(
-            v, dict_type) for k, v in attr.items()}
+            return {x['key']: self.deserialize_data(x['value'], dict_type) for x in attr}
+
+        if isinstance(attr, ET.Element):
+            # Transform <Key>value</Key> into {"Key": "value"}
+            attr = {el.tag: el.text for el in attr}
+        return {k: self.deserialize_data(v, dict_type) for k, v in attr.items()}
 
     def deserialize_object(self, attr, **kwargs):
         """Deserialize a generic object.
@@ -1537,8 +1557,14 @@ class Deserializer(object):
         # If it's still an XML node, take the text
         if isinstance(attr, ET.Element):
             attr = attr.text
-            if not attr:  # None or '', < node <a/> is empty string.
-                return ''
+            if not attr:
+                if data_type == "str":
+                    # None or '', node <a/> is empty string.
+                    return ''
+                else:
+                    # None or '', node <a/> with a strong type is None.
+                    # Don't try to model "empty bool" or "empty int"
+                    return None
 
         if data_type == 'bool':
             if attr in [True, False, 1, 0]:
