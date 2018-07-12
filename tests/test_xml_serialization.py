@@ -475,6 +475,8 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    @pytest.mark.skipif(sys.version_info < (3,6),
+                        reason="Dict ordering not guaranted before 3.6, makes this complicated to test.")
     def test_add_prop(self):
         """Test addProp as a dict.
         """
