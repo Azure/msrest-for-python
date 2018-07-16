@@ -26,12 +26,15 @@
 from msrest.pipeline import AsyncPipeline, ClientRequest
 from msrest.pipeline.universal import UserAgentPolicy
 from msrest.pipeline.aiohttp import AioHTTPSender
+from msrest.pipeline.async_requests import AsyncBasicRequestsHTTPSender, AsyncRequestsHTTPSender
+
+from msrest.configuration import Configuration
 
 import pytest
 
 
 @pytest.mark.asyncio
-async def test_basic():
+async def test_basic_aiohttp():
 
     request = ClientRequest("GET", "http://bing.com")
     policies = [
@@ -41,4 +44,29 @@ async def test_basic():
         response = await pipeline.run(request)
 
     assert pipeline._sender._session.closed
+    assert response.status_code == 200
+
+@pytest.mark.asyncio
+async def test_basic_async_requests():
+
+    request = ClientRequest("GET", "http://bing.com")
+    policies = [
+        UserAgentPolicy("myusergant")
+    ]
+    async with AsyncPipeline(policies, AsyncBasicRequestsHTTPSender()) as pipeline:
+        response = await pipeline.run(request)
+
+    assert response.status_code == 200
+
+@pytest.mark.asyncio
+async def test_conf_async_requests():
+
+    conf = Configuration("http://bing.com/")
+    request = ClientRequest("GET", "http://bing.com/")
+    policies = [
+        UserAgentPolicy("myusergant")
+    ]
+    async with AsyncPipeline(policies, AsyncRequestsHTTPSender(conf)) as pipeline:
+        response = await pipeline.run(request)
+
     assert response.status_code == 200
