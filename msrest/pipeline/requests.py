@@ -228,6 +228,34 @@ class BasicRequestsHTTPSender(HTTPSender):
             **kwargs)
         return RequestsClientResponse(request, response)
 
+
+def _patch_redirect(session):
+    # type: (requests.Response, requests.PreparedRequest) -> bool
+    """Whether redirect policy should be applied based on status code.
+
+    HTTP spec says that on 301/302 not HEAD/GET, should NOT redirect.
+    But requests does, to follow browser more than spec
+    https://github.com/requests/requests/blob/f6e13ccfc4b50dc458ee374e5dba347205b9a2da/requests/sessions.py#L305-L314
+
+    This patches "requests" to be more HTTP compliant.
+
+    Note that this is super dangerous, since technically this is not public API.
+    """
+    def enforce_http_spec(resp, request):
+        if resp.status_code in (301, 302) and \
+                request.method not in ['GET', 'HEAD']:
+            return False
+        return True
+
+    redirect_logic = session.resolve_redirects
+
+    def wrapped_redirect(resp, req, **kwargs):
+        attempt = enforce_http_spec(resp, req)
+        return redirect_logic(resp, req, **kwargs) if attempt else []
+    wrapped_redirect.is_mrest_patched = True  # type: ignore
+
+    session.resolve_redirects = wrapped_redirect  # type: ignore
+
 class RequestsHTTPSender(BasicRequestsHTTPSender):
     """A requests HTTP sender that can consume a msrest.Configuration object.
 
@@ -259,15 +287,7 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         self.session.max_redirects = int(self.config.redirect_policy())
         self.session.trust_env = bool(self.config.proxies.use_env_settings)
 
-        # Patch the redirect method directly
-        redirect_logic = self.session.resolve_redirects
-
-        def wrapped_redirect(resp, req, **kwargs):
-            attempt = self.config.redirect_policy.check_redirect(resp, req)
-            return redirect_logic(resp, req, **kwargs) if attempt else []
-        wrapped_redirect.is_mrest_patched = True  # type: ignore
-
-        self.session.resolve_redirects = wrapped_redirect  # type: ignore
+        _patch_redirect(self.session)
 
         # Change max_retries in current all installed adapters
         max_retries = self.config.retry_policy()
@@ -437,14 +457,6 @@ class ClientRedirectPolicy(object):
         debug = "Configuring redirects: allow=%r, max=%r"
         _LOGGER.debug(debug, self.allow, self.max_redirects)
         return self.max_redirects
-
-    def check_redirect(self, resp, request):
-        # type: (requests.Response, requests.PreparedRequest) -> bool
-        """Whether redirect policy should be applied based on status code."""
-        if resp.status_code in (301, 302) and \
-                request.method not in ['GET', 'HEAD']:
-            return False
-        return True
 
 
 class ClientProxies(object):
