@@ -20,6 +20,18 @@ To install:
 Release History
 ---------------
 
+2018-07-12 Version 0.5.4
+++++++++++++++++++++++++
+
+**Features**
+
+- Support additionalProperties and XML
+
+**BugFixes**
+
+- Better parse empty node and not string types
+- Improve "object" XML parsing
+
 2018-07-10 Version 0.5.3
 ++++++++++++++++++++++++
 
