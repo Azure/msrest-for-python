@@ -339,8 +339,8 @@ class TestServiceClient(unittest.TestCase):
         # Hack, reconfigure session
         client._pipeline._sender._init_session()
 
-        client.creds.signed_session.return_value = session
-        client.creds.refresh_session.return_value = session
+        client._creds.signed_session.return_value = session
+        client._creds.refresh_session.return_value = session
 
         request = ClientRequest('GET', '/')
         client.send(request, stream=False)

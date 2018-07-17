@@ -259,6 +259,14 @@ def _patch_redirect(session):
 class RequestsHTTPSender(BasicRequestsHTTPSender):
     """A requests HTTP sender that can consume a msrest.Configuration object.
 
+    This instance will consume the following configuration attributes:
+    - connection
+    - proxies
+    - retry_policy
+    - redirect_policy
+    - enable_http_logger
+    - hooks
+    - session_configuration_callback
     """
 
     _protocols = ['http://', 'https://']
@@ -280,19 +288,20 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         self.config = config
         self._init_session()
 
-    def _init_session(self):
-        # type: () -> None
+    def _init_session(self, session=None):
+        # type: (Optional[requests.Session]) -> None
         """Init session level configuration of requests.
-        """
-        self.session.max_redirects = int(self.config.redirect_policy())
-        self.session.trust_env = bool(self.config.proxies.use_env_settings)
 
-        _patch_redirect(self.session)
+        This is initialization I want to do once only on a session.
+        """
+        session = session or self.session
+
+        _patch_redirect(session)
 
         # Change max_retries in current all installed adapters
         max_retries = self.config.retry_policy()
         for protocol in self._protocols:
-            self.session.adapters[protocol].max_retries = max_retries
+            session.adapters[protocol].max_retries = max_retries
 
     def _configure_send(self, request, **kwargs):
         # type: (ClientRequest, Any) -> Dict[str, str]
@@ -306,6 +315,13 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
             request.pipeline_context = self.build_context()
 
         session = request.pipeline_context.session
+
+        # That's a bad practice, but is backward compatible
+        if session is not self.session:
+            self._init_session(session)
+
+        session.max_redirects = int(self.config.redirect_policy())
+        session.trust_env = bool(self.config.proxies.use_env_settings)
 
         # Initialize requests_kwargs with "config" value
         requests_kwargs = {}  # type: Any
@@ -436,77 +452,3 @@ class ClientRetryPolicy(object):
     def max_backoff(self, value):
         # type: (int) -> None
         self.policy.BACKOFF_MAX = value
-
-
-class ClientRedirectPolicy(object):
-    """Redirect configuration settings.
-    """
-
-    def __init__(self):
-        self.allow = True
-        self.max_redirects = 30
-
-    def __bool__(self):
-        # type: () -> bool
-        """Whether redirects are allowed."""
-        return self.allow
-
-    def __call__(self):
-        # type: () -> int
-        """Return configuration to be applied to connection."""
-        debug = "Configuring redirects: allow=%r, max=%r"
-        _LOGGER.debug(debug, self.allow, self.max_redirects)
-        return self.max_redirects
-
-
-class ClientProxies(object):
-    """Proxy configuration settings.
-    Proxies can also be configured using HTTP_PROXY and HTTPS_PROXY
-    environment variables, in which case set use_env_settings to True.
-    """
-
-    def __init__(self):
-        self.proxies = {}
-        self.use_env_settings = True
-
-    def __call__(self):
-        # type: () -> Dict[str, str]
-        """Return configuration to be applied to connection."""
-        proxy_string = "\n".join(
-            ["    {}: {}".format(k, v) for k, v in self.proxies.items()])
-
-        _LOGGER.debug("Configuring proxies: %r", proxy_string)
-        debug = "Evaluate proxies against ENV settings: %r"
-        _LOGGER.debug(debug, self.use_env_settings)
-        return self.proxies
-
-    def add(self, protocol, proxy_url):
-        # type: (str, str) -> None
-        """Add proxy.
-
-        :param str protocol: Protocol for which proxy is to be applied. Can
-         be 'http', 'https', etc. Can also include host.
-        :param str proxy_url: The proxy URL. Where basic auth is required,
-         use the format: http://user:password@host
-        """
-        self.proxies[protocol] = proxy_url
-
-
-class ClientConnection(object):
-    """Request connection configuration settings.
-    """
-
-    def __init__(self):
-        self.timeout = 100
-        self.verify = True
-        self.cert = None
-        self.data_block_size = 4096
-
-    def __call__(self):
-        # type: () -> Dict[str, Union[str, int]]
-        """Return configuration to be applied to connection."""
-        debug = "Configuring request: timeout=%r, verify=%r, cert=%r"
-        _LOGGER.debug(debug, self.timeout, self.verify, self.cert)
-        return {'timeout': self.timeout,
-                'verify': self.verify,
-                'cert': self.cert}

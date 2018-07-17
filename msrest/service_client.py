@@ -87,20 +87,23 @@ class ServiceClient(object):
         if config is None:
             raise ValueError("Config is a required parameter")
         self.config = config
-        self.creds = creds if creds else Authentication()
+        self._creds = creds
 
-        self._pipeline = self._create_pipeline()
+        self._pipeline = self._create_default_pipeline()
 
-    def _create_pipeline(self):
+    def _create_default_pipeline(self):
         # type: () -> Pipeline
+        policies = [
+            self.config._user_agent,  # UserAgent policy
+            RequestsPatchSession(),   # Support deprecated operation config at the session level
+            HTTPLogger(self.config),  # Log request
+        ]
+        if self._creds:
+            policies.insert(1, RequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
+
         return Pipeline(
-            [
-                self.config._user_agent,                # UserAgent policy
-                RequestsCredentialsPolicy(self.creds),  # Set credentials for requests based session
-                RequestsPatchSession(),                 # Support deprecated operation config at the session level
-                HTTPLogger(self.config),                # Log request
-            ],
-            RequestsHTTPSender(self.config)             # Send HTTP request using requests
+            policies,
+            RequestsHTTPSender(self.config)  # Send HTTP request using requests
         )
 
     def __enter__(self):
@@ -177,7 +180,7 @@ class ServiceClient(object):
         if self.config.keep_alive:
             pipeline = self._pipeline
         else:
-            pipeline = self._create_pipeline()
+            pipeline = self._create_default_pipeline()
 
         # "content" and "headers" are deprecated, only old SDK
         if headers:

@@ -387,6 +387,80 @@ class ClientRawResponse(object):
             value = self._deserialize(data_type, value)
             self.headers[name] = value
 
+class ClientRedirectPolicy(object):
+    """Redirect configuration settings.
+    """
+
+    def __init__(self):
+        self.allow = True
+        self.max_redirects = 30
+
+    def __bool__(self):
+        # type: () -> bool
+        """Whether redirects are allowed."""
+        return self.allow
+
+    def __call__(self):
+        # type: () -> int
+        """Return configuration to be applied to connection."""
+        debug = "Configuring redirects: allow=%r, max=%r"
+        _LOGGER.debug(debug, self.allow, self.max_redirects)
+        return self.max_redirects
+
+
+class ClientProxies(object):
+    """Proxy configuration settings.
+    Proxies can also be configured using HTTP_PROXY and HTTPS_PROXY
+    environment variables, in which case set use_env_settings to True.
+    """
+
+    def __init__(self):
+        self.proxies = {}
+        self.use_env_settings = True
+
+    def __call__(self):
+        # type: () -> Dict[str, str]
+        """Return configuration to be applied to connection."""
+        proxy_string = "\n".join(
+            ["    {}: {}".format(k, v) for k, v in self.proxies.items()])
+
+        _LOGGER.debug("Configuring proxies: %r", proxy_string)
+        debug = "Evaluate proxies against ENV settings: %r"
+        _LOGGER.debug(debug, self.use_env_settings)
+        return self.proxies
+
+    def add(self, protocol, proxy_url):
+        # type: (str, str) -> None
+        """Add proxy.
+
+        :param str protocol: Protocol for which proxy is to be applied. Can
+         be 'http', 'https', etc. Can also include host.
+        :param str proxy_url: The proxy URL. Where basic auth is required,
+         use the format: http://user:password@host
+        """
+        self.proxies[protocol] = proxy_url
+
+
+class ClientConnection(object):
+    """Request connection configuration settings.
+    """
+
+    def __init__(self):
+        self.timeout = 100
+        self.verify = True
+        self.cert = None
+        self.data_block_size = 4096
+
+    def __call__(self):
+        # type: () -> Dict[str, Union[str, int]]
+        """Return configuration to be applied to connection."""
+        debug = "Configuring request: timeout=%r, verify=%r, cert=%r"
+        _LOGGER.debug(debug, self.timeout, self.verify, self.cert)
+        return {'timeout': self.timeout,
+                'verify': self.verify,
+                'cert': self.cert}
+
+
 __all__ = [
     'ClientRequest',
     'ClientResponse',
@@ -394,7 +468,11 @@ __all__ = [
     'Pipeline',
     'HTTPPolicy',
     'SansIOHTTPPolicy',
-    'HTTPSender'
+    'HTTPSender',
+    # Generic HTTP configuration
+    'ClientRedirectPolicy',
+    'ClientProxies',
+    'ClientConnection'
 ]
 
 try:

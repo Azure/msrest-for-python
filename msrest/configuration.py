@@ -35,11 +35,14 @@ except ImportError:
 from typing import TYPE_CHECKING, Dict, List, Any, Callable  # pylint: disable=unused-import
 
 from .exceptions import raise_with_traceback
-from .pipeline.requests import (
-    ClientRetryPolicy,
+from .pipeline import (
     ClientRedirectPolicy,
     ClientProxies,
-    ClientConnection)
+    ClientConnection,
+)
+from .pipeline.requests import (
+    ClientRetryPolicy,
+)
 from .pipeline.universal import UserAgentPolicy
 
 
