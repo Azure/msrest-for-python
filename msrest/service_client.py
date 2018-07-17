@@ -89,7 +89,7 @@ class ServiceClient(object):
         self.config = config
         self._creds = creds
 
-        self._pipeline = self._create_default_pipeline()
+        self.pipeline = self._create_default_pipeline()
 
     def _create_default_pipeline(self):
         # type: () -> Pipeline
@@ -109,18 +109,18 @@ class ServiceClient(object):
     def __enter__(self):
         # type: () -> ServiceClient
         self.config.keep_alive = True
-        self._pipeline.__enter__()
+        self.pipeline.__enter__()
         return self
 
     def __exit__(self, *exc_details):
-        self._pipeline.__exit__(*exc_details)
+        self.pipeline.__exit__(*exc_details)
         self.config.keep_alive = False
 
     def close(self):
         # type: () -> None
         """Close the pipeline if keep_alive is True.
         """
-        self._pipeline.__exit__()
+        self.pipeline.__exit__()
 
     def _request(self, method, url, params, headers, content, form_content):
         # type: (str, str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
@@ -178,7 +178,7 @@ class ServiceClient(object):
         :param config: Any specific config overrides
         """
         if self.config.keep_alive:
-            pipeline = self._pipeline
+            pipeline = self.pipeline
         else:
             pipeline = self._create_default_pipeline()
 
@@ -199,7 +199,7 @@ class ServiceClient(object):
 
     def _close_local_session_if_necessary(self, response, pipeline, stream):
         # Do NOT close session if using my own HTTP driver. No exception.
-        if self._pipeline is pipeline:
+        if self.pipeline is pipeline:
             return
         # Here, it's a local session, I might close it.
         if not response or not stream:

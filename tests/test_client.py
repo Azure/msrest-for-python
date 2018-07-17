@@ -335,9 +335,9 @@ class TestServiceClient(unittest.TestCase):
         # Be sure the mock does not trick me
         assert not hasattr(session.resolve_redirects, 'is_mrest_patched')
 
-        client._pipeline._sender.session = session
+        client.pipeline._sender.session = session
         # Hack, reconfigure session
-        client._pipeline._sender._init_session()
+        client.pipeline._sender._init_session()
 
         client._creds.signed_session.return_value = session
         client._creds.refresh_session.return_value = session
