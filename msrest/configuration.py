@@ -35,34 +35,15 @@ except ImportError:
 from typing import TYPE_CHECKING, Optional, Dict, List, Any, Callable  # pylint: disable=unused-import
 
 from .exceptions import raise_with_traceback
-from .pipeline import HTTPSenderConfiguration
 from .pipeline.requests import (
-    ClientRetryPolicy,
+    RequestHTTPSenderConfiguration
 )
 from .pipeline.universal import (
     UserAgentPolicy,
     HTTPLogger,
 )
 
-
-if TYPE_CHECKING:
-    import requests  # pylint: disable=unused-import
-
-def default_session_configuration_callback(session, global_config, local_config, **kwargs):  # pylint: disable=unused-argument
-    # type: (requests.Session, Configuration, Dict[str,str], str) -> Dict[str, str]
-    """Configuration callback if you need to change default session configuration.
-
-    :param requests.Session session: The session.
-    :param Configuration global_config: The global configuration.
-    :param dict[str,str] local_config: The on-the-fly configuration passed on the call.
-    :param dict[str,str] kwargs: The current computed values for session.request method.
-    :return: Must return kwargs, to be passed to session.request. If None is return, initial kwargs will be used.
-    :rtype: dict[str,str]
-    """
-    return kwargs
-
-
-class Configuration(HTTPSenderConfiguration):
+class Configuration(RequestHTTPSenderConfiguration):
     """Client configuration.
 
     :param str baseurl: REST API base URL.
@@ -72,25 +53,15 @@ class Configuration(HTTPSenderConfiguration):
     def __init__(self, base_url, filepath=None):
         # type: (str, Optional[str]) -> None
 
-        super(Configuration, self).__init__()
+        super(Configuration, self).__init__(filepath)
         # Service
         self.base_url = base_url
-
-        # Retry configuration
-        self.retry_policy = ClientRetryPolicy()
 
         # User-Agent as a policy
         self.user_agent_policy = UserAgentPolicy()
 
         # HTTP logger policy
         self.http_logger_policy = HTTPLogger()
-
-        # Requests hooks. Must respect requests hook callback signature
-        # Note that we will inject the following parameters:
-        # - kwargs['msrest']['session'] with the current session
-        self.hooks = []  # type: List[Callable[[requests.Response, str, str], None]]
-
-        self.session_configuration_callback = default_session_configuration_callback
 
         # If set to True, ServiceClient will own the sessionn
         self.keep_alive = False
@@ -119,32 +90,3 @@ class Configuration(HTTPSenderConfiguration):
     @enable_http_logger.setter
     def enable_http_logger(self, value):
         self.http_logger_policy.enable_http_logger = value
-
-    def save(self, filepath):
-        """Save current configuration to file.
-
-        :param str filepath: Path to file where settings will be saved.
-        :raises: ValueError if supplied filepath cannot be written to.
-        """
-        self._config.add_section("RetryPolicy")
-        self._config.set("RetryPolicy", "retries", self.retry_policy.retries)
-        self._config.set("RetryPolicy", "backoff_factor",
-                         self.retry_policy.backoff_factor)
-        self._config.set("RetryPolicy", "max_backoff",
-                         self.retry_policy.max_backoff)
-        super(Configuration, self).save(filepath)
-
-    def load(self, filepath):
-        try:
-            self.retry_policy.retries = \
-                self._config.getint("RetryPolicy", "retries")
-            self.retry_policy.backoff_factor = \
-                self._config.getfloat("RetryPolicy", "backoff_factor")
-            self.retry_policy.max_backoff = \
-                self._config.getint("RetryPolicy", "max_backoff")
-        except (ValueError, EnvironmentError, NoOptionError):
-            error = "Supplied config file incompatible."
-            raise_with_traceback(ValueError, error)
-        finally:
-            self._clear_config()
-        super(Configuration, self).load(filepath)

@@ -29,7 +29,7 @@ This module is the requests implementation of Pipeline ABC
 from __future__ import absolute_import  # we have a "requests" module that conflicts with "requests" on Py2.7
 import contextlib
 import logging
-from typing import TYPE_CHECKING, Callable, Generator, Any, Union, Dict, Optional  # pylint: disable=unused-import
+from typing import TYPE_CHECKING, List, Callable, Generator, Any, Union, Dict, Optional  # pylint: disable=unused-import
 import warnings
 
 from oauthlib import oauth2
@@ -40,10 +40,9 @@ from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
-from . import HTTPSender, HTTPPolicy, ClientResponse
+from . import HTTPSender, HTTPPolicy, ClientResponse, HTTPSenderConfiguration
 
 if TYPE_CHECKING:
-    from ..configuration import Configuration  # pylint: disable=unused-import
     from . import ClientRequest  # pylint: disable=unused-import
 
 
@@ -288,7 +287,7 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
     ]
 
     def __init__(self, config):
-        # type: (Configuration) -> None
+        # type: (RequestHTTPSenderConfiguration) -> None
         super(RequestsHTTPSender, self).__init__()
         self.config = config
         self._init_session()
@@ -457,3 +456,69 @@ class ClientRetryPolicy(object):
     def max_backoff(self, value):
         # type: (int) -> None
         self.policy.BACKOFF_MAX = value
+
+def default_session_configuration_callback(session, global_config, local_config, **kwargs):  # pylint: disable=unused-argument
+    # type: (requests.Session, RequestHTTPSenderConfiguration, Dict[str,str], str) -> Dict[str, str]
+    """Configuration callback if you need to change default session configuration.
+
+    :param requests.Session session: The session.
+    :param Configuration global_config: The global configuration.
+    :param dict[str,str] local_config: The on-the-fly configuration passed on the call.
+    :param dict[str,str] kwargs: The current computed values for session.request method.
+    :return: Must return kwargs, to be passed to session.request. If None is return, initial kwargs will be used.
+    :rtype: dict[str,str]
+    """
+    return kwargs
+
+class RequestHTTPSenderConfiguration(HTTPSenderConfiguration):
+    """Requests specific HTTP sender configuration.
+
+    :param str filepath: Path to existing config file (optional).
+    """
+
+    def __init__(self, filepath=None):
+        # type: (Optional[str]) -> None
+
+        super(RequestHTTPSenderConfiguration, self).__init__()
+
+        # Retry configuration
+        self.retry_policy = ClientRetryPolicy()
+
+        # Requests hooks. Must respect requests hook callback signature
+        # Note that we will inject the following parameters:
+        # - kwargs['msrest']['session'] with the current session
+        self.hooks = []  # type: List[Callable[[requests.Response, str, str], None]]
+
+        self.session_configuration_callback = default_session_configuration_callback
+
+        if filepath:
+            self.load(filepath)
+
+    def save(self, filepath):
+        """Save current configuration to file.
+
+        :param str filepath: Path to file where settings will be saved.
+        :raises: ValueError if supplied filepath cannot be written to.
+        """
+        self._config.add_section("RetryPolicy")
+        self._config.set("RetryPolicy", "retries", self.retry_policy.retries)
+        self._config.set("RetryPolicy", "backoff_factor",
+                         self.retry_policy.backoff_factor)
+        self._config.set("RetryPolicy", "max_backoff",
+                         self.retry_policy.max_backoff)
+        super(RequestHTTPSenderConfiguration, self).save(filepath)
+
+    def load(self, filepath):
+        try:
+            self.retry_policy.retries = \
+                self._config.getint("RetryPolicy", "retries")
+            self.retry_policy.backoff_factor = \
+                self._config.getfloat("RetryPolicy", "backoff_factor")
+            self.retry_policy.max_backoff = \
+                self._config.getint("RetryPolicy", "max_backoff")
+        except (ValueError, EnvironmentError, NoOptionError):
+            error = "Supplied config file incompatible."
+            raise_with_traceback(ValueError, error)
+        finally:
+            self._clear_config()
+        super(RequestHTTPSenderConfiguration, self).load(filepath)
