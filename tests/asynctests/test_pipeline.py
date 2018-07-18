@@ -40,7 +40,7 @@ async def test_basic_aiohttp():
     policies = [
         UserAgentPolicy("myusergant")
     ]
-    async with AsyncPipeline(policies, AioHTTPSender()) as pipeline:
+    async with AsyncPipeline(policies) as pipeline:
         response = await pipeline.run(request)
 
     assert pipeline._sender._session.closed

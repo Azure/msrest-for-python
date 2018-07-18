@@ -136,11 +136,16 @@ class Pipeline(AbstractContextManager):
     of the HTTP sender.
     """
 
-    def __init__(self, policies, sender):
+    def __init__(self, policies=None, sender=None):
         # type: (List[Union[HTTPPolicy, SansIOHTTPPolicy]], HTTPSender) -> None
         self._impl_policies = []  # type: List[HTTPPolicy]
-        self._sender = sender
-        for policy in policies:
+        if not sender:
+            # Import default only if nothing is provided
+            from .requests import BasicRequestsHTTPSender
+            self._sender = cast(HTTPSender, BasicRequestsHTTPSender())
+        else:
+            self._sender = sender
+        for policy in (policies or []):
             if isinstance(policy, SansIOHTTPPolicy):
                 self._impl_policies.append(_SansIOHTTPPolicyRunner(policy))
             else:

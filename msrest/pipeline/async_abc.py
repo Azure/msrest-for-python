@@ -109,10 +109,15 @@ class AsyncPipeline(AbstractAsyncContextManager):
     of the HTTP sender.
     """
 
-    def __init__(self, policies: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]], sender: AsyncHTTPSender) -> None:
+    def __init__(self, policies: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]] = None, sender: AsyncHTTPSender = None) -> None:
         self._impl_policies = []  # type: List[AsyncHTTPPolicy]
-        self._sender = sender
-        for policy in policies:
+        if not sender:
+            # Import default only if nothing is provided
+            from .aiohttp import AioHTTPSender
+            self._sender = AioHTTPSender()
+        else:
+            self._sender = sender
+        for policy in (policies or []):
             if isinstance(policy, SansIOHTTPPolicy):
                 self._impl_policies.append(_SansIOAsyncHTTPPolicyRunner(policy))
             else:
