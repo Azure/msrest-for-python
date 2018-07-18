@@ -178,11 +178,6 @@ class ServiceClient(object):
         :param content: Any body data to add to the request.
         :param config: Any specific config overrides
         """
-        if self.config.keep_alive:
-            pipeline = self.pipeline
-        else:
-            pipeline = self._create_default_pipeline()
-
         # "content" and "headers" are deprecated, only old SDK
         if headers:
             request.headers.update(headers)
@@ -193,18 +188,15 @@ class ServiceClient(object):
         response = None
         kwargs.setdefault('stream', True)
         try:
-            response = pipeline.run(request, **kwargs)
+            response = self.pipeline.run(request, **kwargs)
             return response
         finally:
-            self._close_local_session_if_necessary(response, pipeline, kwargs['stream'])
+            self._close_local_session_if_necessary(response, kwargs['stream'])
 
-    def _close_local_session_if_necessary(self, response, pipeline, stream):
-        # Do NOT close session if using my own HTTP driver. No exception.
-        if self.pipeline is pipeline:
-            return
+    def _close_local_session_if_necessary(self, response, stream):
         # Here, it's a local session, I might close it.
-        if not response or not stream:
-            pipeline._sender.session.close()
+        if not self.config.keep_alive and (not response or not stream):
+            self.pipeline._sender.session.close()
 
     def stream_download(self, data, callback):
         # type: (ClientResponse, Callable) -> Generator[bytes, None, None]
