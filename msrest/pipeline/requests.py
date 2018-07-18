@@ -235,7 +235,7 @@ class BasicRequestsHTTPSender(HTTPSender):
 
 
 def _patch_redirect(session):
-    # type: (requests.Response, requests.PreparedRequest) -> bool
+    # type: (requests.Session) -> None
     """Whether redirect policy should be applied based on status code.
 
     HTTP spec says that on 301/302 not HEAD/GET, should NOT redirect.

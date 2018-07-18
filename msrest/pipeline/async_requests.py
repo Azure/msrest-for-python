@@ -31,7 +31,7 @@ from . import AsyncHTTPSender, ClientRequest, ClientResponse
 from .requests import BasicRequestsHTTPSender, RequestsHTTPSender, RequestsClientResponse
 
 
-class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):
+class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  # type: ignore
 
     async def __aenter__(self):
         return super(AsyncBasicRequestsHTTPSender, self).__enter__()
@@ -39,7 +39,7 @@ class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         return super(AsyncBasicRequestsHTTPSender, self).__exit__()
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
+    async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:  # type: ignore
         """Send the request using this HTTP sender.
         """
         if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
@@ -62,9 +62,9 @@ class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):
             await future
         )
 
-class AsyncRequestsHTTPSender(AsyncBasicRequestsHTTPSender, RequestsHTTPSender):
+class AsyncRequestsHTTPSender(AsyncBasicRequestsHTTPSender, RequestsHTTPSender):  # type: ignore
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
+    async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:  # type: ignore
         """Send the request using this HTTP sender.
         """
         requests_kwargs = self._configure_send(request, **kwargs)

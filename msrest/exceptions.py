@@ -37,7 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def raise_with_traceback(exception, message="", *args, **kwargs):
-    # type: (Callable, str, str, str) -> None
+    # type: (Callable, str, Any, Any) -> None
     """Raise exception with a specified traceback.
 
     This MUST be called inside a "except" clause.

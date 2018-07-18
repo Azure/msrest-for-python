@@ -32,7 +32,7 @@ except ImportError:
     import ConfigParser as configparser  # type: ignore
     from ConfigParser import NoOptionError  # type: ignore
 
-from typing import TYPE_CHECKING, Dict, List, Any, Callable  # pylint: disable=unused-import
+from typing import TYPE_CHECKING, Optional, Dict, List, Any, Callable  # pylint: disable=unused-import
 
 from .exceptions import raise_with_traceback
 from .pipeline import HTTPSenderConfiguration
@@ -70,8 +70,9 @@ class Configuration(HTTPSenderConfiguration):
     """
 
     def __init__(self, base_url, filepath=None):
+        # type: (str, Optional[str]) -> None
+
         super(Configuration, self).__init__()
-        # type: (str, str) -> None
         # Service
         self.base_url = base_url
 

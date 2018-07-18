@@ -31,7 +31,7 @@ except ImportError:
     from urllib.parse import urljoin, urlparse
 import warnings
 
-from typing import Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING  # pylint: disable=unused-import
+from typing import List, Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
 from .authentication import Authentication
 from .pipeline import ClientRequest, Pipeline
@@ -47,7 +47,7 @@ from .pipeline.universal import (
 
 if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
-    from .pipeline import ClientResponse  # pylint: disable=unused-import
+    from .pipeline import ClientResponse, HTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -93,11 +93,12 @@ class ServiceClient(object):
 
     def _create_default_pipeline(self):
         # type: () -> Pipeline
+
         policies = [
             self.config.user_agent_policy,  # UserAgent policy
             RequestsPatchSession(),         # Support deprecated operation config at the session level
             self.config.http_logger_policy  # HTTP request/response log
-        ]
+        ]  # type: List[Union[HTTPPolicy, SansIOHTTPPolicy]]
         if self._creds:
             policies.insert(1, RequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
 
