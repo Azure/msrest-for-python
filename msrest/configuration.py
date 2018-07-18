@@ -39,7 +39,10 @@ from .pipeline import HTTPSenderConfiguration
 from .pipeline.requests import (
     ClientRetryPolicy,
 )
-from .pipeline.universal import UserAgentPolicy
+from .pipeline.universal import (
+    UserAgentPolicy,
+    HTTPLogger,
+)
 
 
 if TYPE_CHECKING:
@@ -75,8 +78,11 @@ class Configuration(HTTPSenderConfiguration):
         # Retry configuration
         self.retry_policy = ClientRetryPolicy()
 
-        # User-Agent Header
-        self._user_agent = UserAgentPolicy()
+        # User-Agent as a policy
+        self.user_agent_policy = UserAgentPolicy()
+
+        # HTTP logger policy
+        self.http_logger_policy = HTTPLogger()
 
         # Requests hooks. Must respect requests hook callback signature
         # Note that we will inject the following parameters:
@@ -95,7 +101,7 @@ class Configuration(HTTPSenderConfiguration):
     def user_agent(self):
         # type: () -> str
         """The current user agent value."""
-        return self._user_agent.user_agent
+        return self.user_agent_policy.user_agent
 
     def add_user_agent(self, value):
         # type: (str) -> None
@@ -103,7 +109,15 @@ class Configuration(HTTPSenderConfiguration):
 
         :param str value: value to add to user agent.
         """
-        self._user_agent.add_user_agent(value)
+        self.user_agent_policy.add_user_agent(value)
+
+    @property
+    def enable_http_logger(self):
+        return self.http_logger_policy.enable_http_logger
+
+    @enable_http_logger.setter
+    def enable_http_logger(self, value):
+        self.http_logger_policy.enable_http_logger = value
 
     def save(self, filepath):
         """Save current configuration to file.

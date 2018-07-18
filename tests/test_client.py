@@ -203,7 +203,7 @@ class TestServiceClient(unittest.TestCase):
     @mock.patch('msrest.http_logger._LOGGER')
     def test_no_log(self, mock_http_logger):
         request = ClientRequest('GET', 'http://127.0.0.1/')
-        http_logger = HTTPLogger(self.cfg)
+        http_logger = HTTPLogger()
         response = ClientResponse(request, None)
 
         # By default, no log handler for HTTP
@@ -228,7 +228,7 @@ class TestServiceClient(unittest.TestCase):
         mock_http_logger.reset_mock()
 
         # I can enable it globally
-        self.cfg.enable_http_logger = True
+        http_logger.enable_http_logger = True
         http_logger.prepare(request)
         assert mock_http_logger.debug.call_count >= 1
         http_logger.post_send(request, response)
@@ -236,7 +236,7 @@ class TestServiceClient(unittest.TestCase):
         mock_http_logger.reset_mock()
 
         # I can enable it globally and override it locally
-        self.cfg.enable_http_logger = True
+        http_logger.enable_http_logger = True
         http_logger.prepare(request, **{"enable_http_logger": False})
         mock_http_logger.debug.assert_not_called()
         http_logger.post_send(request, response, **{"enable_http_logger": False})

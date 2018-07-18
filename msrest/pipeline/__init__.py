@@ -209,9 +209,6 @@ class HTTPSenderConfiguration(object):
         # Redirect configuration
         self.redirect_policy = ClientRedirectPolicy()
 
-        # Should we log HTTP requests/response?
-        self.enable_http_logger = False
-
         self._config = configparser.ConfigParser()
         self._config.optionxform = str
 
@@ -582,6 +579,7 @@ __all__ = [
     'SansIOHTTPPolicy',
     'HTTPSender',
     # Generic HTTP configuration
+    'HTTPSenderConfiguration',
     'ClientRedirectPolicy',
     'ClientProxies',
     'ClientConnection'

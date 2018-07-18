@@ -86,15 +86,19 @@ class UserAgentPolicy(SansIOHTTPPolicy):
             request.headers[self._USERAGENT] = self._user_agent
 
 class HTTPLogger(SansIOHTTPPolicy):
-    def __init__(self, config):
-        self._config = config
+    """A policy that logs HTTP request and response to the DEBUG logger.
+
+    This accepts both global configuration, and kwargs request level with "enable_http_logger"
+    """
+    def __init__(self, enable_http_logger = False):
+        self.enable_http_logger = enable_http_logger
 
     def prepare(self, request, **kwargs):
         # type: (ClientRequest, Any) -> None
-        if kwargs.get("enable_http_logger", self._config.enable_http_logger):
+        if kwargs.get("enable_http_logger", self.enable_http_logger):
             log_request(None, request)
 
     def post_send(self, request, response, **kwargs):
         # type: (ClientRequest, ClientResponse, Any) -> None
-        if kwargs.get("enable_http_logger", self._config.enable_http_logger):
+        if kwargs.get("enable_http_logger", self.enable_http_logger):
             log_response(None, request, response, result=response)

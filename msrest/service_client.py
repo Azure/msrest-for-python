@@ -94,9 +94,9 @@ class ServiceClient(object):
     def _create_default_pipeline(self):
         # type: () -> Pipeline
         policies = [
-            self.config._user_agent,  # UserAgent policy
-            RequestsPatchSession(),   # Support deprecated operation config at the session level
-            HTTPLogger(self.config),  # Log request
+            self.config.user_agent_policy,  # UserAgent policy
+            RequestsPatchSession(),         # Support deprecated operation config at the session level
+            self.config.http_logger_policy  # HTTP request/response log
         ]
         if self._creds:
             policies.insert(1, RequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
