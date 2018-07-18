@@ -222,10 +222,15 @@ class BasicRequestsHTTPSender(HTTPSender):
             request.pipeline_context = self.build_context()
 
         session = request.pipeline_context.session
-        response = session.request(
-            request.method,
-            request.url,
-            **kwargs)
+        try:
+            response = session.request(
+                request.method,
+                request.url,
+                **kwargs)
+        except requests.RequestException as err:
+            msg = "Error occurred in request."
+            raise_with_traceback(ClientRequestError, msg, err)
+
         return RequestsClientResponse(request, response)
 
 
