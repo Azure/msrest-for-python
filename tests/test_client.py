@@ -207,21 +207,21 @@ class TestServiceClient(unittest.TestCase):
         response = ClientResponse(request, None)
 
         # By default, no log handler for HTTP
-        http_logger.prepare(request)
+        http_logger.on_request(request)
         mock_http_logger.debug.assert_not_called()
         http_logger.post_send(request, response)
         mock_http_logger.debug.assert_not_called()
         mock_http_logger.reset_mock()
 
         # I can enable it per request
-        http_logger.prepare(request, **{"enable_http_logger": True})
+        http_logger.on_request(request, **{"enable_http_logger": True})
         assert mock_http_logger.debug.call_count >= 1
         http_logger.post_send(request, response, **{"enable_http_logger": True})
         assert mock_http_logger.debug.call_count >= 1
         mock_http_logger.reset_mock()
 
         # I can enable it per request (bool value should be honored)
-        http_logger.prepare(request, **{"enable_http_logger": False})
+        http_logger.on_request(request, **{"enable_http_logger": False})
         mock_http_logger.debug.assert_not_called()
         http_logger.post_send(request, response, **{"enable_http_logger": False})
         mock_http_logger.debug.assert_not_called()
@@ -229,7 +229,7 @@ class TestServiceClient(unittest.TestCase):
 
         # I can enable it globally
         http_logger.enable_http_logger = True
-        http_logger.prepare(request)
+        http_logger.on_request(request)
         assert mock_http_logger.debug.call_count >= 1
         http_logger.post_send(request, response)
         assert mock_http_logger.debug.call_count >= 1
@@ -237,7 +237,7 @@ class TestServiceClient(unittest.TestCase):
 
         # I can enable it globally and override it locally
         http_logger.enable_http_logger = True
-        http_logger.prepare(request, **{"enable_http_logger": False})
+        http_logger.on_request(request, **{"enable_http_logger": False})
         mock_http_logger.debug.assert_not_called()
         http_logger.post_send(request, response, **{"enable_http_logger": False})
         mock_http_logger.debug.assert_not_called()

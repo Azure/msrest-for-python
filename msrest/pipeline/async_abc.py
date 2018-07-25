@@ -69,9 +69,9 @@ class _SansIOAsyncHTTPPolicyRunner(AsyncHTTPPolicy):
         self._policy = policy
 
     async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
-        self._policy.prepare(request, **kwargs)
+        self._policy.on_request(request, **kwargs)
         response = await self.next.send(request, **kwargs)  # type: ignore
-        self._policy.post_send(request, response, **kwargs)
+        self._policy.on_response(request, response, **kwargs)
         return response
 
 

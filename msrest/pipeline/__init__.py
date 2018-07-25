@@ -103,12 +103,14 @@ class SansIOHTTPPolicy:
     Example: setting a UserAgent does not need to be tight to
     sync or async implementation or specific HTTP lib
     """
-    def prepare(self, request, **kwargs):
+    def on_request(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> None
         """Is executed before sending the request to next policy.
         """
         pass
 
-    def post_send(self, request, response, **kwargs):
+    def on_response(self, request, response, **kwargs):
+        # type: (ClientRequest, ClientResponse, Any) -> None
         """Is executed after the request comes back from the policy.
         """
         pass
@@ -124,9 +126,9 @@ class _SansIOHTTPPolicyRunner(HTTPPolicy):
 
     def send(self, request, **kwargs):
         # type: (ClientRequest, Any) -> ClientResponse
-        self._policy.prepare(request, **kwargs)
+        self._policy.on_request(request, **kwargs)
         response = self.next.send(request, **kwargs)
-        self._policy.post_send(request, response, **kwargs)
+        self._policy.on_response(request, response, **kwargs)
         return response
 
 class Pipeline(AbstractContextManager):

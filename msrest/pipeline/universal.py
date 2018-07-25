@@ -47,7 +47,7 @@ class HeadersPolicy(SansIOHTTPPolicy):
         # type: (Mapping[str, str]) -> None
         self.headers = headers
 
-    def prepare(self, request, **kwargs):
+    def on_request(self, request, **kwargs):
         # type: (ClientRequest, Any) -> None
         request.headers.update(self.headers)
 
@@ -80,7 +80,7 @@ class UserAgentPolicy(SansIOHTTPPolicy):
         """
         self._user_agent = "{} {}".format(self._user_agent, value)
 
-    def prepare(self, request, **kwargs):
+    def on_request(self, request, **kwargs):
         # type: (ClientRequest, Any) -> None
         if self._overwrite or self._USERAGENT not in request.headers:
             request.headers[self._USERAGENT] = self._user_agent
@@ -93,7 +93,7 @@ class HTTPLogger(SansIOHTTPPolicy):
     def __init__(self, enable_http_logger = False):
         self.enable_http_logger = enable_http_logger
 
-    def prepare(self, request, **kwargs):
+    def on_request(self, request, **kwargs):
         # type: (ClientRequest, Any) -> None
         if kwargs.get("enable_http_logger", self.enable_http_logger):
             log_request(None, request)
