@@ -336,8 +336,6 @@ class TestServiceClient(unittest.TestCase):
         assert not hasattr(session.resolve_redirects, 'is_mrest_patched')
 
         client.pipeline._sender.session = session
-        # Hack, reconfigure session
-        client.pipeline._sender._init_session()
 
         client._creds.signed_session.return_value = session
         client._creds.refresh_session.return_value = session

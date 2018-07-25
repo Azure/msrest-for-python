@@ -29,6 +29,7 @@ This module is the requests implementation of Pipeline ABC
 from __future__ import absolute_import  # we have a "requests" module that conflicts with "requests" on Py2.7
 import contextlib
 import logging
+import threading
 from typing import TYPE_CHECKING, List, Callable, Generator, Any, Union, Dict, Optional  # pylint: disable=unused-import
 import warnings
 
@@ -185,6 +186,10 @@ class RequestsClientResponse(ClientResponse):
 class BasicRequestsHTTPSender(HTTPSender):
     """Implements a basic requests HTTP sender.
 
+    Since requests team recommends to use one session per requests, you should
+    not consider this class as thread-safe, since it will use one Session
+    per instance.
+
     In this simple implementation:
     - You provide the configured session if you want to, or a basic session is created.
     - All kwargs received by "send" are sent to session.request directly
@@ -256,7 +261,7 @@ def _patch_redirect(session):
     def wrapped_redirect(resp, req, **kwargs):
         attempt = enforce_http_spec(resp, req)
         return redirect_logic(resp, req, **kwargs) if attempt else []
-    wrapped_redirect.is_mrest_patched = True  # type: ignore
+    wrapped_redirect.is_msrest_patched = True  # type: ignore
 
     session.resolve_redirects = wrapped_redirect  # type: ignore
 
@@ -288,18 +293,30 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
 
     def __init__(self, config):
         # type: (RequestHTTPSenderConfiguration) -> None
-        super(RequestsHTTPSender, self).__init__()
+        self._session_mapping = threading.local()
         self.config = config
-        self._init_session()
+        super(RequestsHTTPSender, self).__init__()
 
-    def _init_session(self, session=None):
-        # type: (Optional[requests.Session]) -> None
+    @property
+    def session(self):
+        try:
+            return self._session_mapping.session
+        except AttributeError:
+            self._session_mapping.session = requests.Session()
+            self._init_session(self._session_mapping.session)
+            return self._session_mapping.session
+
+    @session.setter
+    def session(self, value):
+        self._init_session(value)
+        self._session_mapping.session = value
+
+    def _init_session(self, session):
+        # type: (requests.Session) -> None
         """Init session level configuration of requests.
 
         This is initialization I want to do once only on a session.
         """
-        session = session or self.session
-
         _patch_redirect(session)
 
         # Change max_retries in current all installed adapters
