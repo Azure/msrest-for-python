@@ -297,7 +297,7 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         self.config = config
         super(RequestsHTTPSender, self).__init__()
 
-    @property
+    @property  # type: ignore
     def session(self):
         try:
             return self._session_mapping.session

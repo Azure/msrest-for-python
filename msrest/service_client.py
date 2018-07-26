@@ -25,6 +25,8 @@
 # --------------------------------------------------------------------------
 
 import logging
+import os
+import sys
 try:
     from urlparse import urljoin, urlparse
 except ImportError:
@@ -49,10 +51,21 @@ if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
     from .pipeline import ClientResponse, HTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
 
+if sys.version_info >= (3, 5, 2):
+    # Not executed on old Python, no syntax error
+    from .async_client import AsyncServiceClientMixin, AsyncSDKClientMixin  # type: ignore
+else:
+    class AsyncSDKClientMixin(object):  # type: ignore
+        pass
+
+    class AsyncServiceClientMixin(object):  # type: ignore
+        def __init__(self, creds, config):
+            pass
+
 
 _LOGGER = logging.getLogger(__name__)
 
-class SDKClient(object):
+class SDKClient(AsyncSDKClientMixin):
     """The base class of all generated SDK client.
     """
     def __init__(self, creds, config):
@@ -74,7 +87,7 @@ class SDKClient(object):
         self._client.__exit__(*exc_details)
 
 
-class ServiceClient(object):
+class ServiceClient(AsyncServiceClientMixin):
     """REST Service Client.
     Maintains client pipeline and handles all requests and responses.
 
@@ -86,6 +99,7 @@ class ServiceClient(object):
         # type: (Any, Configuration) -> None
         if config is None:
             raise ValueError("Config is a required parameter")
+        super(ServiceClient, self).__init__(creds, config)
         self.config = config
         self._creds = creds
 

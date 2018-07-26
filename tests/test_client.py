@@ -39,7 +39,7 @@ from oauthlib import oauth2
 
 from msrest import ServiceClient, SDKClient
 from msrest.pipeline import HTTPSender
-from msrest.pipeline.requests import RequestsHTTPSender
+from msrest.pipeline.requests import RequestsHTTPSender, RequestsClientResponse
 from msrest.pipeline.universal import HTTPLogger
 from msrest.authentication import OAuthTokenAuthentication, Authentication
 
@@ -318,12 +318,6 @@ class TestServiceClient(unittest.TestCase):
     def test_client_send(self):
         current_ua = self.cfg.user_agent
 
-        class MockHTTPDriver(object):
-            def configure_session(self, **config):
-                pass
-            def send(self, request, **config):
-                pass
-
         client = ServiceClient(self.creds, self.cfg)
         client.config.keep_alive = True
 
@@ -333,7 +327,7 @@ class TestServiceClient(unittest.TestCase):
             "https://": HTTPAdapter(),
         }
         # Be sure the mock does not trick me
-        assert not hasattr(session.resolve_redirects, 'is_mrest_patched')
+        assert not hasattr(session.resolve_redirects, 'is_msrest_patched')
 
         client.pipeline._sender.session = session
 
@@ -356,7 +350,7 @@ class TestServiceClient(unittest.TestCase):
             timeout=100,
             verify=True
         )
-        assert session.resolve_redirects.is_mrest_patched
+        assert session.resolve_redirects.is_msrest_patched
 
         client.send(request, headers={'id':'1234'}, content={'Test':'Data'}, stream=False)
         session.request.assert_called_with(
@@ -377,7 +371,7 @@ class TestServiceClient(unittest.TestCase):
         )
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
-        assert session.resolve_redirects.is_mrest_patched
+        assert session.resolve_redirects.is_msrest_patched
 
         session.request.side_effect = requests.RequestException("test")
         with self.assertRaises(ClientRequestError):
@@ -400,7 +394,7 @@ class TestServiceClient(unittest.TestCase):
         )
         self.assertEqual(session.request.call_count, 1)
         session.request.call_count = 0
-        assert session.resolve_redirects.is_mrest_patched
+        assert session.resolve_redirects.is_msrest_patched
 
         session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
         with self.assertRaises(TokenExpiredError):
@@ -461,6 +455,31 @@ class TestServiceClient(unittest.TestCase):
         mock_stream.name = "file_name"
         data = ClientRequest._format_data(mock_stream)
         self.assertEqual(data, ("file_name", mock_stream, "application/octet-stream"))
+
+    def test_client_stream_download(self):
+
+        mock_client = ServiceClient(None, Configuration(None))
+        mock_client.config.connection.data_block_size = 1
+
+        req_response = requests.Response()
+        req_response._content = "abc"
+        req_response._content_consumed = True
+        req_response.status_code = 200
+
+        client_response = RequestsClientResponse(
+            None,
+            req_response
+        )
+
+        def user_callback(chunk, response):
+            assert response is req_response
+            assert chunk in ["a", "b", "c"]
+
+        sync_iterator = client_response.stream_download(user_callback, 1)
+        result = ""
+        for value in sync_iterator:
+            result += value
+        assert result == "abc"
 
     def test_request_builder(self):
         client = ServiceClient(self.creds, self.cfg)

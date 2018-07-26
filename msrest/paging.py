@@ -23,6 +23,7 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
+import sys
 try:
     from collections.abc import Iterator
     xrange = range
@@ -38,20 +39,28 @@ if TYPE_CHECKING:
     from .pipeline import ClientResponse  # pylint: disable=unused-import
     from .serialization import Model  # pylint: disable=unused-import
 
+if sys.version_info >= (3, 5, 2):
+    # Not executed on old Python, no syntax error
+    from .async_paging import AsyncPagedMixin  # type: ignore
+else:
+    class AsyncPagedMixin(object):  # type: ignore
+        pass
 
-class Paged(Iterator):
+class Paged(AsyncPagedMixin, Iterator):
     """A container for paged REST responses.
 
     :param ClientResponse response: server response object.
     :param callable command: Function to retrieve the next page of items.
     :param dict classes: A dictionary of class dependencies for
      deserialization.
+    :param dict raw_headers: A dict of raw headers to add if "raw" is called
     """
     _validation = {}  # type: Dict[str, Dict[str, Any]]
     _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
 
-    def __init__(self, command, classes, raw_headers=None):
-        # type: (Callable[[str], ClientResponse], Dict[str, Model], Dict[str, str]) -> None
+    def __init__(self, command, classes, raw_headers=None, **kwargs):
+        # type: (Callable[[str], ClientResponse], Dict[str, Model], Dict[str, str], Any) -> None
+        super(Paged, self).__init__(**kwargs)  # type: ignore
         # Sets next_link, current_page, and _current_page_iter_index.
         self.next_link = ""
         self._current_page_iter_index = 0

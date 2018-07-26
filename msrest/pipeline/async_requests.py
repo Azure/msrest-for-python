@@ -27,6 +27,12 @@ import asyncio
 import functools
 from typing import Any
 
+import requests
+
+from ..exceptions import (
+    TokenExpiredError,
+    ClientRequestError,
+    raise_with_traceback)
 from . import AsyncHTTPSender, ClientRequest, ClientResponse
 from .requests import BasicRequestsHTTPSender, RequestsHTTPSender, RequestsClientResponse
 
@@ -57,10 +63,14 @@ class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  #
                 **kwargs
             )
         )
-        return RequestsClientResponse(
-            request,
-            await future
-        )
+        try:
+            return RequestsClientResponse(
+                request,
+                await future
+            )
+        except requests.RequestException as err:
+            msg = "Error occurred in request."
+            raise_with_traceback(ClientRequestError, msg, err)
 
 class AsyncRequestsHTTPSender(AsyncBasicRequestsHTTPSender, RequestsHTTPSender):  # type: ignore
 
