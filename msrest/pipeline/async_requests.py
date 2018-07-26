@@ -25,16 +25,21 @@
 # --------------------------------------------------------------------------
 import asyncio
 import functools
+import logging
 from typing import Any
 
+from oauthlib import oauth2
 import requests
 
 from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
-from . import AsyncHTTPSender, ClientRequest, ClientResponse
+from . import AsyncHTTPSender, AsyncHTTPPolicy, ClientRequest, ClientResponse
 from .requests import BasicRequestsHTTPSender, RequestsHTTPSender, RequestsClientResponse
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  # type: ignore
@@ -79,3 +84,44 @@ class AsyncRequestsHTTPSender(AsyncBasicRequestsHTTPSender, RequestsHTTPSender):
         """
         requests_kwargs = self._configure_send(request, **kwargs)
         return await super(AsyncRequestsHTTPSender, self).send(request, **requests_kwargs)
+
+class AsyncRequestsCredentialsPolicy(AsyncHTTPPolicy):
+    """Implementation of request-oauthlib except and retry logic.
+    """
+    def __init__(self, credentials):
+        super(AsyncRequestsCredentialsPolicy, self).__init__()
+        self._creds = credentials
+
+    async def send(self, request, **kwargs):
+        session = request.pipeline_context.session
+        try:
+            self._creds.signed_session(session)
+        except TypeError: # Credentials does not support session injection
+            _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
+            request.pipeline_context.session = session = self._creds.signed_session()
+
+        try:
+            try:
+                return await self.next.send(request, **kwargs)
+            except (oauth2.rfc6749.errors.InvalidGrantError,
+                    oauth2.rfc6749.errors.TokenExpiredError) as err:
+                error = "Token expired or is invalid. Attempting to refresh."
+                _LOGGER.warning(error)
+
+            try:
+                try:
+                    self._creds.refresh_session(session)
+                except TypeError: # Credentials does not support session injection
+                    _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
+                    request.pipeline_context.session = session = self._creds.refresh_session()
+
+                return await self.next.send(request, **kwargs)
+            except (oauth2.rfc6749.errors.InvalidGrantError,
+                    oauth2.rfc6749.errors.TokenExpiredError) as err:
+                msg = "Token expired or is invalid."
+                raise_with_traceback(TokenExpiredError, msg, err)
+
+        except (requests.RequestException,
+                oauth2.rfc6749.errors.OAuth2Error) as err:
+            msg = "Error occurred in request."
+            raise_with_traceback(ClientRequestError, msg, err)

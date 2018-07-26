@@ -34,6 +34,7 @@ from typing import Any, Dict, List, Union, TYPE_CHECKING
 from .pipeline import ClientRequest, AsyncPipeline
 from .pipeline.async_requests import (
     AsyncRequestsHTTPSender,
+    AsyncRequestsCredentialsPolicy
 )
 from .pipeline.universal import (
     HTTPLogger
@@ -63,17 +64,16 @@ class AsyncServiceClientMixin:
         # Don't do super, since I know it will be "object"
         # super(AsyncServiceClientMixin, self).__init__(creds, config)
 
-        self.async_pipeline = self._create_default_async_pipeline(config)
+        self.async_pipeline = self._create_default_async_pipeline(creds, config)
 
-    def _create_default_async_pipeline(self, config: 'Configuration'):
+    def _create_default_async_pipeline(self, creds: Any, config: 'Configuration'):
 
         policies = [
             config.user_agent_policy,  # UserAgent policy
-            # RequestsPatchSession(),         # Support deprecated operation config at the session level
             config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]]
-        # if self._creds:
-        #     policies.insert(1, RequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
+        if creds:
+            policies.insert(1, AsyncRequestsCredentialsPolicy(creds))  # Set credentials for requests based session
 
         return AsyncPipeline(
             policies,

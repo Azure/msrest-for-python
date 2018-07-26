@@ -63,7 +63,7 @@ class RequestsCredentialsPolicy(HTTPPolicy):
             self._creds.signed_session(session)
         except TypeError: # Credentials does not support session injection
             _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-            request.pipeline_context.session = session = self.creds.signed_session()
+            request.pipeline_context.session = session = self._creds.signed_session()
 
         try:
             try:
@@ -78,7 +78,7 @@ class RequestsCredentialsPolicy(HTTPPolicy):
                     self._creds.refresh_session(session)
                 except TypeError: # Credentials does not support session injection
                     _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-                    request.pipeline_context.session = session = self.creds.refresh_session()
+                    request.pipeline_context.session = session = self._creds.refresh_session()
 
                 return self.next.send(request, **kwargs)
             except (oauth2.rfc6749.errors.InvalidGrantError,

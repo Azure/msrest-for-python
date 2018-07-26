@@ -140,12 +140,11 @@ class TestServiceClient(object):
         session.request.call_count = 0
         assert session.resolve_redirects.is_msrest_patched
 
-        # FIXME uncomment once credentials is done in async
-        # session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
-        # with pytest.raises(TokenExpiredError):
-        #     await client.async_send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
-        # assert session.request.call_count == 2
-        # session.request.call_count = 0
+        session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
+        with pytest.raises(TokenExpiredError):
+            await client.async_send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
+        assert session.request.call_count == 2
+        session.request.call_count = 0
 
         session.request.side_effect = ValueError("test")
         with pytest.raises(ValueError):
