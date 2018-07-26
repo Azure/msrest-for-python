@@ -125,3 +125,54 @@ class AsyncRequestsCredentialsPolicy(AsyncHTTPPolicy):
                 oauth2.rfc6749.errors.OAuth2Error) as err:
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
+
+# Trio support
+try:
+    import trio
+
+    class AsyncTrioBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  # type: ignore
+
+        async def __aenter__(self):
+            return super(AsyncTrioBasicRequestsHTTPSender, self).__enter__()
+
+        async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
+            return super(AsyncTrioBasicRequestsHTTPSender, self).__exit__()
+
+        async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:  # type: ignore
+            """Send the request using this HTTP sender.
+            """
+            if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
+                request.pipeline_context = self.build_context()
+
+            session = request.pipeline_context.session
+
+            trio_limiter = kwargs.get("trio_limiter", None)
+            future = trio.run_sync_in_worker_thread(
+                functools.partial(
+                    session.request,
+                    request.method,
+                    request.url,
+                    **kwargs
+                ),
+                limiter=trio_limiter
+            )
+            try:
+                return RequestsClientResponse(
+                    request,
+                    await future
+                )
+            except requests.RequestException as err:
+                msg = "Error occurred in request."
+                raise_with_traceback(ClientRequestError, msg, err)
+
+    class AsyncTrioRequestsHTTPSender(AsyncTrioBasicRequestsHTTPSender, RequestsHTTPSender):  # type: ignore
+
+        async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:  # type: ignore
+            """Send the request using this HTTP sender.
+            """
+            requests_kwargs = self._configure_send(request, **kwargs)
+            return await super(AsyncTrioRequestsHTTPSender, self).send(request, **requests_kwargs)
+
+except ImportError:
+    # trio not installed
+    pass

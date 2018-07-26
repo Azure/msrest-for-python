@@ -26,9 +26,15 @@
 from msrest.pipeline import AsyncPipeline, ClientRequest
 from msrest.pipeline.universal import UserAgentPolicy
 from msrest.pipeline.aiohttp import AioHTTPSender
-from msrest.pipeline.async_requests import AsyncBasicRequestsHTTPSender, AsyncRequestsHTTPSender
+from msrest.pipeline.async_requests import (
+    AsyncBasicRequestsHTTPSender,
+    AsyncRequestsHTTPSender,
+    AsyncTrioRequestsHTTPSender
+)
 
 from msrest.configuration import Configuration
+
+import trio
 
 import pytest
 
@@ -69,4 +75,18 @@ async def test_conf_async_requests():
     async with AsyncPipeline(policies, AsyncRequestsHTTPSender(conf)) as pipeline:
         response = await pipeline.run(request)
 
+    assert response.status_code == 200
+
+def test_conf_async_trio_requests():
+
+    async def do():
+        conf = Configuration("http://bing.com/")
+        request = ClientRequest("GET", "http://bing.com/")
+        policies = [
+            UserAgentPolicy("myusergant")
+        ]
+        async with AsyncPipeline(policies, AsyncTrioRequestsHTTPSender(conf)) as pipeline:
+            return await pipeline.run(request)
+
+    response = trio.run(do)
     assert response.status_code == 200
