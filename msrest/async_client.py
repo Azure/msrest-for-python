@@ -25,7 +25,6 @@
 # --------------------------------------------------------------------------
 
 import asyncio
-from collections.abc import AsyncIterator
 import functools
 import logging
 
@@ -105,45 +104,4 @@ class AsyncServiceClientMixin:
         :param user_callback: Custom callback for monitoring progress.
         """
         block = self.config.connection.data_block_size
-        return StreamDownloadGenerator(response, user_callback, block)
-
-class _MsrestStopIteration(Exception):
-    pass
-
-def _msrest_next(iterator):
-    """"To avoid:
-    TypeError: StopIteration interacts badly with generators and cannot be raised into a Future
-    """
-    try:
-        return next(iterator)
-    except StopIteration:
-        raise _MsrestStopIteration()
-
-class StreamDownloadGenerator(AsyncIterator):
-
-    def __init__(self, response, user_callback, block):
-        self.response = response
-        self.block = block
-        self.user_callback = user_callback
-        self.iter_content_func = self.response.iter_content(self.block)
-
-    async def __anext__(self):
-        loop = asyncio.get_event_loop()
-        try:
-            chunk = await loop.run_in_executor(
-                None,
-                _msrest_next,
-                self.iter_content_func,
-            )
-            if not chunk:
-                raise _MsrestStopIteration()
-            if self.user_callback and callable(self.user_callback):
-                self.user_callback(chunk, self.response)
-            return chunk
-        except _MsrestStopIteration:
-            self.response.close()
-            raise StopAsyncIteration()
-        except Exception as err:
-            _LOGGER.warning("Unable to stream download: %s", err)
-            self.response.close()
-            raise
+        return response.stream_download(user_callback, block)

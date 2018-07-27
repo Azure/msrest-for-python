@@ -30,7 +30,7 @@ from __future__ import absolute_import  # we have a "requests" module that confl
 import contextlib
 import logging
 import threading
-from typing import TYPE_CHECKING, List, Callable, Generator, Any, Union, Dict, Optional  # pylint: disable=unused-import
+from typing import TYPE_CHECKING, List, Callable, Iterator, Any, Union, Dict, Optional  # pylint: disable=unused-import
 import warnings
 
 from oauthlib import oauth2
@@ -41,7 +41,7 @@ from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
-from . import HTTPSender, HTTPPolicy, ClientResponse, HTTPSenderConfiguration
+from . import HTTPSender, HTTPPolicy, HTTPClientResponse, ClientResponse, HTTPSenderConfiguration
 
 if TYPE_CHECKING:
     from . import ClientRequest  # pylint: disable=unused-import
@@ -149,9 +149,9 @@ class RequestsContext(object):
         self.session = session
         self.kwargs = kwargs
 
-class RequestsClientResponse(ClientResponse):
+class HTTPRequestsClientResponse(HTTPClientResponse):
     def __init__(self, request, requests_response):
-        super(RequestsClientResponse, self).__init__(request, requests_response)
+        super(HTTPRequestsClientResponse, self).__init__(request, requests_response)
         self.status_code = requests_response.status_code
         self.headers = requests_response.headers
         self.reason = requests_response.reason
@@ -164,8 +164,13 @@ class RequestsClientResponse(ClientResponse):
             self.internal_response.encoding = encoding
         return self.internal_response.text
 
+    def raise_for_status(self):
+        self.internal_response.raise_for_status()
+
+class RequestsClientResponse(HTTPRequestsClientResponse, ClientResponse):
+
     def stream_download(self, callback, chunk_size):
-        # type: (Callable, int) -> Generator[bytes, None, None]
+        # type: (Callable, int) -> Iterator[bytes]
         """Generator for streaming request body data.
 
         :param callback: Custom callback for monitoring progress.
@@ -180,8 +185,6 @@ class RequestsClientResponse(ClientResponse):
                     callback(chunk, response=response)
                 yield chunk
 
-    def raise_for_status(self):
-        self.internal_response.raise_for_status()
 
 class BasicRequestsHTTPSender(HTTPSender):
     """Implements a basic requests HTTP sender.

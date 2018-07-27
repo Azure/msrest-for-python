@@ -40,7 +40,7 @@ except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import TYPE_CHECKING, cast, IO, List, Union, Any, Mapping, Dict, Optional, Tuple, Callable, Generator  # pylint: disable=unused-import
+from typing import TYPE_CHECKING, cast, IO, List, Union, Any, Mapping, Dict, Optional, Tuple, Callable, Iterator  # pylint: disable=unused-import
 
 # This file is NOT using any "requests" HTTP implementation
 # However, the CaseInsensitiveDict is handy.
@@ -417,8 +417,11 @@ class ClientRequest(object):
         else: # Assume "multipart/form-data"
             self.files = {f: self._format_data(d) for f, d in content.items() if d is not None}
 
-class ClientResponse(object):
+class HTTPClientResponse(object):
     """Represent a HTTP response.
+
+    No body is defined here on purpose, since async pipeline
+    will provide async ways to access the body
 
     You have two differents types of body:
     - Full in-memory using "body" as bytes
@@ -447,8 +450,17 @@ class ClientResponse(object):
         """
         return self.body().decode(encoding or "utf-8")
 
+    def raise_for_status(self):
+        """Raise for status. Should be overriden, but basic implementation provided.
+        """
+        if self.status_code >= 400:
+            raise ClientRequestError("Received status code {}".format(self.status_code))
+
+
+class ClientResponse(HTTPClientResponse):
+
     def stream_download(self, callback, chunk_size):
-        # type: (Callable, int) -> Generator[bytes, None, None]
+        # type: (Callable, int) -> Iterator[bytes]
         """Generator for streaming request body data.
 
         Should be implemented by sub-classes if streaming download
@@ -458,12 +470,6 @@ class ClientResponse(object):
         :param int chunk_size:
         """
         pass
-
-    def raise_for_status(self):
-        """Raise for status. Should be overriden, but basic implementation provided.
-        """
-        if self.status_code >= 400:
-            raise ClientRequestError("Received status code {}".format(self.status_code))
 
 
 # ClientRawResponse is in Pipeline for compat, but technically there is nothing Pipeline here, this is deserialization
@@ -593,7 +599,7 @@ __all__ = [
 ]
 
 try:
-    from .async_abc import AsyncPipeline, AsyncHTTPPolicy, AsyncHTTPSender  # pylint: disable=unused-import
+    from .async_abc import AsyncPipeline, AsyncHTTPPolicy, AsyncHTTPSender, AsyncClientResponse  # pylint: disable=unused-import
     from .async_abc import __all__ as _async_all
     __all__ += _async_all
 except SyntaxError: # Python 2

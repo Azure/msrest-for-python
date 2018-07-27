@@ -23,11 +23,11 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
-from typing import Any
+from typing import Any, Callable, AsyncGenerator
 
 import aiohttp
 
-from . import AsyncHTTPSender, ClientRequest, ClientResponse
+from . import AsyncHTTPSender, ClientRequest, AsyncClientResponse
 
 class AioHTTPSender(AsyncHTTPSender):
     """AioHttp HTTP sender implementation.
@@ -42,7 +42,7 @@ class AioHTTPSender(AsyncHTTPSender):
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         await self._session.__aexit__(*exc_details)
 
-    async def send(self, request: ClientRequest, **config: Any) -> ClientResponse:
+    async def send(self, request: ClientRequest, **config: Any) -> AsyncClientResponse:
         """Send the request using this HTTP sender.
         """
         result = await self._session.request(
@@ -61,7 +61,7 @@ class AioHTTPSender(AsyncHTTPSender):
         return None
 
 
-class AioHttpClientResponse(ClientResponse):
+class AioHttpClientResponse(AsyncClientResponse):
     def __init__(self, request: ClientRequest, aiohttp_response: aiohttp.ClientResponse) -> None:
         super(AioHttpClientResponse, self).__init__(request, aiohttp_response)
         # https://aiohttp.readthedocs.io/en/stable/client_reference.html#aiohttp.ClientResponse
@@ -71,3 +71,14 @@ class AioHttpClientResponse(ClientResponse):
 
     def raise_for_status(self):
         self.internal_response.raise_for_status()
+
+    def stream_download(self, callback: Callable, chunk_size: int) -> AsyncGenerator[bytes, None]:
+        """Generator for streaming request body data.
+        """
+        async def async_gen(resp):
+            while True:
+                chunk = await resp.content.read(chunk_size)
+                if not chunk:
+                    break
+                callback(chunk, resp)
+        return async_gen(self.internal_response)

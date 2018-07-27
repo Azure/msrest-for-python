@@ -458,9 +458,6 @@ class TestServiceClient(unittest.TestCase):
 
     def test_client_stream_download(self):
 
-        mock_client = ServiceClient(None, Configuration(None))
-        mock_client.config.connection.data_block_size = 1
-
         req_response = requests.Response()
         req_response._content = "abc"
         req_response._content_consumed = True

@@ -33,7 +33,7 @@ except ImportError:
     from urllib.parse import urljoin, urlparse
 import warnings
 
-from typing import List, Any, Dict, Union, IO, Tuple, Optional, Callable, Generator, cast, TYPE_CHECKING  # pylint: disable=unused-import
+from typing import List, Any, Dict, Union, IO, Tuple, Optional, Callable, Iterator, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
 from .authentication import Authentication
 from .pipeline import ClientRequest, Pipeline
@@ -213,7 +213,7 @@ class ServiceClient(AsyncServiceClientMixin):
             self.pipeline._sender.session.close()
 
     def stream_download(self, data, callback):
-        # type: (ClientResponse, Callable) -> Generator[bytes, None, None]
+        # type: (ClientResponse, Callable) -> Iterator[bytes]
         """Generator for streaming request body data.
 
         :param data: A response object to be streamed.

@@ -47,6 +47,7 @@ from msrest.configuration import Configuration
 from msrest import Configuration
 from msrest.exceptions import ClientRequestError, TokenExpiredError
 from msrest.pipeline import ClientRequest
+from msrest.pipeline.async_requests import AsyncRequestsClientResponse
 
 
 @unittest.skipIf(sys.version_info < (3, 5, 2), "Async tests only on 3.5.2 minimal")
@@ -153,19 +154,21 @@ class TestServiceClient(object):
     @pytest.mark.asyncio
     async def test_client_stream_download(self):
 
-        mock_client = ServiceClient(None, Configuration(None))
-        mock_client.config.connection.data_block_size = 1
+        req_response = requests.Response()
+        req_response._content = "abc"
+        req_response._content_consumed = True
+        req_response.status_code = 200
 
-        response = requests.Response()
-        response._content = "abc"
-        response._content_consumed = True
-        response.status_code = 200
+        client_response = AsyncRequestsClientResponse(
+            None,
+            req_response
+        )
 
-        def user_callback(chunk, local_response):
-            assert local_response is response
+        def user_callback(chunk, response):
+            assert response is req_response
             assert chunk in ["a", "b", "c"]
 
-        async_iterator = mock_client.stream_download_async(response, user_callback)
+        async_iterator = client_response.stream_download(user_callback, 1)
         result = ""
         async for value in async_iterator:
             result += value

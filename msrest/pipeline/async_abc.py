@@ -25,7 +25,7 @@
 # --------------------------------------------------------------------------
 import abc
 
-from typing import Any, List, Union
+from typing import Any, List, Union, Callable, AsyncIterator
 
 try:
     from contextlib import AbstractAsyncContextManager  # type: ignore
@@ -40,7 +40,21 @@ except ImportError: # Python <= 3.7
             """Raise any exception triggered within the runtime context."""
             return None
 
-from . import ClientRequest, ClientResponse, Pipeline, SansIOHTTPPolicy
+from . import ClientRequest, HTTPClientResponse, Pipeline, SansIOHTTPPolicy
+
+
+class AsyncClientResponse(HTTPClientResponse):
+
+    def stream_download(self, callback: Callable, chunk_size: int) -> AsyncIterator[bytes]:
+        """Generator for streaming request body data.
+
+        Should be implemented by sub-classes if streaming download
+        is supported.
+
+        :param callback: Custom callback for monitoring progress.
+        :param int chunk_size:
+        """
+        pass
 
 
 class AsyncHTTPPolicy(abc.ABC):
@@ -52,7 +66,7 @@ class AsyncHTTPPolicy(abc.ABC):
         self.next = None  # type: ignore
 
     @abc.abstractmethod
-    async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
+    async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:
         """Mutate the request.
 
         Context content is dependent of the HTTPSender.
@@ -68,7 +82,7 @@ class _SansIOAsyncHTTPPolicyRunner(AsyncHTTPPolicy):
         super(_SansIOAsyncHTTPPolicyRunner, self).__init__()
         self._policy = policy
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
+    async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:
         self._policy.on_request(request, **kwargs)
         response = await self.next.send(request, **kwargs)  # type: ignore
         self._policy.on_response(request, response, **kwargs)
@@ -80,7 +94,7 @@ class AsyncHTTPSender(AbstractAsyncContextManager, abc.ABC):
     """
 
     @abc.abstractmethod
-    async def send(self, request: ClientRequest, **config: Any) -> ClientResponse:
+    async def send(self, request: ClientRequest, **config: Any) -> AsyncClientResponse:
         """Send the request using this HTTP sender.
         """
         pass
@@ -141,7 +155,7 @@ class AsyncPipeline(AbstractAsyncContextManager):
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         await self._sender.__aexit__(*exc_details)
 
-    async def run(self, request: ClientRequest, **kwargs: Any) -> ClientResponse:
+    async def run(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:
         context = self._sender.build_context()
         request.pipeline_context = context
         first_node = self._impl_policies[0] if self._impl_policies else self._sender
@@ -150,5 +164,6 @@ class AsyncPipeline(AbstractAsyncContextManager):
 __all__ = [
     'AsyncHTTPPolicy',
     'AsyncHTTPSender',
-    'AsyncPipeline'
+    'AsyncPipeline',
+    'AsyncClientResponse'
 ]
