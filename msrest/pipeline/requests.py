@@ -41,7 +41,7 @@ from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
-from . import HTTPSender, HTTPPolicy, HTTPClientResponse, ClientResponse, HTTPSenderConfiguration
+from . import HTTPSender, HTTPPolicy, HTTPClientResponse, ClientResponse, HTTPSenderConfiguration, Response
 
 if TYPE_CHECKING:
     from . import ClientRequest  # pylint: disable=unused-import
@@ -220,7 +220,7 @@ class BasicRequestsHTTPSender(HTTPSender):
         )
 
     def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> RequestsClientResponse
+        # type: (ClientRequest, Any) -> Response
         """Send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.
@@ -238,7 +238,7 @@ class BasicRequestsHTTPSender(HTTPSender):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
 
-        return RequestsClientResponse(request, response)
+        return Response(RequestsClientResponse(request, response))
 
 
 def _patch_redirect(session):
@@ -404,7 +404,7 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         return requests_kwargs
 
     def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> RequestsClientResponse
+        # type: (ClientRequest, Any) -> Response[RequestsClientResponse]
         """Send request object according to configuration.
 
         :param ClientRequest request: The request object to be sent.

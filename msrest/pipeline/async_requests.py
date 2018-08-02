@@ -36,7 +36,7 @@ from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
     raise_with_traceback)
-from . import AsyncHTTPSender, AsyncHTTPPolicy, ClientRequest, AsyncClientResponse
+from . import AsyncHTTPSender, AsyncHTTPPolicy, ClientRequest, AsyncClientResponse, Response
 from .requests import (
     BasicRequestsHTTPSender,
     RequestsHTTPSender,
@@ -55,7 +55,7 @@ class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  #
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         return super(AsyncBasicRequestsHTTPSender, self).__exit__()
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:  # type: ignore
+    async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
         """Send the request using this HTTP sender.
         """
         if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
@@ -74,17 +74,17 @@ class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  #
             )
         )
         try:
-            return AsyncRequestsClientResponse(
+            return Response(AsyncRequestsClientResponse(
                 request,
                 await future
-            )
+            ))
         except requests.RequestException as err:
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
 
 class AsyncRequestsHTTPSender(AsyncBasicRequestsHTTPSender, RequestsHTTPSender):  # type: ignore
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:  # type: ignore
+    async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
         """Send the request using this HTTP sender.
         """
         requests_kwargs = self._configure_send(request, **kwargs)
@@ -242,7 +242,7 @@ try:
         async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
             return super(AsyncTrioBasicRequestsHTTPSender, self).__exit__()
 
-        async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:  # type: ignore
+        async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
             """Send the request using this HTTP sender.
             """
             if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
@@ -261,17 +261,17 @@ try:
                 limiter=trio_limiter
             )
             try:
-                return TrioAsyncRequestsClientResponse(
+                return Response(TrioAsyncRequestsClientResponse(
                     request,
                     await future
-                )
+                ))
             except requests.RequestException as err:
                 msg = "Error occurred in request."
                 raise_with_traceback(ClientRequestError, msg, err)
 
     class AsyncTrioRequestsHTTPSender(AsyncTrioBasicRequestsHTTPSender, RequestsHTTPSender):  # type: ignore
 
-        async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:  # type: ignore
+        async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
             """Send the request using this HTTP sender.
             """
             requests_kwargs = self._configure_send(request, **kwargs)

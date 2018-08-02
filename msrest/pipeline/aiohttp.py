@@ -27,7 +27,7 @@ from typing import Any, Callable, AsyncGenerator
 
 import aiohttp
 
-from . import AsyncHTTPSender, ClientRequest, AsyncClientResponse
+from . import AsyncHTTPSender, ClientRequest, AsyncClientResponse, Response
 
 class AioHTTPSender(AsyncHTTPSender):
     """AioHttp HTTP sender implementation.
@@ -42,14 +42,14 @@ class AioHTTPSender(AsyncHTTPSender):
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         await self._session.__aexit__(*exc_details)
 
-    async def send(self, request: ClientRequest, **config: Any) -> AsyncClientResponse:
+    async def send(self, request: ClientRequest, **config: Any) -> Response[AsyncClientResponse]:
         """Send the request using this HTTP sender.
         """
         result = await self._session.request(
             request.method,
             request.url
         )
-        return AioHttpClientResponse(request, result)
+        return Response(AioHttpClientResponse(request, result))
 
     def build_context(self) -> Any:
         """Allow the sender to build a context that will be passed

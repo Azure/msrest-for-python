@@ -35,7 +35,7 @@ from . import SansIOHTTPPolicy
 from ..http_logger import log_request, log_response
 
 if TYPE_CHECKING:
-    from . import ClientRequest, ClientResponse  # pylint: disable=unused-import
+    from . import ClientRequest, Response  # pylint: disable=unused-import
 
 class HeadersPolicy(SansIOHTTPPolicy):
     """A simple policy that sends the given headers
@@ -99,6 +99,6 @@ class HTTPLogger(SansIOHTTPPolicy):
             log_request(None, request)
 
     def post_send(self, request, response, **kwargs):
-        # type: (ClientRequest, ClientResponse, Any) -> None
+        # type: (ClientRequest, Response, Any) -> None
         if kwargs.get("enable_http_logger", self.enable_http_logger):
-            log_response(None, request, response, result=response)
+            log_response(None, request, response.http_response, result=response)

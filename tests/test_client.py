@@ -38,7 +38,7 @@ from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
 from msrest import ServiceClient, SDKClient
-from msrest.pipeline import HTTPSender
+from msrest.pipeline import HTTPSender, Response
 from msrest.pipeline.requests import RequestsHTTPSender, RequestsClientResponse
 from msrest.pipeline.universal import HTTPLogger
 from msrest.authentication import OAuthTokenAuthentication, Authentication
@@ -204,7 +204,7 @@ class TestServiceClient(unittest.TestCase):
     def test_no_log(self, mock_http_logger):
         request = ClientRequest('GET', 'http://127.0.0.1/')
         http_logger = HTTPLogger()
-        response = ClientResponse(request, None)
+        response = Response(ClientResponse(request, None))
 
         # By default, no log handler for HTTP
         http_logger.on_request(request)

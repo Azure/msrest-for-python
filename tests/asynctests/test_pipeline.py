@@ -50,7 +50,7 @@ async def test_basic_aiohttp():
         response = await pipeline.run(request)
 
     assert pipeline._sender._session.closed
-    assert response.status_code == 200
+    assert response.http_response.status_code == 200
 
 @pytest.mark.asyncio
 async def test_basic_async_requests():
@@ -62,7 +62,7 @@ async def test_basic_async_requests():
     async with AsyncPipeline(policies, AsyncBasicRequestsHTTPSender()) as pipeline:
         response = await pipeline.run(request)
 
-    assert response.status_code == 200
+    assert response.http_response.status_code == 200
 
 @pytest.mark.asyncio
 async def test_conf_async_requests():
@@ -75,7 +75,7 @@ async def test_conf_async_requests():
     async with AsyncPipeline(policies, AsyncRequestsHTTPSender(conf)) as pipeline:
         response = await pipeline.run(request)
 
-    assert response.status_code == 200
+    assert response.http_response.status_code == 200
 
 def test_conf_async_trio_requests():
 
@@ -89,4 +89,4 @@ def test_conf_async_trio_requests():
             return await pipeline.run(request)
 
     response = trio.run(do)
-    assert response.status_code == 200
+    assert response.http_response.status_code == 200

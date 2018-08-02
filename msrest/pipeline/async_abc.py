@@ -40,7 +40,7 @@ except ImportError: # Python <= 3.7
             """Raise any exception triggered within the runtime context."""
             return None
 
-from . import ClientRequest, HTTPClientResponse, Pipeline, SansIOHTTPPolicy
+from . import ClientRequest, Response, HTTPClientResponse, Pipeline, SansIOHTTPPolicy
 
 
 class AsyncClientResponse(HTTPClientResponse):
@@ -66,7 +66,7 @@ class AsyncHTTPPolicy(abc.ABC):
         self.next = None  # type: ignore
 
     @abc.abstractmethod
-    async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:
+    async def send(self, request: ClientRequest, **kwargs: Any) -> Response:
         """Mutate the request.
 
         Context content is dependent of the HTTPSender.
@@ -82,7 +82,7 @@ class _SansIOAsyncHTTPPolicyRunner(AsyncHTTPPolicy):
         super(_SansIOAsyncHTTPPolicyRunner, self).__init__()
         self._policy = policy
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:
+    async def send(self, request: ClientRequest, **kwargs: Any) -> Response:
         self._policy.on_request(request, **kwargs)
         response = await self.next.send(request, **kwargs)  # type: ignore
         self._policy.on_response(request, response, **kwargs)
@@ -94,7 +94,7 @@ class AsyncHTTPSender(AbstractAsyncContextManager, abc.ABC):
     """
 
     @abc.abstractmethod
-    async def send(self, request: ClientRequest, **config: Any) -> AsyncClientResponse:
+    async def send(self, request: ClientRequest, **config: Any) -> Response[AsyncClientResponse]:
         """Send the request using this HTTP sender.
         """
         pass
@@ -155,7 +155,7 @@ class AsyncPipeline(AbstractAsyncContextManager):
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         await self._sender.__aexit__(*exc_details)
 
-    async def run(self, request: ClientRequest, **kwargs: Any) -> AsyncClientResponse:
+    async def run(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:
         context = self._sender.build_context()
         request.pipeline_context = context
         first_node = self._impl_policies[0] if self._impl_policies else self._sender

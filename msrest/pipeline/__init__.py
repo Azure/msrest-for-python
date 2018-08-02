@@ -40,7 +40,9 @@ except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import TYPE_CHECKING, cast, IO, List, Union, Any, Mapping, Dict, Optional, Tuple, Callable, Iterator  # pylint: disable=unused-import
+from typing import TYPE_CHECKING, Generic, TypeVar, cast, IO, List, Union, Any, Mapping, Dict, Optional, Tuple, Callable, Iterator  # pylint: disable=unused-import
+
+HTTPResponseType = TypeVar("HTTPResponseType", bound='HTTPClientResponse')
 
 # This file is NOT using any "requests" HTTP implementation
 # However, the CaseInsensitiveDict is handy.
@@ -83,7 +85,7 @@ class HTTPPolicy(ABC):
 
     @abc.abstractmethod
     def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> ClientResponse
+        # type: (ClientRequest, Any) -> Response
         """Mutate the request.
 
         Context content is dependent of the HTTPSender.
@@ -110,7 +112,7 @@ class SansIOHTTPPolicy:
         pass
 
     def on_response(self, request, response, **kwargs):
-        # type: (ClientRequest, ClientResponse, Any) -> None
+        # type: (ClientRequest, Response, Any) -> None
         """Is executed after the request comes back from the policy.
         """
         pass
@@ -125,7 +127,7 @@ class _SansIOHTTPPolicyRunner(HTTPPolicy):
         self._policy = policy
 
     def send(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> ClientResponse
+        # type: (ClientRequest, Any) -> Response
         self._policy.on_request(request, **kwargs)
         response = self.next.send(request, **kwargs)
         self._policy.on_response(request, response, **kwargs)
@@ -166,7 +168,7 @@ class Pipeline(AbstractContextManager):
         self._sender.__exit__(*exc_details)
 
     def run(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> ClientResponse
+        # type: (ClientRequest, Any) -> Response
         context = self._sender.build_context()
         request.pipeline_context = context
         first_node = self._impl_policies[0] if self._impl_policies else self._sender
@@ -178,7 +180,7 @@ class HTTPSender(AbstractContextManager, ABC):
 
     @abc.abstractmethod
     def send(self, request, **config):
-        # type: (ClientRequest, Any) -> ClientResponse
+        # type: (ClientRequest, Any) -> Response
         """Send the request using this HTTP sender.
         """
         pass
@@ -417,6 +419,21 @@ class ClientRequest(object):
         else: # Assume "multipart/form-data"
             self.files = {f: self._format_data(d) for f, d in content.items() if d is not None}
 
+class Response(Generic[HTTPResponseType]):
+    """A pipeline response object.
+
+    The Response interface exposes an HTTP response object as it returns through the pipeline of Policy objects.
+    This ensures that Policy objects have access to the HTTP response.
+
+    This also have a "context" dictionnary where policy can put additional fields.
+    Policy SHOULD update the "context" dictionary with additional post-processed field if they create them.
+    However, nothing prevents a policy to actually sub-class this class a return it instead of the initial instance.
+    """
+    def __init__(self, http_response, context=None):
+        # type: (HTTPResponseType, Optional[Dict[str, Any]]) -> None
+        self.http_response = http_response
+        self.context = context or {}
+
 class HTTPClientResponse(object):
     """Represent a HTTP response.
 
@@ -586,6 +603,7 @@ class ClientConnection(object):
 __all__ = [
     'ClientRequest',
     'ClientResponse',
+    'Response',
     'ClientRawResponse',
     'Pipeline',
     'HTTPPolicy',

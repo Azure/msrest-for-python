@@ -202,7 +202,12 @@ class ServiceClient(AsyncServiceClientMixin):
         response = None
         kwargs.setdefault('stream', True)
         try:
-            response = self.pipeline.run(request, **kwargs)
+            pipeline_response = self.pipeline.run(request, **kwargs)
+            # In the current backward compatible implementation, return the HTTP response
+            # and plug context inside. Could be remove if we modify Autorest,
+            # but we still need it to be backward compatible
+            response = pipeline_response.http_response
+            response.context = pipeline_response.context
             return response
         finally:
             self._close_local_session_if_necessary(response, kwargs['stream'])
