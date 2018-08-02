@@ -1,6 +1,6 @@
 #--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -38,7 +38,6 @@ class FakePaged(Paged):
     def __init__(self, *args, **kwargs):
         super(FakePaged, self).__init__(*args, **kwargs)
 
-@unittest.skipIf(sys.version_info < (3, 5, 2), "Async tests only on 3.5.2 minimal")
 class TestPaging(object):
 
     @pytest.mark.asyncio
@@ -139,7 +138,7 @@ class TestPaging(object):
         result_iterated = []
         async for obj in deserialized:
             result_iterated.append(obj)
-        
+
         assert ['value1.0', 'value1.1', 'value2.0', 'value2.1'] == result_iterated
 
         deserialized = FakePaged(None, {}, async_command=internal_paging)
@@ -153,7 +152,7 @@ class TestPaging(object):
         result_iterated = []
         async for obj in deserialized:
             result_iterated.append(obj)
-        
+
         assert ['value1.0', 'value1.1', 'value2.0', 'value2.1'] == result_iterated
 
     @pytest.mark.asyncio

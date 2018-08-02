@@ -38,14 +38,17 @@ from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
 from msrest import ServiceClient, SDKClient
-from msrest.pipeline import HTTPSender, Response
+from msrest.pipeline import (
+    HTTPSender,
+    Response,
+    ClientRequest,
+    ClientResponse
+)
 from msrest.pipeline.requests import RequestsHTTPSender, RequestsClientResponse
-from msrest.pipeline.universal import HTTPLogger
 from msrest.authentication import OAuthTokenAuthentication, Authentication
 
 from msrest import Configuration
 from msrest.exceptions import ClientRequestError, TokenExpiredError
-from msrest.pipeline import ClientRequest, ClientResponse
 
 
 class TestServiceClient(unittest.TestCase):
@@ -200,48 +203,6 @@ class TestServiceClient(unittest.TestCase):
             assert driver.session.adapters["https://"].max_retries is max_retries
             assert driver.session.adapters['"http://127.0.0.1/"'].max_retries is not max_retries
 
-    @mock.patch('msrest.http_logger._LOGGER')
-    def test_no_log(self, mock_http_logger):
-        request = ClientRequest('GET', 'http://127.0.0.1/')
-        http_logger = HTTPLogger()
-        response = Response(ClientResponse(request, None))
-
-        # By default, no log handler for HTTP
-        http_logger.on_request(request)
-        mock_http_logger.debug.assert_not_called()
-        http_logger.post_send(request, response)
-        mock_http_logger.debug.assert_not_called()
-        mock_http_logger.reset_mock()
-
-        # I can enable it per request
-        http_logger.on_request(request, **{"enable_http_logger": True})
-        assert mock_http_logger.debug.call_count >= 1
-        http_logger.post_send(request, response, **{"enable_http_logger": True})
-        assert mock_http_logger.debug.call_count >= 1
-        mock_http_logger.reset_mock()
-
-        # I can enable it per request (bool value should be honored)
-        http_logger.on_request(request, **{"enable_http_logger": False})
-        mock_http_logger.debug.assert_not_called()
-        http_logger.post_send(request, response, **{"enable_http_logger": False})
-        mock_http_logger.debug.assert_not_called()
-        mock_http_logger.reset_mock()
-
-        # I can enable it globally
-        http_logger.enable_http_logger = True
-        http_logger.on_request(request)
-        assert mock_http_logger.debug.call_count >= 1
-        http_logger.post_send(request, response)
-        assert mock_http_logger.debug.call_count >= 1
-        mock_http_logger.reset_mock()
-
-        # I can enable it globally and override it locally
-        http_logger.enable_http_logger = True
-        http_logger.on_request(request, **{"enable_http_logger": False})
-        mock_http_logger.debug.assert_not_called()
-        http_logger.post_send(request, response, **{"enable_http_logger": False})
-        mock_http_logger.debug.assert_not_called()
-        mock_http_logger.reset_mock()
 
     def test_client_request(self):
 

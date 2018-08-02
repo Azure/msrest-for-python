@@ -1259,47 +1259,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.d = Deserializer()
         return super(TestRuntimeDeserialized, self).setUp()
 
-    def test_unpack(self):
-        result = Deserializer._unpack_content("<groot/>", content_type="application/xml")
-        assert result.tag == "groot"
-
-        # Catch some weird situation where content_type is XML, but content is JSON
-        result = Deserializer._unpack_content('{"ugly": true}', content_type="application/xml")
-        assert result["ugly"] is True
-
-        # Be sure I catch the correct exception if it's neither XML nor JSON
-        with pytest.raises(ET.ParseError):
-            result = Deserializer._unpack_content('gibberish', content_type="application/xml")
-        with pytest.raises(ET.ParseError):
-            result = Deserializer._unpack_content('{{gibberish}}', content_type="application/xml")
-
-        result = Deserializer._unpack_content('{"success": true}', content_type="application/json")
-        assert result["success"] is True
-
-        # For compat, if no content-type, and direct string, just return it
-        result = Deserializer._unpack_content('data')
-        assert result == "data"
-
-        # Decore bytes
-        result = Deserializer._unpack_content(b'data')
-        assert result == "data"
-
-        response = Response()
-        response.headers["content-type"] = "application/json"
-        response._content = b'{"success": true}'
-        response._content_consumed = True
-
-        result = Deserializer._unpack_content(response)
-        assert result["success"] is True
-
-        # If no content-type, assume it's JSON
-        response = Response()
-        response._content = b'{"success": true}'
-        response._content_consumed = True
-
-        result = Deserializer._unpack_content(response)
-        assert result["success"] is True
-
     def test_cls_method_deserialization(self):
         json_data = {
             'id': 'myid',

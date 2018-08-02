@@ -43,6 +43,8 @@ import isodate
 
 from typing import Dict, Any
 
+from .pipeline.universal import RawDeserializer
+
 from .exceptions import (
     ValidationError,
     SerializationError,
@@ -1315,81 +1317,33 @@ class Deserializer(object):
             pass  # Target is not a Model, no classify
         return target, target.__class__.__name__
 
-    JSON_MIMETYPES = [
-        'application/json',
-        'text/json' # Because we're open minded people...
-    ]
-
     @staticmethod
     def _unpack_content(raw_data, content_type=None):
-        """Extract data from the body of a REST response object.
+        """Extract the correct structure for deserialization.
 
-        If raw_data is a requests.Response object, follow Content-Type
-        to parse (ignore content_type parameter).
-        If bytes is given, decode using UTF8 first.
-        If content_type is given, try to parse.
-        Otherwise, return initial data.
-        We assume everything is UTF8 (BOM acceptable).
+        If raw_data is a PipelineResponse, try to extract the result of RawDeserializer.
+        if we can't, raise. Your Pipeline should have a RawDeserializer.
+
+        If not a pipeline response and raw_data is bytes or string, use content-type
+        to decode it. If no content-type, try JSON.
+
+        If raw_data is something else, bypass all logic and return it directly.
 
         :param raw_data: Data to be processed.
         :param content_type: How to parse if raw_data is a string/bytes.
         :raises JSONDecodeError: If JSON is requested and parsing is impossible.
         :raises UnicodeDecodeError: If bytes is not UTF8
         """
-        # Could be requests.Response (old usage) or ClientResponse (new generic type)
-        if hasattr(raw_data, 'headers') and hasattr(raw_data, 'text'):
-            # ClientResponse is callable, requests.Response is not. Keep both for backward compat
-            get_str_text = lambda x: x.text() if callable(x.text) else x.text
+        # Assume this is enough to detect a Pipeline Response
+        context = getattr(raw_data, "context", {})
+        if context:
+            if RawDeserializer.CONTEXT_NAME in context:
+                return context[RawDeserializer.CONTEXT_NAME]
+            raise ValueError("This pipeline didn't have the RawDeserializer policy; can't deserialize")
 
-            # Try to use content-type from headers if available
-            if 'content-type' in raw_data.headers:
-                content_type = raw_data.headers['content-type'].split(";")[0].strip().lower()
-            # Ouch, this server did not declare what it sent...
-            # Use Swagger "produces", which will be passed to "content_type" here.
-            # If "content_type" also is empty, this means that it's an old version
-            # of Autorest for Python, let's guess it's JSON...
-            # Also, since Autorest was considering that an empty body was a valid JSON,
-            # need that test as well....
-            elif not content_type:
-                if not get_str_text(raw_data):
-                    return None
-                content_type = "application/json"
-            # Whatever content type, data is readable (not bytes). Get it as a string.
-            data = get_str_text(raw_data)
-
-        elif raw_data and isinstance(raw_data, bytes):
-            data = raw_data.decode(encoding='utf-8-sig')
-        else:
-            data = raw_data
-
-        if content_type in Deserializer.JSON_MIMETYPES:
-            try:
-                return json.loads(data)
-            except ValueError as err:
-                raise DeserializationError("JSON is invalid: {}".format(err), err)
-        elif "xml" in (content_type or []):
-            try:
-                return ET.fromstring(data)
-            except ET.ParseError:
-                # It might be because the server has an issue, and returned JSON with
-                # content-type XML....
-                # So let's try a JSON load, and if it's still broken
-                # let's flow the initial exception
-                def _json_attemp(data):
-                    try:
-                        return True, json.loads(data)
-                    except ValueError:
-                        return False, None # Don't care about this one
-                success, data = _json_attemp(data)
-                if success:
-                    return data
-                # If i'm here, it's not JSON, it's not XML, let's scream
-                # and raise the last context in this block (the XML exception)
-                # The function hack is because Py2.7 messes up with exception
-                # context otherwise.
-                _LOGGER.critical("Wasn't XML not JSON, failing")
-                raise
-        return data
+        if isinstance(raw_data, (basestring, bytes)) or hasattr(raw_data, 'read'):
+            return RawDeserializer.deserialize_from_text(raw_data, content_type)
+        return raw_data
 
     def _instantiate_model(self, response, attrs, additional_properties=None):
         """Instantiate a response model passing in deserialized args.

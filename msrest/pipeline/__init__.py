@@ -50,7 +50,6 @@ HTTPResponseType = TypeVar("HTTPResponseType", bound='HTTPClientResponse')
 # might provide our own implementation
 from requests.structures import CaseInsensitiveDict
 
-from ..serialization import Deserializer
 from ..exceptions import ClientRequestError, raise_with_traceback
 
 if TYPE_CHECKING:
@@ -503,6 +502,8 @@ class ClientRawResponse(object):
 
     def __init__(self, output, response):
         # type: (Union[Model, List[Model]], Optional[ClientResponse]) -> None
+        from ..serialization import Deserializer
+
         if isinstance(response, ClientResponse):
             # Let's not do too much layers
             self.response = response.internal_response

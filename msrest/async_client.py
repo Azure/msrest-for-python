@@ -36,7 +36,8 @@ from .pipeline.async_requests import (
     AsyncRequestsCredentialsPolicy
 )
 from .pipeline.universal import (
-    HTTPLogger
+    HTTPLogger,
+    RawDeserializer,
 )
 
 if TYPE_CHECKING:
@@ -69,6 +70,7 @@ class AsyncServiceClientMixin:
 
         policies = [
             config.user_agent_policy,  # UserAgent policy
+            RawDeserializer(),         # Deserialize the raw bytes
             config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]]
         if creds:

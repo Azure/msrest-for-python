@@ -26,16 +26,24 @@
 """
 This module represents universal policy that works whatever the HTTPSender implementation
 """
+import json
+import logging
+import xml.etree.ElementTree as ET
 import platform
 
-from typing import Mapping, Any, Optional, TYPE_CHECKING  # pylint: disable=unused-import
+from typing import Mapping, Any, Optional, AnyStr, Union, IO, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
 from ..version import msrest_version as _msrest_version
 from . import SansIOHTTPPolicy
+from ..exceptions import DeserializationError, raise_with_traceback
 from ..http_logger import log_request, log_response
 
 if TYPE_CHECKING:
     from . import ClientRequest, Response  # pylint: disable=unused-import
+
+
+_LOGGER = logging.getLogger(__name__)
+
 
 class HeadersPolicy(SansIOHTTPPolicy):
     """A simple policy that sends the given headers
@@ -98,7 +106,111 @@ class HTTPLogger(SansIOHTTPPolicy):
         if kwargs.get("enable_http_logger", self.enable_http_logger):
             log_request(None, request)
 
-    def post_send(self, request, response, **kwargs):
+    def on_response(self, request, response, **kwargs):
         # type: (ClientRequest, Response, Any) -> None
         if kwargs.get("enable_http_logger", self.enable_http_logger):
             log_response(None, request, response.http_response, result=response)
+
+
+class RawDeserializer(SansIOHTTPPolicy):
+
+    JSON_MIMETYPES = [
+        'application/json',
+        'text/json' # Because we're open minded people...
+    ]
+    # Name used in context
+    CONTEXT_NAME = "deserialized_data"
+
+    @classmethod
+    def deserialize_from_text(cls, data, content_type=None):
+        # type: (Optional[Union[AnyStr, IO]], Optional[str]) -> Any
+        """Decode data according to content-type.
+
+        Accept a stream of data as well, but will be load at once in memory for now.
+
+        If no content-type, will return the string version (not bytes, not stream)
+
+        :param data: Input, could be bytes or stream (will be decoded with UTF8) or text
+        :type data: str or bytes or IO
+        :param str content_type: The content type.
+        """
+        if hasattr(data, 'read'):
+            # Assume a stream
+            data = cast(IO, data).read()
+
+        if isinstance(data, bytes):
+            data_as_str = data.decode(encoding='utf-8-sig')
+        else:
+            # Explain to mypy the correct type.
+            data_as_str = cast(str, data)
+
+        if content_type is None:
+            return data
+
+        if content_type in cls.JSON_MIMETYPES:
+            try:
+                return json.loads(data_as_str)
+            except ValueError as err:
+                raise DeserializationError("JSON is invalid: {}".format(err), err)
+        elif "xml" in (content_type or []):
+            try:
+                return ET.fromstring(data_as_str)
+            except ET.ParseError:
+                # It might be because the server has an issue, and returned JSON with
+                # content-type XML....
+                # So let's try a JSON load, and if it's still broken
+                # let's flow the initial exception
+                def _json_attemp(data):
+                    try:
+                        return True, json.loads(data)
+                    except ValueError:
+                        return False, None # Don't care about this one
+                success, json_result = _json_attemp(data)
+                if success:
+                    return json_result
+                # If i'm here, it's not JSON, it's not XML, let's scream
+                # and raise the last context in this block (the XML exception)
+                # The function hack is because Py2.7 messes up with exception
+                # context otherwise.
+                _LOGGER.critical("Wasn't XML not JSON, failing")
+                raise_with_traceback(DeserializationError, "XML is invalid")
+        raise DeserializationError("Cannot deserialize content-type: {}".format(content_type))
+
+
+    def on_response(self, request, response, **kwargs):
+        # type: (ClientRequest, Response, Any) -> None
+        """Extract data from the body of a REST response object.
+
+        This will load the entire payload in memory.
+
+        Will follow Content-Type to parse.
+        We assume everything is UTF8 (BOM acceptable).
+
+        :param raw_data: Data to be processed.
+        :param content_type: How to parse if raw_data is a string/bytes.
+        :raises JSONDecodeError: If JSON is requested and parsing is impossible.
+        :raises UnicodeDecodeError: If bytes is not UTF8
+        :raises xml.etree.ElementTree.ParseError: If bytes is not valid XML
+        """
+        # If response was asked as stream, do NOT read anything and quit now
+        if kwargs.get("stream", True):
+            return
+
+        http_response = response.http_response
+        data = http_response.text()
+
+        # Try to use content-type from headers if available
+        content_type = None
+        if 'content-type' in http_response.headers:
+            content_type = http_response.headers['content-type'].split(";")[0].strip().lower()
+        # Ouch, this server did not declare what it sent...
+        # Let's guess it's JSON...
+        # Also, since Autorest was considering that an empty body was a valid JSON,
+        # need that test as well....
+        else:
+            content_type = "application/json"
+
+        if data:
+            response.context[self.CONTEXT_NAME] = self.deserialize_from_text(data, content_type)
+        else:
+            response.context[self.CONTEXT_NAME] = None

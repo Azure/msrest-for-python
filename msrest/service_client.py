@@ -43,7 +43,8 @@ from .pipeline.requests import (
     RequestsPatchSession
 )
 from .pipeline.universal import (
-    HTTPLogger
+    HTTPLogger,
+    RawDeserializer
 )
 
 
@@ -111,6 +112,7 @@ class ServiceClient(AsyncServiceClientMixin):
         policies = [
             self.config.user_agent_policy,  # UserAgent policy
             RequestsPatchSession(),         # Support deprecated operation config at the session level
+            RawDeserializer(),
             self.config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[HTTPPolicy, SansIOHTTPPolicy]]
         if self._creds:
