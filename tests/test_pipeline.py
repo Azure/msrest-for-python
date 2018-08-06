@@ -34,13 +34,44 @@ try:
 except ImportError:
     import mock
 import xml.etree.ElementTree as ET
+import sys
+
+import pytest
 
 from msrest.pipeline import (
     ClientRequest,
-    ClientRawResponse)
+    ClientRawResponse,
+    SansIOHTTPPolicy,
+    Pipeline,
+    HTTPSender
+)
 
 from msrest import Configuration
 
+
+def test_sans_io_exception():
+    class BrokenSender(HTTPSender):
+        def send(self, request, **config):
+            raise ValueError("Broken")
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            """Raise any exception triggered within the runtime context."""
+            return None
+
+    pipeline = Pipeline([SansIOHTTPPolicy()], BrokenSender())
+
+    req = ClientRequest('GET', '/')
+    with pytest.raises(ValueError):
+        pipeline.run(req)
+
+    class SwapExec(SansIOHTTPPolicy):
+        def on_exception(self, requests, **kwargs):
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            raise NotImplementedError(exc_value)
+
+    pipeline = Pipeline([SwapExec()], BrokenSender())
+    with pytest.raises(NotImplementedError):
+        pipeline.run(req)
 
 
 class TestClientRequest(unittest.TestCase):

@@ -116,6 +116,28 @@ class SansIOHTTPPolicy:
         """
         pass
 
+    def on_exception(self, request, **kwargs):
+        # type: (ClientRequest, Any) -> bool
+        """Is executed if an exception comes back fron the following
+        policy.
+
+        Return True if the exception has been handled and should not
+        be forwarded to the caller.
+
+        This method is executed inside the exception handler.
+        To get the exception, raise and catch it:
+
+            try:
+                raise
+            except MyError:
+                do_something()
+
+        or use
+
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+        """
+        return False
+
 class _SansIOHTTPPolicyRunner(HTTPPolicy):
     """Sync implementation of the SansIO policy.
     """
@@ -128,8 +150,13 @@ class _SansIOHTTPPolicyRunner(HTTPPolicy):
     def send(self, request, **kwargs):
         # type: (ClientRequest, Any) -> Response
         self._policy.on_request(request, **kwargs)
-        response = self.next.send(request, **kwargs)
-        self._policy.on_response(request, response, **kwargs)
+        try:
+            response = self.next.send(request, **kwargs)
+        except Exception:
+            if not self._policy.on_exception(request, **kwargs):
+                raise
+        else:
+            self._policy.on_response(request, response, **kwargs)
         return response
 
 class Pipeline(AbstractContextManager):

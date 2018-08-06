@@ -84,8 +84,13 @@ class _SansIOAsyncHTTPPolicyRunner(AsyncHTTPPolicy):
 
     async def send(self, request: ClientRequest, **kwargs: Any) -> Response:
         self._policy.on_request(request, **kwargs)
-        response = await self.next.send(request, **kwargs)  # type: ignore
-        self._policy.on_response(request, response, **kwargs)
+        try:
+            response = await self.next.send(request, **kwargs)  # type: ignore
+        except Exception:
+            if not self._policy.on_exception(request, **kwargs):
+                raise
+        else:
+            self._policy.on_response(request, response, **kwargs)
         return response
 
 

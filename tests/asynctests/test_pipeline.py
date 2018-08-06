@@ -23,13 +23,20 @@
 # THE SOFTWARE.
 #
 #--------------------------------------------------------------------------
-from msrest.pipeline import AsyncPipeline, ClientRequest
+import sys
+
+from msrest.pipeline import (
+    AsyncPipeline,
+    ClientRequest,
+    AsyncHTTPSender,
+    SansIOHTTPPolicy
+)
 from msrest.pipeline.universal import UserAgentPolicy
 from msrest.pipeline.aiohttp import AioHTTPSender
 from msrest.pipeline.async_requests import (
     AsyncBasicRequestsHTTPSender,
     AsyncRequestsHTTPSender,
-    AsyncTrioRequestsHTTPSender
+    AsyncTrioRequestsHTTPSender,
 )
 
 from msrest.configuration import Configuration
@@ -37,6 +44,32 @@ from msrest.configuration import Configuration
 import trio
 
 import pytest
+
+
+@pytest.mark.asyncio
+async def test_sans_io_exception():
+    class BrokenSender(AsyncHTTPSender):
+        async def send(self, request, **config):
+            raise ValueError("Broken")
+
+        async def __aexit__(self, exc_type, exc_value, traceback):
+            """Raise any exception triggered within the runtime context."""
+            return None
+
+    pipeline = AsyncPipeline([SansIOHTTPPolicy()], BrokenSender())
+
+    req = ClientRequest('GET', '/')
+    with pytest.raises(ValueError):
+        await pipeline.run(req)
+
+    class SwapExec(SansIOHTTPPolicy):
+        def on_exception(self, requests, **kwargs):
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            raise NotImplementedError(exc_value)
+
+    pipeline = AsyncPipeline([SwapExec()], BrokenSender())
+    with pytest.raises(NotImplementedError):
+        await pipeline.run(req)
 
 
 @pytest.mark.asyncio
