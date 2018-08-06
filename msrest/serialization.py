@@ -1341,6 +1341,13 @@ class Deserializer(object):
                 return context[RawDeserializer.CONTEXT_NAME]
             raise ValueError("This pipeline didn't have the RawDeserializer policy; can't deserialize")
 
+        # Assume this enough to recognize requests.Response without importing it.
+        if hasattr(raw_data, '_content_consumed'):
+            return RawDeserializer.deserialize_from_http_generics(
+                raw_data.text,
+                raw_data.headers
+            )
+
         if isinstance(raw_data, (basestring, bytes)) or hasattr(raw_data, 'read'):
             return RawDeserializer.deserialize_from_text(raw_data, content_type)
         return raw_data

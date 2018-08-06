@@ -1,6 +1,6 @@
 #--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -89,15 +89,16 @@ class TestExceptions(unittest.TestCase):
             'ErrorDetails': ErrorDetails
         })
 
-        response = mock.create_autospec(requests.Response)
-        response.text = json.dumps(
+        response = requests.Response()
+        response._content_consumed = True
+        response._content = json.dumps(
             {
                 "error": {
                     "code": "NotOptedIn",
                     "message": "You are not allowed to download invoices. Please contact your account administrator to turn on access in the management portal for allowing to download invoices through the API."
                 }
-            }            
-        )
+            }
+        ).encode('utf-8')
         response.headers = {"content-type": "application/json; charset=utf8"}
 
         excep = ErrorResponseException(deserializer, response)

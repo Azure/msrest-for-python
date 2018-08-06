@@ -62,7 +62,16 @@ class TestServiceClient(object):
 
         client = ServiceClient(creds, cfg)
 
+        req_response = requests.Response()
+        req_response._content = br'{"real": true}'  # Has to be valid bytes JSON
+        req_response._content_consumed = True
+        req_response.status_code = 200
+
+        def side_effect(*args, **kwargs):
+            return req_response
+
         session = mock.create_autospec(requests.Session)
+        session.request.side_effect = side_effect
         session.adapters = {
             "http://": HTTPAdapter(),
             "https://": HTTPAdapter(),

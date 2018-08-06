@@ -176,6 +176,29 @@ class RawDeserializer(SansIOHTTPPolicy):
                 raise_with_traceback(DeserializationError, "XML is invalid")
         raise DeserializationError("Cannot deserialize content-type: {}".format(content_type))
 
+    @classmethod
+    def deserialize_from_http_generics(cls, body_bytes, headers):
+        # type: (Optional[Union[AnyStr, IO]], Mapping) -> Any
+        """Deserialize from HTTP response.
+
+        Use bytes and headers to NOT use any requests/aiohttp or whatever
+        specific implementation.
+        Headers will tested for "content-type"
+        """
+        # Try to use content-type from headers if available
+        content_type = None
+        if 'content-type' in headers:
+            content_type = headers['content-type'].split(";")[0].strip().lower()
+        # Ouch, this server did not declare what it sent...
+        # Let's guess it's JSON...
+        # Also, since Autorest was considering that an empty body was a valid JSON,
+        # need that test as well....
+        else:
+            content_type = "application/json"
+
+        if body_bytes:
+            return cls.deserialize_from_text(body_bytes, content_type)
+        return None
 
     def on_response(self, request, response, **kwargs):
         # type: (ClientRequest, Response, Any) -> None
@@ -197,20 +220,8 @@ class RawDeserializer(SansIOHTTPPolicy):
             return
 
         http_response = response.http_response
-        data = http_response.text()
 
-        # Try to use content-type from headers if available
-        content_type = None
-        if 'content-type' in http_response.headers:
-            content_type = http_response.headers['content-type'].split(";")[0].strip().lower()
-        # Ouch, this server did not declare what it sent...
-        # Let's guess it's JSON...
-        # Also, since Autorest was considering that an empty body was a valid JSON,
-        # need that test as well....
-        else:
-            content_type = "application/json"
-
-        if data:
-            response.context[self.CONTEXT_NAME] = self.deserialize_from_text(data, content_type)
-        else:
-            response.context[self.CONTEXT_NAME] = None
+        response.context[self.CONTEXT_NAME] = self.deserialize_from_http_generics(
+            http_response.text(),
+            http_response.headers
+        )
