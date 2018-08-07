@@ -468,7 +468,6 @@ class HTTPClientResponse(object):
 
     You have two differents types of body:
     - Full in-memory using "body" as bytes
-    - Stream body using stream_download
     """
     def __init__(self, request, internal_response):
         # type: (ClientRequest, Any) -> None
@@ -502,8 +501,8 @@ class HTTPClientResponse(object):
 
 class ClientResponse(HTTPClientResponse):
 
-    def stream_download(self, callback, chunk_size):
-        # type: (Callable, int) -> Iterator[bytes]
+    def stream_download(self, chunk_size=None, callback=None):
+        # type: (Optional[int], Optional[Callable]) -> Iterator[bytes]
         """Generator for streaming request body data.
 
         Should be implemented by sub-classes if streaming download

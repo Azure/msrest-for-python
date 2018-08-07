@@ -23,11 +23,14 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
-from typing import Any, Callable, AsyncGenerator
+from typing import Any, Callable, AsyncIterator, Optional
 
 import aiohttp
 
 from . import AsyncHTTPSender, ClientRequest, AsyncClientResponse, Response
+
+# Matching requests, because why not?
+CONTENT_CHUNK_SIZE = 10 * 1024
 
 class AioHTTPSender(AsyncHTTPSender):
     """AioHttp HTTP sender implementation.
@@ -72,9 +75,10 @@ class AioHttpClientResponse(AsyncClientResponse):
     def raise_for_status(self):
         self.internal_response.raise_for_status()
 
-    def stream_download(self, callback: Callable, chunk_size: int) -> AsyncGenerator[bytes, None]:
+    def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIterator[bytes]:
         """Generator for streaming request body data.
         """
+        chunk_size = chunk_size or CONTENT_CHUNK_SIZE
         async def async_gen(resp):
             while True:
                 chunk = await resp.content.read(chunk_size)

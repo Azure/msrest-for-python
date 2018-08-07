@@ -27,10 +27,11 @@ import asyncio
 from collections.abc import AsyncIterator
 import functools
 import logging
-from typing import Any, Callable, AsyncIterator as AsyncIteratorType
+from typing import Any, Callable, Optional, AsyncIterator as AsyncIteratorType
 
 from oauthlib import oauth2
 import requests
+from requests.models import CONTENT_CHUNK_SIZE
 
 from ..exceptions import (
     TokenExpiredError,
@@ -145,9 +146,9 @@ def _msrest_next(iterator):
 
 class StreamDownloadGenerator(AsyncIterator):
 
-    def __init__(self, response: requests.Response, user_callback: Callable, block: int) -> None:
+    def __init__(self, response: requests.Response, user_callback: Optional[Callable] = None, block: Optional[int] = None) -> None:
         self.response = response
-        self.block = block
+        self.block = block or CONTENT_CHUNK_SIZE
         self.user_callback = user_callback
         self.iter_content_func = self.response.iter_content(self.block)
 
@@ -174,7 +175,7 @@ class StreamDownloadGenerator(AsyncIterator):
 
 class AsyncRequestsClientResponse(AsyncClientResponse, HTTPRequestsClientResponse):
 
-    def stream_download(self, callback: Callable, chunk_size: int) -> AsyncIteratorType[bytes]:
+    def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIteratorType[bytes]:
         """Generator for streaming request body data.
 
         :param callback: Custom callback for monitoring progress.
@@ -193,14 +194,13 @@ try:
 
     class TrioStreamDownloadGenerator(AsyncIterator):
 
-        def __init__(self, response: requests.Response, user_callback: Callable, block: int) -> None:
+        def __init__(self, response: requests.Response, user_callback: Optional[Callable] = None, block: Optional[int] = None) -> None:
             self.response = response
-            self.block = block
+            self.block = block or CONTENT_CHUNK_SIZE
             self.user_callback = user_callback
             self.iter_content_func = self.response.iter_content(self.block)
 
         async def __anext__(self):
-            loop = asyncio.get_event_loop()
             try:
                 chunk = await trio.run_sync_in_worker_thread(
                     _msrest_next,
@@ -221,7 +221,7 @@ try:
 
     class TrioAsyncRequestsClientResponse(AsyncClientResponse, HTTPRequestsClientResponse):
 
-        def stream_download(self, callback: Callable, chunk_size: int) -> AsyncIteratorType[bytes]:
+        def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIteratorType[bytes]:
             """Generator for streaming request body data.
 
             :param callback: Custom callback for monitoring progress.

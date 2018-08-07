@@ -25,7 +25,7 @@
 # --------------------------------------------------------------------------
 import abc
 
-from typing import Any, List, Union, Callable, AsyncIterator
+from typing import Any, List, Union, Callable, AsyncIterator, Optional
 
 try:
     from contextlib import AbstractAsyncContextManager  # type: ignore
@@ -45,7 +45,7 @@ from . import ClientRequest, Response, HTTPClientResponse, Pipeline, SansIOHTTPP
 
 class AsyncClientResponse(HTTPClientResponse):
 
-    def stream_download(self, callback: Callable, chunk_size: int) -> AsyncIterator[bytes]:
+    def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIterator[bytes]:
         """Generator for streaming request body data.
 
         Should be implemented by sub-classes if streaming download

@@ -442,7 +442,7 @@ class TestServiceClient(unittest.TestCase):
             assert response is req_response
             assert chunk in ["a", "b", "c"]
 
-        sync_iterator = client_response.stream_download(user_callback, 1)
+        sync_iterator = client_response.stream_download(1, user_callback)
         result = ""
         for value in sync_iterator:
             result += value

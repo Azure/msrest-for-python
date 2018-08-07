@@ -97,7 +97,13 @@ class AsyncServiceClientMixin:
         :param config: Any specific config overrides
         """
         kwargs.setdefault('stream', True)
-        return await self.async_pipeline.run(request, **kwargs)
+        # In the current backward compatible implementation, return the HTTP response
+        # and plug context inside. Could be remove if we modify Autorest,
+        # but we still need it to be backward compatible
+        pipeline_response = await self.async_pipeline.run(request, **kwargs)
+        response = pipeline_response.http_response
+        response.context = pipeline_response.context
+        return response
 
     def stream_download_async(self, response, user_callback):
         """Async Generator for streaming request body data.
@@ -106,4 +112,4 @@ class AsyncServiceClientMixin:
         :param user_callback: Custom callback for monitoring progress.
         """
         block = self.config.connection.data_block_size
-        return response.stream_download(user_callback, block)
+        return response.stream_download(block, user_callback)

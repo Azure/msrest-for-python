@@ -35,6 +35,8 @@ import warnings
 
 from oauthlib import oauth2
 import requests
+from requests.models import CONTENT_CHUNK_SIZE
+
 from urllib3 import Retry  # Needs requests 2.16 at least to be safe
 
 from ..exceptions import (
@@ -169,13 +171,14 @@ class HTTPRequestsClientResponse(HTTPClientResponse):
 
 class RequestsClientResponse(HTTPRequestsClientResponse, ClientResponse):
 
-    def stream_download(self, callback, chunk_size):
-        # type: (Callable, int) -> Iterator[bytes]
+    def stream_download(self, chunk_size=None, callback=None):
+        # type: (Optional[int], Optional[Callable]) -> Iterator[bytes]
         """Generator for streaming request body data.
 
         :param callback: Custom callback for monitoring progress.
         :param int chunk_size:
         """
+        chunk_size = chunk_size or CONTENT_CHUNK_SIZE
         with contextlib.closing(self.internal_response) as response:
             # https://github.com/PyCQA/pylint/issues/1437
             for chunk in response.iter_content(chunk_size):  # pylint: disable=no-member

@@ -177,7 +177,7 @@ class TestServiceClient(object):
             assert response is req_response
             assert chunk in ["a", "b", "c"]
 
-        async_iterator = client_response.stream_download(user_callback, 1)
+        async_iterator = client_response.stream_download(1, user_callback)
         result = ""
         async for value in async_iterator:
             result += value

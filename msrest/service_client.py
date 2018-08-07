@@ -227,7 +227,7 @@ class ServiceClient(AsyncServiceClientMixin):
         :param callback: Custom callback for monitoring progress.
         """
         block = self.config.connection.data_block_size
-        return data.stream_download(callback, block)
+        return data.stream_download(block, callback)
 
     def stream_upload(self, data, callback):
         """Generator for streaming request body data.
