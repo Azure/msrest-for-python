@@ -43,7 +43,18 @@ from msrest.pipeline.requests import RequestsClientResponse
 from msrest.pipeline.universal import (
     HTTPLogger,
     RawDeserializer,
+    UserAgentPolicy
 )
+
+def test_user_agent():
+
+    with mock.patch.dict('os.environ', {'AZURE_HTTP_USER_AGENT': "mytools"}):
+        policy = UserAgentPolicy()
+        assert policy.user_agent.endswith("mytools")
+
+        request = ClientRequest('GET', 'http://127.0.0.1/')
+        policy.on_request(request)
+        assert request.headers["user-agent"].endswith("mytools")
 
 @mock.patch('msrest.http_logger._LOGGER')
 def test_no_log(mock_http_logger):

@@ -28,6 +28,7 @@ This module represents universal policy that works whatever the HTTPSender imple
 """
 import json
 import logging
+import os
 import xml.etree.ElementTree as ET
 import platform
 
@@ -61,6 +62,7 @@ class HeadersPolicy(SansIOHTTPPolicy):
 
 class UserAgentPolicy(SansIOHTTPPolicy):
     _USERAGENT = "User-Agent"
+    _ENV_ADDITIONAL_USER_AGENT = 'AZURE_HTTP_USER_AGENT'
 
     def __init__(self, user_agent=None, overwrite=False):
         # type: (Optional[str], bool) -> None
@@ -73,6 +75,12 @@ class UserAgentPolicy(SansIOHTTPPolicy):
             )
         else:
             self._user_agent = user_agent
+
+        # Whatever you gave me a header explicitly or not,
+        # if the env variable is set, add to it.
+        add_user_agent_header = os.environ.get(self._ENV_ADDITIONAL_USER_AGENT, None)
+        if add_user_agent_header is not None:
+            self.add_user_agent(add_user_agent_header)
 
     @property
     def user_agent(self):
