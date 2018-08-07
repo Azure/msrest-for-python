@@ -24,7 +24,7 @@ jobs:
       install:
         - pip install mypy
       script:
-        - mypy msrest --ignore-missing-imports
+        - mypy msrest
     - stage: Test
       python: 2.7
       env: TOXENV=py27
