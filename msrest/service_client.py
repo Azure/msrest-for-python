@@ -100,11 +100,15 @@ class ServiceClient(AsyncServiceClientMixin):
         # type: (Any, Configuration) -> None
         if config is None:
             raise ValueError("Config is a required parameter")
-        super(ServiceClient, self).__init__(creds, config)
         self.config = config
         self._creds = creds
+        # Call the mixin AFTER self.config and self._creds
+        super(ServiceClient, self).__init__(creds, config)
 
-        self.pipeline = self._create_default_pipeline()
+        # "pipeline" be should accessible from "config"
+        # In legacy mode this is weird, this config is a parameter of "pipeline"
+        # Should be revamp one day.
+        self.config.pipeline = self._create_default_pipeline()
 
     def _create_default_pipeline(self):
         # type: () -> Pipeline
@@ -126,18 +130,18 @@ class ServiceClient(AsyncServiceClientMixin):
     def __enter__(self):
         # type: () -> ServiceClient
         self.config.keep_alive = True
-        self.pipeline.__enter__()
+        self.config.pipeline.__enter__()
         return self
 
     def __exit__(self, *exc_details):
-        self.pipeline.__exit__(*exc_details)
+        self.config.pipeline.__exit__(*exc_details)
         self.config.keep_alive = False
 
     def close(self):
         # type: () -> None
         """Close the pipeline if keep_alive is True.
         """
-        self.pipeline.__exit__()
+        self.config.pipeline.__exit__()
 
     def _request(self, method, url, params, headers, content, form_content):
         # type: (str, str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
@@ -204,7 +208,7 @@ class ServiceClient(AsyncServiceClientMixin):
         response = None
         kwargs.setdefault('stream', True)
         try:
-            pipeline_response = self.pipeline.run(request, **kwargs)
+            pipeline_response = self.config.pipeline.run(request, **kwargs)
             # In the current backward compatible implementation, return the HTTP response
             # and plug context inside. Could be remove if we modify Autorest,
             # but we still need it to be backward compatible
@@ -217,7 +221,7 @@ class ServiceClient(AsyncServiceClientMixin):
     def _close_local_session_if_necessary(self, response, stream):
         # Here, it's a local session, I might close it.
         if not self.config.keep_alive and (not response or not stream):
-            self.pipeline._sender.session.close()
+            self.config.pipeline._sender.session.close()
 
     def stream_download(self, data, callback):
         # type: (ClientResponse, Callable) -> Iterator[bytes]

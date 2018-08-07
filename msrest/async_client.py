@@ -64,29 +64,32 @@ class AsyncServiceClientMixin:
         # Don't do super, since I know it will be "object"
         # super(AsyncServiceClientMixin, self).__init__(creds, config)
 
-        self.async_pipeline = self._create_default_async_pipeline(creds, config)
+        # "async_pipeline" be should accessible from "config"
+        # In legacy mode this is weird, this config is a parameter of "pipeline"
+        # Should be revamp one day.
+        self.config.async_pipeline = self._create_default_async_pipeline()
 
-    def _create_default_async_pipeline(self, creds: Any, config: 'Configuration'):
+    def _create_default_async_pipeline(self):
 
         policies = [
-            config.user_agent_policy,  # UserAgent policy
+            self.config.user_agent_policy,  # UserAgent policy
             RawDeserializer(),         # Deserialize the raw bytes
-            config.http_logger_policy  # HTTP request/response log
+            self.config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]]
-        if creds:
-            policies.insert(1, AsyncRequestsCredentialsPolicy(creds))  # Set credentials for requests based session
+        if self._creds:
+            policies.insert(1, AsyncRequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
 
         return AsyncPipeline(
             policies,
-            AsyncRequestsHTTPSender(config)  # Send HTTP request using requests
+            AsyncRequestsHTTPSender(self.config)  # Send HTTP request using requests
         )
 
     async def __aenter__(self):
-        await self.async_pipeline.__aenter__()
+        await self.config.async_pipeline.__aenter__()
         return self
 
     async def __aexit__(self, *exc_details):
-        await self.async_pipeline.__aexit__(*exc_details)
+        await self.config.async_pipeline.__aexit__(*exc_details)
 
     async def async_send(self, request, **kwargs):
         """Prepare and send request object according to configuration.
@@ -100,7 +103,7 @@ class AsyncServiceClientMixin:
         # In the current backward compatible implementation, return the HTTP response
         # and plug context inside. Could be remove if we modify Autorest,
         # but we still need it to be backward compatible
-        pipeline_response = await self.async_pipeline.run(request, **kwargs)
+        pipeline_response = await self.config.async_pipeline.run(request, **kwargs)
         response = pipeline_response.http_response
         response.context = pipeline_response.context
         return response

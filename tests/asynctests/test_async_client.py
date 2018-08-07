@@ -79,7 +79,7 @@ class TestServiceClient(object):
         # Be sure the mock does not trick me
         assert not hasattr(session.resolve_redirects, 'is_msrest_patched')
 
-        client.async_pipeline._sender.session = session
+        client.config.async_pipeline._sender.session = session
 
         client._creds.signed_session.return_value = session
         client._creds.refresh_session.return_value = session
