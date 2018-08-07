@@ -35,6 +35,8 @@ except ImportError:
 from typing import TYPE_CHECKING, Optional, Dict, List, Any, Callable  # pylint: disable=unused-import
 
 from .exceptions import raise_with_traceback
+
+from .pipeline import Pipeline
 from .pipeline.requests import (
     RequestHTTPSenderConfiguration
 )
@@ -42,6 +44,9 @@ from .pipeline.universal import (
     UserAgentPolicy,
     HTTPLogger,
 )
+
+if TYPE_CHECKING:
+    from .pipeline import AsyncPipeline
 
 class Configuration(RequestHTTPSenderConfiguration):
     """Client configuration.
@@ -62,6 +67,13 @@ class Configuration(RequestHTTPSenderConfiguration):
 
         # HTTP logger policy
         self.http_logger_policy = HTTPLogger()
+
+        # The sync pipeline (will be replaced by the SDK default one, this instance if just for mypy)
+        self.pipeline = Pipeline()
+
+        # The async pipeline
+        # This is actual optional, since on 2.7 this will be None
+        self.async_pipeline = None  # type: Optional[AsyncPipeline]
 
         # If set to True, ServiceClient will own the sessionn
         self.keep_alive = False

@@ -67,7 +67,7 @@ class AsyncServiceClientMixin:
         # "async_pipeline" be should accessible from "config"
         # In legacy mode this is weird, this config is a parameter of "pipeline"
         # Should be revamp one day.
-        self.config.async_pipeline = self._create_default_async_pipeline()
+        self.config.async_pipeline = self._create_default_async_pipeline()  # type: ignore
 
     def _create_default_async_pipeline(self):
 
