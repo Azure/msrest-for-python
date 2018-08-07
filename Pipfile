@@ -14,4 +14,4 @@ httpretty = ">=0.8.10"
 mock = {version = "*", markers="python_version <= '2.7'"}
 mypy = {version = "==0.620", markers="python_version > '2.7'"}
 pylint = "*"
-trio = "*"
+trio = {version = "*", markers="python_version >= '3.5'"}
