@@ -65,7 +65,7 @@ def log_request(_, request, *_args, **_kwargs):
         _LOGGER.debug("Failed to log request: %r", err)
 
 
-def log_response(_, _request, response, *_args, **_kwargs):
+def log_response(_, _request, response, *_args, **kwargs):
     # type: (Any, ClientRequest, ClientResponse, str, Any) -> Optional[ClientResponse]
     """Log a server response.
 
@@ -95,7 +95,10 @@ def log_response(_, _request, response, *_args, **_kwargs):
         elif response.headers.get("content-type", "").startswith("image"):
             _LOGGER.debug("Body contains image data.")
         else:
-            _LOGGER.debug(response.text())
+            if kwargs.get('stream', False):
+                _LOGGER.debug("Body is streamable")
+            else:
+                _LOGGER.debug(response.text())
         return response
     except Exception as err:  # pylint: disable=broad-except
         _LOGGER.debug("Failed to log response: %s", repr(err))
