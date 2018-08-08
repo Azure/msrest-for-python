@@ -40,7 +40,7 @@ from ..exceptions import DeserializationError, raise_with_traceback
 from ..http_logger import log_request, log_response
 
 if TYPE_CHECKING:
-    from . import ClientRequest, Response  # pylint: disable=unused-import
+    from . import Request, Response  # pylint: disable=unused-import
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,8 +57,9 @@ class HeadersPolicy(SansIOHTTPPolicy):
         self.headers = headers
 
     def on_request(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> None
-        request.headers.update(self.headers)
+        # type: (Request, Any) -> None
+        http_request = request.http_request
+        http_request.headers.update(self.headers)
 
 class UserAgentPolicy(SansIOHTTPPolicy):
     _USERAGENT = "User-Agent"
@@ -98,9 +99,9 @@ class UserAgentPolicy(SansIOHTTPPolicy):
 
     def on_request(self, request, **kwargs):
         # type: (Request, Any) -> None
-        request = request.http_request
-        if self._overwrite or self._USERAGENT not in request.headers:
-            request.headers[self._USERAGENT] = self._user_agent
+        http_request = request.http_request
+        if self._overwrite or self._USERAGENT not in http_request.headers:
+            http_request.headers[self._USERAGENT] = self._user_agent
 
 class HTTPLogger(SansIOHTTPPolicy):
     """A policy that logs HTTP request and response to the DEBUG logger.
@@ -112,15 +113,15 @@ class HTTPLogger(SansIOHTTPPolicy):
 
     def on_request(self, request, **kwargs):
         # type: (Request, Any) -> None
-        request = request.http_request
+        http_request = request.http_request
         if kwargs.get("enable_http_logger", self.enable_http_logger):
-            log_request(None, request)
+            log_request(None, http_request)
 
     def on_response(self, request, response, **kwargs):
         # type: (Request, Response, Any) -> None
-        request = request.http_request
+        http_request = request.http_request
         if kwargs.get("enable_http_logger", self.enable_http_logger):
-            log_response(None, request, response.http_response, result=response)
+            log_response(None, http_request, response.http_response, result=response)
 
 
 class RawDeserializer(SansIOHTTPPolicy):

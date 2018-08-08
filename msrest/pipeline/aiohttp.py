@@ -35,7 +35,7 @@ class AioHTTPSender(AsyncHTTPSender):
     """AioHttp HTTP sender implementation.
     """
 
-    def __init__(self, driver: Optional = None, *, loop=None):
+    def __init__(self, driver: Optional[_AioHTTPSenderDriver] = None, *, loop=None) -> None:
         self.driver = driver or _AioHTTPSenderDriver(loop=loop)
 
     async def __aenter__(self):

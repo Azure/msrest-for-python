@@ -52,6 +52,7 @@ HTTPRequestType = TypeVar("HTTPRequestType")
 from requests.structures import CaseInsensitiveDict
 
 from ..exceptions import ClientRequestError, raise_with_traceback
+from ..universal_http import ClientResponse
 
 if TYPE_CHECKING:
     from ..serialization import Model  # pylint: disable=unused-import
@@ -195,9 +196,9 @@ class Pipeline(AbstractContextManager, Generic[HTTPRequestType, HTTPResponseType
         self._sender.__exit__(*exc_details)
 
     def run(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> Response
+        # type: (HTTPRequestType, Any) -> Response
         context = self._sender.build_context()
-        pipeline_request = Request(request, context)
+        pipeline_request = Request(request, context)  # type: Request[HTTPRequestType]
         first_node = self._impl_policies[0] if self._impl_policies else self._sender
         return first_node.send(pipeline_request, **kwargs)  # type: ignore
 
@@ -240,9 +241,9 @@ class Request(Generic[HTTPRequestType]):
     :type data: bytes or str.
     """
     def __init__(self, http_request, context=None):
-        # type: (HTTPRequestTypestr, Optional[Dict[str, Any]]) -> None
+        # type: (HTTPRequestType, Optional[Any]) -> None
         self.http_request = http_request
-        self.context = context or {}
+        self.context = context
 
 
 class Response(Generic[HTTPRequestType, HTTPResponseType]):
@@ -276,12 +277,16 @@ class ClientRawResponse(object):
     """
 
     def __init__(self, output, response):
-        # type: (Union[Model, List[Model]], Optional[ClientResponse]) -> None
+        # type: (Union[Model, List[Model]], Optional[Union[Response, ClientResponse]]) -> None
         from ..serialization import Deserializer
 
         if isinstance(response, Response):
-            # Let's not do too much layers
-            self.response = response.http_response
+            # If pipeline response, remove that layer
+            response = response.http_response
+
+        if isinstance(response, ClientResponse):
+            # If universal driver, remove that layer
+            self.response = response.internal_response
         else:
             self.response = response
         self.output = output

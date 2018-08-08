@@ -44,7 +44,7 @@ from .pipeline.universal import (
 
 if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
-    from .pipeline import ClientResponse, AsyncHTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
+    from .pipeline import AsyncHTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 

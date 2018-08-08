@@ -39,7 +39,7 @@ from ..exceptions import (
     raise_with_traceback
 )
 from ..universal_http.async_requests import AsyncBasicRequestsHTTPSender
-from . import AsyncHTTPSender, AsyncHTTPPolicy, Response
+from . import AsyncHTTPSender, AsyncHTTPPolicy, Response, Request
 from .requests import RequestsContext
 
 
@@ -50,12 +50,10 @@ class AsyncPipelineRequestsHTTPSender(AsyncHTTPSender):
     """Implements a basic Pipeline, that supports universal HTTP lib "requests" driver.
     """
 
-    def __init__(self, universal_http_requests_driver=None):
-        # type: (Optional[BasicRequestsHTTPSender]) -> None
+    def __init__(self, universal_http_requests_driver: Optional[AsyncBasicRequestsHTTPSender]=None) -> None:
         self.driver = universal_http_requests_driver or AsyncBasicRequestsHTTPSender()
 
-    async def __aenter__(self):
-        # type: () -> PipelineRequestsHTTPSender
+    async def __aenter__(self) -> 'AsyncPipelineRequestsHTTPSender':
         await self.driver.__aenter__()
         return self
 
@@ -72,8 +70,7 @@ class AsyncPipelineRequestsHTTPSender(AsyncHTTPSender):
             kwargs={}
         )
 
-    async def send(self, request, **kwargs):
-        # type: (Request, Any) -> Response
+    async def send(self, request: Request, **kwargs) -> Response:
         """Send request object according to configuration.
 
         :param Request request: The request object to be sent.

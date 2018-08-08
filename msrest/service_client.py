@@ -54,7 +54,9 @@ from .pipeline.universal import (
 
 if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
-    from .pipeline import ClientResponse, HTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
+    from .universal_http import ClientRequest, ClientResponse  # pylint: disable=unused-import
+    from .universal_http.requests import RequestsClientResponse  # pylint: disable=unused-import
+    from .pipeline import HTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
 
 if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
@@ -115,7 +117,7 @@ class ServiceClient(AsyncServiceClientMixin):
         self.config.pipeline = self._create_default_pipeline()
 
     def _create_default_pipeline(self):
-        # type: () -> Pipeline
+        # type: () -> Pipeline[ClientRequest, RequestsClientResponse]
 
         policies = [
             self.config.user_agent_policy,  # UserAgent policy

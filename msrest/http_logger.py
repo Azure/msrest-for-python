@@ -31,7 +31,7 @@ import types
 from typing import Any, Optional, TYPE_CHECKING  # pylint: disable=unused-import
 
 if TYPE_CHECKING:
-    from .pipeline import ClientRequest, ClientResponse  # pylint: disable=unused-import
+    from .universal_http import ClientRequest, ClientResponse  # pylint: disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 

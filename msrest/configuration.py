@@ -69,7 +69,7 @@ class Configuration(RequestHTTPSenderConfiguration):
         self.http_logger_policy = HTTPLogger()
 
         # The sync pipeline (will be replaced by the SDK default one, this instance if just for mypy)
-        self.pipeline = Pipeline()
+        self.pipeline = Pipeline()  # type: Pipeline
 
         # The async pipeline
         # This is actual optional, since on 2.7 this will be None

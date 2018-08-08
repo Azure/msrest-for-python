@@ -44,8 +44,9 @@ from ..exceptions import (
     ClientRequestError,
     raise_with_traceback
 )
+from ..universal_http import ClientRequest
 from ..universal_http.requests import BasicRequestsHTTPSender
-from . import HTTPSender, HTTPPolicy, Response, Response
+from . import HTTPSender, HTTPPolicy, Response, Request
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -178,7 +179,7 @@ class PipelineRequestsHTTPSender(HTTPSender):
         )
 
     def send(self, request, **kwargs):
-        # type: (Request, Any) -> Response
+        # type: (Request[ClientRequest], Any) -> Response
         """Send request object according to configuration.
 
         :param Request request: The request object to be sent.
