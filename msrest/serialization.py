@@ -1334,12 +1334,19 @@ class Deserializer(object):
         :raises JSONDecodeError: If JSON is requested and parsing is impossible.
         :raises UnicodeDecodeError: If bytes is not UTF8
         """
-        # Assume this is enough to detect a Pipeline Response
+        # Assume this is enough to detect a Pipeline Response without importing it
         context = getattr(raw_data, "context", {})
         if context:
             if RawDeserializer.CONTEXT_NAME in context:
                 return context[RawDeserializer.CONTEXT_NAME]
             raise ValueError("This pipeline didn't have the RawDeserializer policy; can't deserialize")
+
+        #Assume this is enough to recognize universal_http.ClientResponse without importing it
+        if hasattr(raw_data, "body"):
+            return RawDeserializer.deserialize_from_http_generics(
+                raw_data.text(),
+                raw_data.headers
+            )
 
         # Assume this enough to recognize requests.Response without importing it.
         if hasattr(raw_data, '_content_consumed'):

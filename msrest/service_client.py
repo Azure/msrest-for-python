@@ -122,7 +122,6 @@ class ServiceClient(AsyncServiceClientMixin):
         policies = [
             self.config.user_agent_policy,  # UserAgent policy
             RequestsPatchSession(),         # Support deprecated operation config at the session level
-            RawDeserializer(),
             self.config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[HTTPPolicy, SansIOHTTPPolicy]]
         if self._creds:
@@ -215,12 +214,15 @@ class ServiceClient(AsyncServiceClientMixin):
         kwargs.setdefault('stream', True)
         try:
             pipeline_response = self.config.pipeline.run(request, **kwargs)
-            # In the current backward compatible implementation, return the HTTP response
-            # and plug context inside. Could be remove if we modify Autorest,
-            # but we still need it to be backward compatible
-            response = pipeline_response.http_response
-            response.context = pipeline_response.context
-            return response
+            # There is too much thing that expects this method to return a "requests.Response"
+            # to break it in a compatible release.
+            # However, if it's a stream answer, return the ClientResponse
+            # to get the streaming generator.
+            if kwargs['stream']:
+                return pipeline_response.http_response
+            else:
+                response = pipeline_response.http_response.internal_response
+                return response
         finally:
             self._close_local_session_if_necessary(response, kwargs['stream'])
 
