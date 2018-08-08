@@ -97,7 +97,8 @@ class UserAgentPolicy(SansIOHTTPPolicy):
         self._user_agent = "{} {}".format(self._user_agent, value)
 
     def on_request(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> None
+        # type: (Request, Any) -> None
+        request = request.http_request
         if self._overwrite or self._USERAGENT not in request.headers:
             request.headers[self._USERAGENT] = self._user_agent
 
@@ -110,12 +111,14 @@ class HTTPLogger(SansIOHTTPPolicy):
         self.enable_http_logger = enable_http_logger
 
     def on_request(self, request, **kwargs):
-        # type: (ClientRequest, Any) -> None
+        # type: (Request, Any) -> None
+        request = request.http_request
         if kwargs.get("enable_http_logger", self.enable_http_logger):
             log_request(None, request)
 
     def on_response(self, request, response, **kwargs):
-        # type: (ClientRequest, Response, Any) -> None
+        # type: (Request, Response, Any) -> None
+        request = request.http_request
         if kwargs.get("enable_http_logger", self.enable_http_logger):
             log_response(None, request, response.http_response, result=response)
 
@@ -209,7 +212,7 @@ class RawDeserializer(SansIOHTTPPolicy):
         return None
 
     def on_response(self, request, response, **kwargs):
-        # type: (ClientRequest, Response, Any) -> None
+        # type: (Request, Response, Any) -> None
         """Extract data from the body of a REST response object.
 
         This will load the entire payload in memory.

@@ -36,9 +36,13 @@ import warnings
 from typing import List, Any, Dict, Union, IO, Tuple, Optional, Callable, Iterator, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
 from .authentication import Authentication
-from .pipeline import ClientRequest, Pipeline
-from .pipeline.requests import (
+from .universal_http import ClientRequest
+from .universal_http.requests import (
     RequestsHTTPSender,
+)
+from .pipeline import Request, Pipeline
+from .pipeline.requests import (
+    PipelineRequestsHTTPSender,
     RequestsCredentialsPolicy,
     RequestsPatchSession
 )
@@ -124,7 +128,7 @@ class ServiceClient(AsyncServiceClientMixin):
 
         return Pipeline(
             policies,
-            RequestsHTTPSender(self.config)  # Send HTTP request using requests
+            PipelineRequestsHTTPSender(RequestsHTTPSender(self.config))  # Send HTTP request using requests
         )
 
     def __enter__(self):
@@ -221,7 +225,7 @@ class ServiceClient(AsyncServiceClientMixin):
     def _close_local_session_if_necessary(self, response, stream):
         # Here, it's a local session, I might close it.
         if not self.config.keep_alive and (not response or not stream):
-            self.config.pipeline._sender.session.close()
+            self.config.pipeline._sender.driver.session.close()
 
     def stream_download(self, data, callback):
         # type: (ClientResponse, Callable) -> Iterator[bytes]

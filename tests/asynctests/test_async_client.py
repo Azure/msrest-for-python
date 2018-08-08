@@ -46,8 +46,8 @@ from msrest.configuration import Configuration
 
 from msrest import Configuration
 from msrest.exceptions import ClientRequestError, TokenExpiredError
-from msrest.pipeline import ClientRequest
-from msrest.pipeline.async_requests import AsyncRequestsClientResponse
+from msrest.universal_http import ClientRequest
+from msrest.universal_http.async_requests import AsyncRequestsClientResponse
 
 
 @unittest.skipIf(sys.version_info < (3, 5, 2), "Async tests only on 3.5.2 minimal")
@@ -79,7 +79,7 @@ class TestServiceClient(object):
         # Be sure the mock does not trick me
         assert not hasattr(session.resolve_redirects, 'is_msrest_patched')
 
-        client.config.async_pipeline._sender.session = session
+        client.config.async_pipeline._sender.driver.session = session
 
         client._creds.signed_session.return_value = session
         client._creds.refresh_session.return_value = session

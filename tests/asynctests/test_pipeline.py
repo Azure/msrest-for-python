@@ -25,19 +25,22 @@
 #--------------------------------------------------------------------------
 import sys
 
-from msrest.pipeline import (
-    AsyncPipeline,
+from msrest.universal_http import (
     ClientRequest,
-    AsyncHTTPSender,
-    SansIOHTTPPolicy
 )
-from msrest.pipeline.universal import UserAgentPolicy
-from msrest.pipeline.aiohttp import AioHTTPSender
-from msrest.pipeline.async_requests import (
-    AsyncBasicRequestsHTTPSender,
+from msrest.universal_http.async_requests import (
     AsyncRequestsHTTPSender,
     AsyncTrioRequestsHTTPSender,
 )
+
+from msrest.pipeline import (
+    AsyncPipeline,
+    AsyncHTTPSender,
+    SansIOHTTPPolicy
+)
+from msrest.pipeline.async_requests import AsyncPipelineRequestsHTTPSender
+from msrest.pipeline.universal import UserAgentPolicy
+from msrest.pipeline.aiohttp import AioHTTPSender
 
 from msrest.configuration import Configuration
 
@@ -82,7 +85,7 @@ async def test_basic_aiohttp():
     async with AsyncPipeline(policies) as pipeline:
         response = await pipeline.run(request)
 
-    assert pipeline._sender._session.closed
+    assert pipeline._sender.driver._session.closed
     assert response.http_response.status_code == 200
 
 @pytest.mark.asyncio
@@ -92,7 +95,7 @@ async def test_basic_async_requests():
     policies = [
         UserAgentPolicy("myusergant")
     ]
-    async with AsyncPipeline(policies, AsyncBasicRequestsHTTPSender()) as pipeline:
+    async with AsyncPipeline(policies, AsyncPipelineRequestsHTTPSender()) as pipeline:
         response = await pipeline.run(request)
 
     assert response.http_response.status_code == 200
@@ -105,7 +108,7 @@ async def test_conf_async_requests():
     policies = [
         UserAgentPolicy("myusergant")
     ]
-    async with AsyncPipeline(policies, AsyncRequestsHTTPSender(conf)) as pipeline:
+    async with AsyncPipeline(policies, AsyncPipelineRequestsHTTPSender(AsyncRequestsHTTPSender(conf))) as pipeline:
         response = await pipeline.run(request)
 
     assert response.http_response.status_code == 200
@@ -118,7 +121,7 @@ def test_conf_async_trio_requests():
         policies = [
             UserAgentPolicy("myusergant")
         ]
-        async with AsyncPipeline(policies, AsyncTrioRequestsHTTPSender(conf)) as pipeline:
+        async with AsyncPipeline(policies, AsyncPipelineRequestsHTTPSender(AsyncTrioRequestsHTTPSender(conf))) as pipeline:
             return await pipeline.run(request)
 
     response = trio.run(do)

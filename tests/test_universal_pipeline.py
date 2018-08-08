@@ -33,13 +33,17 @@ import requests
 import pytest
 
 from msrest.exceptions import DeserializationError
-from msrest.pipeline import (
+from msrest.universal_http import (
     ClientRequest,
     ClientResponse,
-    Response,
-    HTTPClientResponse
+    HTTPClientResponse,
 )
-from msrest.pipeline.requests import RequestsClientResponse
+from msrest.universal_http.requests import RequestsClientResponse
+
+from msrest.pipeline import (
+    Response,
+    Request
+)
 from msrest.pipeline.universal import (
     HTTPLogger,
     RawDeserializer,
@@ -53,14 +57,15 @@ def test_user_agent():
         assert policy.user_agent.endswith("mytools")
 
         request = ClientRequest('GET', 'http://127.0.0.1/')
-        policy.on_request(request)
+        policy.on_request(Request(request))
         assert request.headers["user-agent"].endswith("mytools")
 
 @mock.patch('msrest.http_logger._LOGGER')
 def test_no_log(mock_http_logger):
-    request = ClientRequest('GET', 'http://127.0.0.1/')
+    universal_request = ClientRequest('GET', 'http://127.0.0.1/')
+    request = Request(universal_request)
     http_logger = HTTPLogger()
-    response = Response(ClientResponse(request, None))
+    response = Response(request, ClientResponse(universal_request, None))
 
     # By default, no log handler for HTTP
     http_logger.on_request(request)
@@ -113,7 +118,7 @@ def test_raw_deserializer():
 
             def body(self):
                 return self._body
-        return Response(MockResponse(body, content_type))
+        return Response(None, MockResponse(body, content_type))
 
     response = build_response(b"<groot/>", content_type="application/xml")
     raw_deserializer.on_response(None, response, stream=False)
@@ -152,7 +157,7 @@ def test_raw_deserializer():
     req_response.headers["content-type"] = "application/json"
     req_response._content = b'{"success": true}'
     req_response._content_consumed = True
-    response = Response(RequestsClientResponse(None, req_response))
+    response = Response(None, RequestsClientResponse(None, req_response))
 
     raw_deserializer.on_response(None, response, stream=False)
     result = response.context["deserialized_data"]

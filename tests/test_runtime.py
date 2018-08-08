@@ -45,8 +45,9 @@ except ImportError:
 from msrest.authentication import (
     Authentication,
     OAuthTokenAuthentication)
-from msrest.pipeline import (
-    ClientRequest)
+from msrest.universal_http import (
+    ClientRequest
+)
 from msrest import (
     ServiceClient,
     Configuration)

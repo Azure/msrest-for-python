@@ -37,7 +37,7 @@ from typing import TYPE_CHECKING, Optional, Dict, List, Any, Callable  # pylint:
 from .exceptions import raise_with_traceback
 
 from .pipeline import Pipeline
-from .pipeline.requests import (
+from .universal_http.requests import (
     RequestHTTPSenderConfiguration
 )
 from .pipeline.universal import (

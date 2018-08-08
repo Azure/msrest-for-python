@@ -25,24 +25,60 @@
 #--------------------------------------------------------------------------
 import concurrent.futures
 
-from msrest.pipeline.requests import (
+from requests.adapters import HTTPAdapter
+
+from msrest.universal_http import (
+    ClientRequest
+)
+from msrest.universal_http.requests import (
     BasicRequestsHTTPSender,
     RequestsHTTPSender,
     RequestHTTPSenderConfiguration
 )
 
+def test_session_callback():
+
+    cfg = RequestHTTPSenderConfiguration()
+    with RequestsHTTPSender(cfg) as driver:
+
+        def callback(session, global_config, local_config, **kwargs):
+            assert session is driver.session
+            assert global_config is cfg
+            assert local_config["test"]
+            my_kwargs = kwargs.copy()
+            my_kwargs.update({'used_callback': True})
+            return my_kwargs
+
+        cfg.session_configuration_callback = callback
+
+        request = ClientRequest('GET', 'http://127.0.0.1/')
+        output_kwargs = driver._configure_send(request, **{"test": True})
+        assert output_kwargs['used_callback']
+
+def test_max_retries_on_default_adapter():
+    # max_retries must be applied only on the default adapters of requests
+    # If the user adds its own adapter, don't touch it
+    cfg = RequestHTTPSenderConfiguration()
+    max_retries = cfg.retry_policy()
+
+    with RequestsHTTPSender(cfg) as driver:
+        request = ClientRequest('GET', '/')
+        driver.session.mount('"http://127.0.0.1/"', HTTPAdapter())
+
+        driver._configure_send(request)
+        assert driver.session.adapters["http://"].max_retries is max_retries
+        assert driver.session.adapters["https://"].max_retries is max_retries
+        assert driver.session.adapters['"http://127.0.0.1/"'].max_retries is not max_retries
+
 
 def test_threading_basic_requests():
     # Basic should have the session for all threads, it's why it's not recommended
     sender = BasicRequestsHTTPSender()
-
-    # Build context will give me the session from the main thread
-    main_thread_context = sender.build_context()
+    main_thread_session = sender.session
 
     def thread_body(local_sender):
-        thread_context = local_sender.build_context()
         # Should be the same session
-        assert thread_context.session is main_thread_context.session
+        assert local_sender.session is main_thread_session
 
         return True
 
@@ -55,18 +91,16 @@ def test_threading_cfg_requests():
 
     # The one with conf however, should have one session per thread automatically
     sender = RequestsHTTPSender(cfg)
+    main_thread_session = sender.session
 
-    # Build context will give me the session from the main thread
-    main_thread_context = sender.build_context()
     # Check that this main session is patched
-    assert main_thread_context.session.resolve_redirects.is_msrest_patched
+    assert main_thread_session.resolve_redirects.is_msrest_patched
 
     def thread_body(local_sender):
-        thread_context = local_sender.build_context()
         # Should have it's own session
-        assert thread_context.session is not main_thread_context.session
+        assert local_sender.session is not main_thread_session
         # But should be patched as the main thread session
-        assert thread_context.session.resolve_redirects.is_msrest_patched
+        assert local_sender.session.resolve_redirects.is_msrest_patched
         return True
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:

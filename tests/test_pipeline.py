@@ -38,8 +38,10 @@ import sys
 
 import pytest
 
-from msrest.pipeline import (
+from msrest.universal_http import (
     ClientRequest,
+)
+from msrest.pipeline import (
     ClientRawResponse,
     SansIOHTTPPolicy,
     Pipeline,

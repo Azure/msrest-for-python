@@ -30,9 +30,11 @@ import logging
 
 from typing import Any, Dict, List, Union, TYPE_CHECKING
 
-from .pipeline import ClientRequest, AsyncPipeline
+from .universal_http import ClientRequest
+from .universal_http.async_requests import AsyncRequestsHTTPSender
+from .pipeline import Request, AsyncPipeline
 from .pipeline.async_requests import (
-    AsyncRequestsHTTPSender,
+    AsyncPipelineRequestsHTTPSender,
     AsyncRequestsCredentialsPolicy
 )
 from .pipeline.universal import (
@@ -81,7 +83,9 @@ class AsyncServiceClientMixin:
 
         return AsyncPipeline(
             policies,
-            AsyncRequestsHTTPSender(self.config)  # Send HTTP request using requests
+            AsyncPipelineRequestsHTTPSender(
+                AsyncRequestsHTTPSender(self.config)  # Send HTTP request using requests
+              )
         )
 
     async def __aenter__(self):

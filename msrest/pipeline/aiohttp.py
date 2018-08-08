@@ -23,11 +23,10 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
-from typing import Any, Callable, AsyncIterator, Optional
+from typing import Any, Optional
 
-import aiohttp
-
-from . import AsyncHTTPSender, ClientRequest, AsyncClientResponse, Response
+from ..universal_http.aiohttp import AioHTTPSender as _AioHTTPSenderDriver
+from . import AsyncHTTPSender, Request, Response
 
 # Matching requests, because why not?
 CONTENT_CHUNK_SIZE = 10 * 1024
@@ -36,23 +35,14 @@ class AioHTTPSender(AsyncHTTPSender):
     """AioHttp HTTP sender implementation.
     """
 
-    def __init__(self, *, loop=None):
-        self._session = aiohttp.ClientSession(loop=loop)
+    def __init__(self, driver: Optional = None, *, loop=None):
+        self.driver = driver or _AioHTTPSenderDriver(loop=loop)
 
     async def __aenter__(self):
-        await self._session.__aenter__()
+        await self.driver.__aenter__()
 
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
-        await self._session.__aexit__(*exc_details)
-
-    async def send(self, request: ClientRequest, **config: Any) -> Response[AsyncClientResponse]:
-        """Send the request using this HTTP sender.
-        """
-        result = await self._session.request(
-            request.method,
-            request.url
-        )
-        return Response(AioHttpClientResponse(request, result))
+        await self.driver.__aexit__(*exc_details)
 
     def build_context(self) -> Any:
         """Allow the sender to build a context that will be passed
@@ -63,26 +53,10 @@ class AioHTTPSender(AsyncHTTPSender):
         """
         return None
 
-
-class AioHttpClientResponse(AsyncClientResponse):
-    def __init__(self, request: ClientRequest, aiohttp_response: aiohttp.ClientResponse) -> None:
-        super(AioHttpClientResponse, self).__init__(request, aiohttp_response)
-        # https://aiohttp.readthedocs.io/en/stable/client_reference.html#aiohttp.ClientResponse
-        self.status_code = aiohttp_response.status
-        self.headers = aiohttp_response.headers
-        self.reason = aiohttp_response.reason
-
-    def raise_for_status(self):
-        self.internal_response.raise_for_status()
-
-    def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIterator[bytes]:
-        """Generator for streaming request body data.
+    async def send(self, request: Request, **config: Any) -> Response:
+        """Send the request using this HTTP sender.
         """
-        chunk_size = chunk_size or CONTENT_CHUNK_SIZE
-        async def async_gen(resp):
-            while True:
-                chunk = await resp.content.read(chunk_size)
-                if not chunk:
-                    break
-                callback(chunk, resp)
-        return async_gen(self.internal_response)
+        return Response(
+            request,
+            await self.driver.send(request.http_request)
+        )

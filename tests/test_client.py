@@ -38,13 +38,19 @@ from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
 from msrest import ServiceClient, SDKClient
-from msrest.pipeline import (
-    HTTPSender,
-    Response,
+from msrest.universal_http import (
     ClientRequest,
     ClientResponse
 )
-from msrest.pipeline.requests import RequestsHTTPSender, RequestsClientResponse
+from msrest.universal_http.requests import (
+    RequestsHTTPSender,
+    RequestsClientResponse
+)
+
+from msrest.pipeline import (
+    HTTPSender,
+    Response,
+)
 from msrest.authentication import OAuthTokenAuthentication, Authentication
 
 from msrest import Configuration
@@ -59,24 +65,6 @@ class TestServiceClient(unittest.TestCase):
         self.creds = mock.create_autospec(OAuthTokenAuthentication)
         return super(TestServiceClient, self).setUp()
 
-    def test_session_callback(self):
-
-        with RequestsHTTPSender(self.cfg) as driver:
-
-            def callback(session, global_config, local_config, **kwargs):
-                self.assertIs(session, driver.session)
-                self.assertIs(global_config, self.cfg)
-                self.assertTrue(local_config["test"])
-                my_kwargs = kwargs.copy()
-                my_kwargs.update({'used_callback': True})
-                return my_kwargs
-
-            self.cfg.session_configuration_callback = callback
-
-            request = ClientRequest('GET', 'http://127.0.0.1/')
-            request.pipeline_context = driver.build_context()
-            output_kwargs = driver._configure_send(request, **{"test": True})
-            self.assertTrue(output_kwargs['used_callback'])
 
     def test_sdk_context_manager(self):
         cfg = Configuration("http://127.0.0.1/")
@@ -188,22 +176,6 @@ class TestServiceClient(unittest.TestCase):
         # Manually close the client in "keep_alive" mode
         client.close()
 
-    def test_max_retries_on_default_adapter(self):
-        # max_retries must be applied only on the default adapters of requests
-        # If the user adds its own adapter, don't touch it
-        max_retries = self.cfg.retry_policy()
-
-        with RequestsHTTPSender(self.cfg) as driver:
-            request = ClientRequest('GET', '/')
-            request.pipeline_context = driver.build_context()
-            request.pipeline_context.session.mount('"http://127.0.0.1/"', HTTPAdapter())
-
-            driver._configure_send(request)
-            assert driver.session.adapters["http://"].max_retries is max_retries
-            assert driver.session.adapters["https://"].max_retries is max_retries
-            assert driver.session.adapters['"http://127.0.0.1/"'].max_retries is not max_retries
-
-
     def test_client_request(self):
 
         cfg = Configuration("http://127.0.0.1/")
@@ -299,7 +271,7 @@ class TestServiceClient(unittest.TestCase):
         # Be sure the mock does not trick me
         assert not hasattr(session.resolve_redirects, 'is_msrest_patched')
 
-        client.config.pipeline._sender.session = session
+        client.config.pipeline._sender.driver.session = session
 
         client._creds.signed_session.return_value = session
         client._creds.refresh_session.return_value = session

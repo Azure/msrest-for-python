@@ -25,7 +25,13 @@
 # --------------------------------------------------------------------------
 import abc
 
-from typing import Any, List, Union, Callable, AsyncIterator, Optional
+from typing import Any, List, Union, Callable, AsyncIterator, Optional, Generic, TypeVar
+
+from . import Request, Response, Pipeline, SansIOHTTPPolicy, HTTPRequestType
+
+
+AsyncHTTPResponseType = TypeVar("AsyncHTTPResponseType")
+
 
 try:
     from contextlib import AbstractAsyncContextManager  # type: ignore
@@ -40,24 +46,10 @@ except ImportError: # Python <= 3.7
             """Raise any exception triggered within the runtime context."""
             return None
 
-from . import ClientRequest, Response, HTTPClientResponse, Pipeline, SansIOHTTPPolicy
 
 
-class AsyncClientResponse(HTTPClientResponse):
 
-    def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIterator[bytes]:
-        """Generator for streaming request body data.
-
-        Should be implemented by sub-classes if streaming download
-        is supported.
-
-        :param callback: Custom callback for monitoring progress.
-        :param int chunk_size:
-        """
-        pass
-
-
-class AsyncHTTPPolicy(abc.ABC):
+class AsyncHTTPPolicy(abc.ABC, Generic[HTTPRequestType, AsyncHTTPResponseType]):
     """An http policy ABC.
     """
     def __init__(self) -> None:
@@ -66,7 +58,7 @@ class AsyncHTTPPolicy(abc.ABC):
         self.next = None  # type: ignore
 
     @abc.abstractmethod
-    async def send(self, request: ClientRequest, **kwargs: Any) -> Response:
+    async def send(self, request: Request, **kwargs: Any) -> Response[HTTPRequestType, AsyncHTTPResponseType]:
         """Mutate the request.
 
         Context content is dependent of the HTTPSender.
@@ -82,7 +74,7 @@ class _SansIOAsyncHTTPPolicyRunner(AsyncHTTPPolicy):
         super(_SansIOAsyncHTTPPolicyRunner, self).__init__()
         self._policy = policy
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> Response:
+    async def send(self, request: Request, **kwargs: Any) -> Response[HTTPRequestType, AsyncHTTPResponseType]:
         self._policy.on_request(request, **kwargs)
         try:
             response = await self.next.send(request, **kwargs)  # type: ignore
@@ -94,12 +86,12 @@ class _SansIOAsyncHTTPPolicyRunner(AsyncHTTPPolicy):
         return response
 
 
-class AsyncHTTPSender(AbstractAsyncContextManager, abc.ABC):
+class AsyncHTTPSender(AbstractAsyncContextManager, abc.ABC, Generic[HTTPRequestType, AsyncHTTPResponseType]):
     """An http sender ABC.
     """
 
     @abc.abstractmethod
-    async def send(self, request: ClientRequest, **config: Any) -> Response[AsyncClientResponse]:
+    async def send(self, request: Request[HTTPRequestType], **config: Any) -> Response[HTTPRequestType, AsyncHTTPResponseType]:
         """Send the request using this HTTP sender.
         """
         pass
@@ -121,7 +113,7 @@ class AsyncHTTPSender(AbstractAsyncContextManager, abc.ABC):
         pass  # pragma: no cover
 
 
-class AsyncPipeline(AbstractAsyncContextManager):
+class AsyncPipeline(AbstractAsyncContextManager, Generic[HTTPRequestType, AsyncHTTPResponseType]):
     """A pipeline implementation.
 
     This is implemented as a context manager, that will activate the context
@@ -147,7 +139,7 @@ class AsyncPipeline(AbstractAsyncContextManager):
             self._impl_policies[-1].next = self._sender
 
     def __enter__(self):
-        raise TypeError("Use async with instead")
+        raise TypeError("Use 'async with' instead")
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # __exit__ should exist in pair with __enter__ but never executed
@@ -160,15 +152,14 @@ class AsyncPipeline(AbstractAsyncContextManager):
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
         await self._sender.__aexit__(*exc_details)
 
-    async def run(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:
+    async def run(self, request: Request, **kwargs: Any) -> Response[HTTPRequestType, AsyncHTTPResponseType]:
         context = self._sender.build_context()
-        request.pipeline_context = context
+        pipeline_request = Request(request, context)
         first_node = self._impl_policies[0] if self._impl_policies else self._sender
-        return await first_node.send(request, **kwargs)  # type: ignore
+        return await first_node.send(pipeline_request, **kwargs)  # type: ignore
 
 __all__ = [
     'AsyncHTTPPolicy',
     'AsyncHTTPSender',
     'AsyncPipeline',
-    'AsyncClientResponse'
 ]

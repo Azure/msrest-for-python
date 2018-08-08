@@ -36,60 +36,61 @@ from requests.models import CONTENT_CHUNK_SIZE
 from ..exceptions import (
     TokenExpiredError,
     ClientRequestError,
-    raise_with_traceback)
-from . import AsyncHTTPSender, AsyncHTTPPolicy, ClientRequest, AsyncClientResponse, Response
-from .requests import (
-    BasicRequestsHTTPSender,
-    RequestsHTTPSender,
-    HTTPRequestsClientResponse
+    raise_with_traceback
 )
+from ..universal_http.async_requests import AsyncBasicRequestsHTTPSender
+from . import AsyncHTTPSender, AsyncHTTPPolicy, Response
+from .requests import RequestsContext
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class AsyncBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  # type: ignore
+class AsyncPipelineRequestsHTTPSender(AsyncHTTPSender):
+    """Implements a basic Pipeline, that supports universal HTTP lib "requests" driver.
+    """
+
+    def __init__(self, universal_http_requests_driver=None):
+        # type: (Optional[BasicRequestsHTTPSender]) -> None
+        self.driver = universal_http_requests_driver or AsyncBasicRequestsHTTPSender()
 
     async def __aenter__(self):
-        return super(AsyncBasicRequestsHTTPSender, self).__enter__()
+        # type: () -> PipelineRequestsHTTPSender
+        await self.driver.__aenter__()
+        return self
 
     async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
-        return super(AsyncBasicRequestsHTTPSender, self).__exit__()
+        await self.driver.__aexit__(*exc_details)
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
-        """Send the request using this HTTP sender.
-        """
-        if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
-            request.pipeline_context = self.build_context()
+    async def close(self):
+        await self.__aexit__()
 
-        session = request.pipeline_context.session
-
-        loop = kwargs.get("loop", asyncio.get_event_loop())
-        future = loop.run_in_executor(
-            None,
-            functools.partial(
-                session.request,
-                request.method,
-                request.url,
-                **kwargs
-            )
+    def build_context(self):
+        # type: () -> RequestsContext
+        return RequestsContext(
+            session=self.driver.session,
+            kwargs={}
         )
-        try:
-            return Response(AsyncRequestsClientResponse(
-                request,
-                await future
-            ))
-        except requests.RequestException as err:
-            msg = "Error occurred in request."
-            raise_with_traceback(ClientRequestError, msg, err)
 
-class AsyncRequestsHTTPSender(AsyncBasicRequestsHTTPSender, RequestsHTTPSender):  # type: ignore
+    async def send(self, request, **kwargs):
+        # type: (Request, Any) -> Response
+        """Send request object according to configuration.
 
-    async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
-        """Send the request using this HTTP sender.
+        :param Request request: The request object to be sent.
         """
-        requests_kwargs = self._configure_send(request, **kwargs)
-        return await super(AsyncRequestsHTTPSender, self).send(request, **requests_kwargs)
+        if request.context is None:  # Should not happen, but make mypy happy and does not hurt
+            request.context = self.build_context()
+
+        if request.context.kwargs:
+            kwargs['requests_kwargs'] = request.context.kwargs
+        if request.context.session is not self.driver.session:
+            kwargs['session'] = request.context.session
+
+        return Response(
+            request,
+            await self.driver.send(request.http_request, **kwargs)
+        )
+
 
 class AsyncRequestsCredentialsPolicy(AsyncHTTPPolicy):
     """Implementation of request-oauthlib except and retry logic.
@@ -99,12 +100,12 @@ class AsyncRequestsCredentialsPolicy(AsyncHTTPPolicy):
         self._creds = credentials
 
     async def send(self, request, **kwargs):
-        session = request.pipeline_context.session
+        session = request.context.session
         try:
             self._creds.signed_session(session)
         except TypeError: # Credentials does not support session injection
             _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-            request.pipeline_context.session = session = self._creds.signed_session()
+            request.context.session = session = self._creds.signed_session()
 
         try:
             try:
@@ -119,7 +120,7 @@ class AsyncRequestsCredentialsPolicy(AsyncHTTPPolicy):
                     self._creds.refresh_session(session)
                 except TypeError: # Credentials does not support session injection
                     _LOGGER.warning("Your credentials class does not support session injection. Performance will not be at the maximum.")
-                    request.pipeline_context.session = session = self._creds.refresh_session()
+                    request.context.session = session = self._creds.refresh_session()
 
                 return await self.next.send(request, **kwargs)
             except (oauth2.rfc6749.errors.InvalidGrantError,
@@ -132,151 +133,3 @@ class AsyncRequestsCredentialsPolicy(AsyncHTTPPolicy):
             msg = "Error occurred in request."
             raise_with_traceback(ClientRequestError, msg, err)
 
-class _MsrestStopIteration(Exception):
-    pass
-
-def _msrest_next(iterator):
-    """"To avoid:
-    TypeError: StopIteration interacts badly with generators and cannot be raised into a Future
-    """
-    try:
-        return next(iterator)
-    except StopIteration:
-        raise _MsrestStopIteration()
-
-class StreamDownloadGenerator(AsyncIterator):
-
-    def __init__(self, response: requests.Response, user_callback: Optional[Callable] = None, block: Optional[int] = None) -> None:
-        self.response = response
-        self.block = block or CONTENT_CHUNK_SIZE
-        self.user_callback = user_callback
-        self.iter_content_func = self.response.iter_content(self.block)
-
-    async def __anext__(self):
-        loop = asyncio.get_event_loop()
-        try:
-            chunk = await loop.run_in_executor(
-                None,
-                _msrest_next,
-                self.iter_content_func,
-            )
-            if not chunk:
-                raise _MsrestStopIteration()
-            if self.user_callback and callable(self.user_callback):
-                self.user_callback(chunk, self.response)
-            return chunk
-        except _MsrestStopIteration:
-            self.response.close()
-            raise StopAsyncIteration()
-        except Exception as err:
-            _LOGGER.warning("Unable to stream download: %s", err)
-            self.response.close()
-            raise
-
-class AsyncRequestsClientResponse(AsyncClientResponse, HTTPRequestsClientResponse):
-
-    def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIteratorType[bytes]:
-        """Generator for streaming request body data.
-
-        :param callback: Custom callback for monitoring progress.
-        :param int chunk_size:
-        """
-        return StreamDownloadGenerator(
-            self.internal_response,
-            callback,
-            chunk_size
-        )
-
-
-# Trio support
-try:
-    import trio
-
-    class TrioStreamDownloadGenerator(AsyncIterator):
-
-        def __init__(self, response: requests.Response, user_callback: Optional[Callable] = None, block: Optional[int] = None) -> None:
-            self.response = response
-            self.block = block or CONTENT_CHUNK_SIZE
-            self.user_callback = user_callback
-            self.iter_content_func = self.response.iter_content(self.block)
-
-        async def __anext__(self):
-            try:
-                chunk = await trio.run_sync_in_worker_thread(
-                    _msrest_next,
-                    self.iter_content_func,
-                )
-                if not chunk:
-                    raise _MsrestStopIteration()
-                if self.user_callback and callable(self.user_callback):
-                    self.user_callback(chunk, self.response)
-                return chunk
-            except _MsrestStopIteration:
-                self.response.close()
-                raise StopAsyncIteration()
-            except Exception as err:
-                _LOGGER.warning("Unable to stream download: %s", err)
-                self.response.close()
-                raise
-
-    class TrioAsyncRequestsClientResponse(AsyncClientResponse, HTTPRequestsClientResponse):
-
-        def stream_download(self, chunk_size: Optional[int] = None, callback: Optional[Callable] = None) -> AsyncIteratorType[bytes]:
-            """Generator for streaming request body data.
-
-            :param callback: Custom callback for monitoring progress.
-            :param int chunk_size:
-            """
-            return TrioStreamDownloadGenerator(
-                self.internal_response,
-                callback,
-                chunk_size
-            )
-
-
-    class AsyncTrioBasicRequestsHTTPSender(BasicRequestsHTTPSender, AsyncHTTPSender):  # type: ignore
-
-        async def __aenter__(self):
-            return super(AsyncTrioBasicRequestsHTTPSender, self).__enter__()
-
-        async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
-            return super(AsyncTrioBasicRequestsHTTPSender, self).__exit__()
-
-        async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
-            """Send the request using this HTTP sender.
-            """
-            if request.pipeline_context is None:  # Should not happen, but make mypy happy and does not hurt
-                request.pipeline_context = self.build_context()
-
-            session = request.pipeline_context.session
-
-            trio_limiter = kwargs.get("trio_limiter", None)
-            future = trio.run_sync_in_worker_thread(
-                functools.partial(
-                    session.request,
-                    request.method,
-                    request.url,
-                    **kwargs
-                ),
-                limiter=trio_limiter
-            )
-            try:
-                return Response(TrioAsyncRequestsClientResponse(
-                    request,
-                    await future
-                ))
-            except requests.RequestException as err:
-                msg = "Error occurred in request."
-                raise_with_traceback(ClientRequestError, msg, err)
-
-    class AsyncTrioRequestsHTTPSender(AsyncTrioBasicRequestsHTTPSender, RequestsHTTPSender):  # type: ignore
-
-        async def send(self, request: ClientRequest, **kwargs: Any) -> Response[AsyncClientResponse]:  # type: ignore
-            """Send the request using this HTTP sender.
-            """
-            requests_kwargs = self._configure_send(request, **kwargs)
-            return await super(AsyncTrioRequestsHTTPSender, self).send(request, **requests_kwargs)
-
-except ImportError:
-    # trio not installed
-    pass
