@@ -65,7 +65,7 @@ async def async_poller(client, initial_response, deserialization_callback, polli
     :param client: A msrest service client. Can be a SDK client and it will be casted to a ServiceClient.
     :type client: msrest.service_client.ServiceClient
     :param initial_response: The initial call response
-    :type initial_response: requests.Response or msrest.pipeline.ClientRawResponse
+    :type initial_response: msrest.universal_http.ClientResponse or msrest.pipeline.ClientRawResponse
     :param deserialization_callback: A callback that takes a Response and return a deserialized object. If a subclass of Model is given, this passes "deserialize" as callback.
     :type deserialization_callback: callable or msrest.serialization.Model
     :param polling_method: The polling strategy to adopt
