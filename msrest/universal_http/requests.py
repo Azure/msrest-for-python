@@ -191,10 +191,10 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         'cert'
     ]
 
-    def __init__(self, config):
-        # type: (RequestHTTPSenderConfiguration) -> None
+    def __init__(self, config=None):
+        # type: (Optional[RequestHTTPSenderConfiguration]) -> None
         self._session_mapping = threading.local()
-        self.config = config
+        self.config = config or RequestHTTPSenderConfiguration()
         super(RequestsHTTPSender, self).__init__()
 
     @property  # type: ignore
