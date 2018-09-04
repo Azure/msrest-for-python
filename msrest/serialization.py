@@ -465,8 +465,9 @@ class Serializer(object):
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
                     continue
 
-                if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
-                    serialized.update(target_obj.additional_properties)
+                if attr_name == "additional_properties" and attr_desc["key"] == '':
+                    if target_obj.additional_properties is not None:
+                        serialized.update(target_obj.additional_properties)
                     continue
                 try:
                     ### Extract sub-data to serialize from model ###
@@ -548,6 +549,9 @@ class Serializer(object):
         if internal_data_type and not isinstance(internal_data_type, Enum):
             try:
                 deserializer = Deserializer(self.dependencies)
+                # Since it's on serialization, it's almost sure that format is not JSON REST
+                # We're not able to deal with additional properties for now.
+                deserializer.additional_properties_detection = False
                 if issubclass(internal_data_type, Model) and internal_data_type.is_xml_model():
                     deserializer.key_extractors = [
                         attribute_key_case_insensitive_extractor,
@@ -1196,6 +1200,13 @@ class Deserializer(object):
             rest_key_extractor,
             xml_key_extractor
         ]
+        # Additional properties only works if the "rest_key_extractor" is used to
+        # extract the keys. Making it to work whatever the key extractor is too much
+        # complicated, with no real scenario for now.
+        # So adding a flag to disable additional properties detection. This flag should be
+        # used if your expect the deserialization to NOT come from a JSON REST syntax.
+        # Otherwise, result are unexpected
+        self.additional_properties_detection = True
 
     def __call__(self, target_obj, response_data, content_type=None):
         """Call the deserializer to process a REST response.
@@ -1279,10 +1290,12 @@ class Deserializer(object):
             msg = "Unable to deserialize to object: " + class_name
             raise_with_traceback(DeserializationError, msg, err)
         else:
-            additional_properties = self._build_additional_properties(response._attribute_map, data)
+            additional_properties = self._build_additional_properties(attributes, data)
             return self._instantiate_model(response, d_attrs, additional_properties)
 
     def _build_additional_properties(self, attribute_map, data):
+        if not self.additional_properties_detection:
+            return None
         if "additional_properties" in attribute_map and attribute_map.get("additional_properties", {}).get("key") != '':
             # Check empty string. If it's not empty, someone has a real "additionalProperties"
             return None

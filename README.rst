@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2018-09-04 Version 0.5.5
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix a serialization issue if additional_properties is declared, and "automatic model" syntax is used
+  ("automatic model" being the ability to pass a dict to command and have the model auto-created)  # 120
+
 2018-07-12 Version 0.5.4
 ++++++++++++++++++++++++
 
