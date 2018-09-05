@@ -378,6 +378,10 @@ class Serializer(object):
     """Request object model serializer."""
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
+    try:
+        basic_types[long] = 'int'
+    except NameError:
+        pass
     _xml_basic_types_serializers = {'bool': lambda x:str(x).lower()}
     days = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu",
             4: "Fri", 5: "Sat", 6: "Sun"}
@@ -1172,6 +1176,10 @@ class Deserializer(object):
     """
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
+    try:
+        basic_types[long] = 'int'
+    except NameError:
+        pass
     valid_date = re.compile(
         r'\d{4}[-]\d{2}[-]\d{2}T\d{2}:\d{2}:\d{2}'
         r'\.?\d*Z?[-+]?[\d{2}]?:?[\d{2}]?')
