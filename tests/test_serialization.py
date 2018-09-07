@@ -1257,6 +1257,25 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         self.assertEqual(serialized, expected_message)
 
+    def test_long_as_type_object(self):
+        """Test irrelevant on Python 3. But still doing it to test regresssion.
+            https://github.com/Azure/msrest-for-python/pull/121
+        """
+
+        if sys.version_info > (3,):
+            long_type = int
+        else:
+            long_type = long
+
+        class TestModel(Model):
+            _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
+
+        m = TestModel(data = {'id': long_type(1)})
+        serialized = m.serialize()
+        assert serialized == {
+            'data': {'id': long_type(1)}
+        }
+
 
 class TestRuntimeDeserialized(unittest.TestCase):
 
@@ -2319,6 +2338,22 @@ class TestRuntimeDeserialized(unittest.TestCase):
             'ABC': TestEnum2.val2
         })
         self.assertEquals(obj.abc, TestEnum.val)
+
+    def test_long_as_type_object(self):
+        """Test irrelevant on Python 3. But still doing it to test regresssion.
+            https://github.com/Azure/msrest-for-python/pull/121
+        """
+
+        if sys.version_info > (3,):
+            long_type = int
+        else:
+            long_type = long
+
+        class TestModel(Model):
+            _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
+
+        m = TestModel.deserialize({'data': {'id': long_type(1)}})
+        assert m.data['id'] == long_type(1)
 
 class TestModelInstanceEquality(unittest.TestCase):
 

@@ -56,6 +56,11 @@ except NameError:
 
 _LOGGER = logging.getLogger(__name__)
 
+try:
+    _long_type = long   # type: ignore
+except NameError:
+    _long_type = int
+
 class UTC(datetime.tzinfo):
     """Time Zone info for handling UTC"""
 
@@ -378,10 +383,7 @@ class Serializer(object):
     """Request object model serializer."""
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
-    try:
-        basic_types[long] = 'int'
-    except NameError:
-        pass
+
     _xml_basic_types_serializers = {'bool': lambda x:str(x).lower()}
     days = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu",
             4: "Fri", 5: "Sat", 6: "Sun"}
@@ -868,6 +870,9 @@ class Serializer(object):
         obj_type = type(attr)
         if obj_type in self.basic_types:
             return self.serialize_basic(attr, self.basic_types[obj_type], **kwargs)
+        if obj_type is _long_type:
+            return self.serialize_long(attr)
+
         # If it's a model or I know this dependency, serialize as a Model
         elif obj_type in self.dependencies.values() or isinstance(obj_type, Model):
             return self._serialize(attr)
@@ -944,10 +949,7 @@ class Serializer(object):
         :param attr: Object to be serialized.
         :rtype: int/long
         """
-        try:
-            return long(attr)
-        except NameError:
-            return int(attr)
+        return _long_type(attr)
 
     @staticmethod
     def serialize_date(attr, **kwargs):
@@ -1176,10 +1178,7 @@ class Deserializer(object):
     """
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
-    try:
-        basic_types[long] = 'int'
-    except NameError:
-        pass
+
     valid_date = re.compile(
         r'\d{4}[-]\d{2}[-]\d{2}T\d{2}:\d{2}:\d{2}'
         r'\.?\d*Z?[-+]?[\d{2}]?:?[\d{2}]?')
@@ -1538,6 +1537,8 @@ class Deserializer(object):
         obj_type = type(attr)
         if obj_type in self.basic_types:
             return self.deserialize_basic(attr, self.basic_types[obj_type])
+        if obj_type is _long_type:
+            return self.deserialize_long(attr)
 
         if obj_type == dict:
             deserialized = {}
@@ -1707,10 +1708,7 @@ class Deserializer(object):
         """
         if isinstance(attr, ET.Element):
             attr = attr.text
-        try:
-            return long(attr)
-        except NameError:
-            return int(attr)
+        return _long_type(attr)
 
     @staticmethod
     def deserialize_duration(attr):
