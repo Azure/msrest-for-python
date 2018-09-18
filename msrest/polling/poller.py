@@ -189,8 +189,8 @@ class LROPoller(object):
         of time. You can check if this call as ended with timeout with the
         "done()" method.
 
-        :param int timeout: Perion of time to wait for the long running
-         operation to complete.
+        :param int timeout: Period of time to wait for the long running
+         operation to complete (in seconds).
         :raises CloudError: Server problem with the query.
         """
         if self._thread is None:
