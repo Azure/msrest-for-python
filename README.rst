@@ -20,6 +20,41 @@ To install:
 Release History
 ---------------
 
+2018-XX-XX Version 0.6.0rc1
++++++++++++++++++++++++++++
+
+**Features**
+
+- The environment variable AZURE_HTTP_USER_AGENT, if present, is now injected part of the UserAgent
+- New msrest.universal_http module. Provide tools to generic HTTP management (sync/async, requests/aiohttp, etc.)
+- New **preview** msrest.pipeline implementation:
+
+  - A Pipeline is an ordered list of Policies than can process an HTTP request and response in a generic way.
+  - More details in the wiki page about Pipeline: https://github.com/Azure/msrest-for-python/wiki/msrest-0.6.0---Pipeline
+
+- Adding new attribute to Configuration instance:
+
+  - http_logger_policy - Policy to handle HTTP logging
+  - user_agent_policy - Policy to handle HTTP logging
+  - pipeline - The current pipeline used by the SDK client
+  - async_pipeline - The current async pipeline used by the SDK client
+
+- Installing "msrest[async]" now install the **experimental** async support
+
+**Breaking changes**
+
+- The HTTPDriver API introduced in 0.5.0 has been replaced by Pipeline.
+
+- The following classes have been moved from "msrest.pipeline" to "msrest.universal_http":
+
+  - ClientRedirectPolicy
+  - ClientProxies
+  - ClientConnection
+
+- The following classes have been moved from "msrest.pipeline" to "msrest.universal_http.requests":
+
+  - ClientRetryPolicy
+
 2018-09-04 Version 0.5.5
 ++++++++++++++++++++++++
 
