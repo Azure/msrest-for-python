@@ -1169,6 +1169,33 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         self.assertEqual(serialized, expected_message)
 
+
+    def test_additional_properties_with_auto_model(self):
+
+        class AdditionalTest(Model):
+
+            _attribute_map = {
+                "name": {"key":"Name", "type":"str"},
+                "display_name": {"key":"DisplayName", "type":"str"},
+                'additional_properties': {'key': '', 'type': '{object}'}
+            }
+
+        o = {
+            'name': 'test',
+            'display_name': "display_name"
+        }
+
+        expected_message = {
+            "Name": "test",
+            "DisplayName": "display_name",
+        }
+
+        s = Serializer({'AdditionalTest': AdditionalTest})
+
+        serialized = s.body(o, 'AdditionalTest')
+
+        self.assertEqual(serialized, expected_message)
+
     def test_additional_properties_declared(self):
 
         class AdditionalTest(Model):
@@ -1222,6 +1249,25 @@ class TestRuntimeSerialized(unittest.TestCase):
         serialized = s.body(o, 'AdditionalTest')
 
         self.assertEqual(serialized, expected_message)
+
+    def test_long_as_type_object(self):
+        """Test irrelevant on Python 3. But still doing it to test regresssion.
+            https://github.com/Azure/msrest-for-python/pull/121
+        """
+
+        if sys.version_info > (3,):
+            long_type = int
+        else:
+            long_type = long
+
+        class TestModel(Model):
+            _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
+
+        m = TestModel(data = {'id': long_type(1)})
+        serialized = m.serialize()
+        assert serialized == {
+            'data': {'id': long_type(1)}
+        }
 
 
 class TestRuntimeDeserialized(unittest.TestCase):
@@ -1981,15 +2027,13 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
             _attribute_map = {
                 "name": {"key":"Name", "type":"str"},
+                "display_name": {"key":"DisplayName", "type":"str"},
                 'additional_properties': {'key': '', 'type': '{object}'}
             }
 
-            def __init__(self, name=None, additional_properties=None):
-                self.name = name
-                self.additional_properties = additional_properties
-
         message = {
             "Name": "test",
+            "DisplayName": "diplay_name",
             "PropInt": 2,
             "PropStr": "AdditionalProperty",
             "PropArray": [1,2,3],
@@ -2001,6 +2045,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         m = d('AdditionalTest', message)
 
         self.assertEquals(m.name, "test")
+        self.assertEquals(m.display_name, "diplay_name")
         self.assertEquals(m.additional_properties['PropInt'], 2)
         self.assertEquals(m.additional_properties['PropStr'], "AdditionalProperty")
         self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
@@ -2141,6 +2186,22 @@ class TestRuntimeDeserialized(unittest.TestCase):
             'ABC': TestEnum2.val2
         })
         self.assertEquals(obj.abc, TestEnum.val)
+
+    def test_long_as_type_object(self):
+        """Test irrelevant on Python 3. But still doing it to test regresssion.
+            https://github.com/Azure/msrest-for-python/pull/121
+        """
+
+        if sys.version_info > (3,):
+            long_type = int
+        else:
+            long_type = long
+
+        class TestModel(Model):
+            _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
+
+        m = TestModel.deserialize({'data': {'id': long_type(1)}})
+        assert m.data['id'] == long_type(1)
 
 class TestModelInstanceEquality(unittest.TestCase):
 

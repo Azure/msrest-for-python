@@ -58,6 +58,11 @@ except NameError:
 
 _LOGGER = logging.getLogger(__name__)
 
+try:
+    _long_type = long   # type: ignore
+except NameError:
+    _long_type = int
+
 class UTC(datetime.tzinfo):
     """Time Zone info for handling UTC"""
 
@@ -380,6 +385,7 @@ class Serializer(object):
     """Request object model serializer."""
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
+
     _xml_basic_types_serializers = {'bool': lambda x:str(x).lower()}
     days = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu",
             4: "Fri", 5: "Sat", 6: "Sun"}
@@ -467,8 +473,9 @@ class Serializer(object):
                 if not keep_readonly and target_obj._validation.get(attr_name, {}).get('readonly', False):
                     continue
 
-                if attr_name == "additional_properties" and attr_desc["key"] == '' and target_obj.additional_properties:
-                    serialized.update(target_obj.additional_properties)
+                if attr_name == "additional_properties" and attr_desc["key"] == '':
+                    if target_obj.additional_properties is not None:
+                        serialized.update(target_obj.additional_properties)
                     continue
                 try:
                     ### Extract sub-data to serialize from model ###
@@ -550,6 +557,9 @@ class Serializer(object):
         if internal_data_type and not isinstance(internal_data_type, Enum):
             try:
                 deserializer = Deserializer(self.dependencies)
+                # Since it's on serialization, it's almost sure that format is not JSON REST
+                # We're not able to deal with additional properties for now.
+                deserializer.additional_properties_detection = False
                 if issubclass(internal_data_type, Model) and internal_data_type.is_xml_model():
                     deserializer.key_extractors = [
                         attribute_key_case_insensitive_extractor,
@@ -862,6 +872,9 @@ class Serializer(object):
         obj_type = type(attr)
         if obj_type in self.basic_types:
             return self.serialize_basic(attr, self.basic_types[obj_type], **kwargs)
+        if obj_type is _long_type:
+            return self.serialize_long(attr)
+
         # If it's a model or I know this dependency, serialize as a Model
         elif obj_type in self.dependencies.values() or isinstance(obj_type, Model):
             return self._serialize(attr)
@@ -938,10 +951,7 @@ class Serializer(object):
         :param attr: Object to be serialized.
         :rtype: int/long
         """
-        try:
-            return long(attr)
-        except NameError:
-            return int(attr)
+        return _long_type(attr)
 
     @staticmethod
     def serialize_date(attr, **kwargs):
@@ -1170,6 +1180,7 @@ class Deserializer(object):
     """
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
+
     valid_date = re.compile(
         r'\d{4}[-]\d{2}[-]\d{2}T\d{2}:\d{2}:\d{2}'
         r'\.?\d*Z?[-+]?[\d{2}]?:?[\d{2}]?')
@@ -1198,6 +1209,13 @@ class Deserializer(object):
             rest_key_extractor,
             xml_key_extractor
         ]
+        # Additional properties only works if the "rest_key_extractor" is used to
+        # extract the keys. Making it to work whatever the key extractor is too much
+        # complicated, with no real scenario for now.
+        # So adding a flag to disable additional properties detection. This flag should be
+        # used if your expect the deserialization to NOT come from a JSON REST syntax.
+        # Otherwise, result are unexpected
+        self.additional_properties_detection = True
 
     def __call__(self, target_obj, response_data, content_type=None):
         """Call the deserializer to process a REST response.
@@ -1281,10 +1299,12 @@ class Deserializer(object):
             msg = "Unable to deserialize to object: " + class_name
             raise_with_traceback(DeserializationError, msg, err)
         else:
-            additional_properties = self._build_additional_properties(response._attribute_map, data)
+            additional_properties = self._build_additional_properties(attributes, data)
             return self._instantiate_model(response, d_attrs, additional_properties)
 
     def _build_additional_properties(self, attribute_map, data):
+        if not self.additional_properties_detection:
+            return None
         if "additional_properties" in attribute_map and attribute_map.get("additional_properties", {}).get("key") != '':
             # Check empty string. If it's not empty, someone has a real "additionalProperties"
             return None
@@ -1489,6 +1509,8 @@ class Deserializer(object):
         obj_type = type(attr)
         if obj_type in self.basic_types:
             return self.deserialize_basic(attr, self.basic_types[obj_type])
+        if obj_type is _long_type:
+            return self.deserialize_long(attr)
 
         if obj_type == dict:
             deserialized = {}
@@ -1658,10 +1680,7 @@ class Deserializer(object):
         """
         if isinstance(attr, ET.Element):
             attr = attr.text
-        try:
-            return long(attr)
-        except NameError:
-            return int(attr)
+        return _long_type(attr)
 
     @staticmethod
     def deserialize_duration(attr):

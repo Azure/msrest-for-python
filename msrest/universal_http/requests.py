@@ -416,11 +416,11 @@ class RequestHTTPSenderConfiguration(HTTPSenderConfiguration):
         :raises: ValueError if supplied filepath cannot be written to.
         """
         self._config.add_section("RetryPolicy")
-        self._config.set("RetryPolicy", "retries", self.retry_policy.retries)
+        self._config.set("RetryPolicy", "retries", str(self.retry_policy.retries))
         self._config.set("RetryPolicy", "backoff_factor",
-                         self.retry_policy.backoff_factor)
+                         str(self.retry_policy.backoff_factor))
         self._config.set("RetryPolicy", "max_backoff",
-                         self.retry_policy.max_backoff)
+                         str(self.retry_policy.max_backoff))
         super(RequestHTTPSenderConfiguration, self).save(filepath)
 
     def load(self, filepath):

@@ -112,7 +112,7 @@ class HTTPSenderConfiguration(object):
         self.redirect_policy = ClientRedirectPolicy()
 
         self._config = configparser.ConfigParser()
-        self._config.optionxform = str
+        self._config.optionxform = str  # type: ignore
 
         if filepath:
             self.load(filepath)
@@ -183,7 +183,7 @@ class HTTPSenderConfiguration(object):
             self.redirect_policy.allow = \
                 self._config.getboolean("RedirectPolicy", "allow")
             self.redirect_policy.max_redirects = \
-                self._config.set("RedirectPolicy", "max_redirects")
+                self._config.getint("RedirectPolicy", "max_redirects")
 
         except (ValueError, EnvironmentError, NoOptionError):
             error = "Supplied config file incompatible."

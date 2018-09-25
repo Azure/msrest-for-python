@@ -64,7 +64,7 @@ class ClientException(Exception):
         # type: (str, Any, str, str) -> None
         self.inner_exception = inner_exception
         _LOGGER.debug(message)
-        super(ClientException, self).__init__(message, *args, **kwargs)
+        super(ClientException, self).__init__(message, *args, **kwargs)  # type: ignore
 
 
 class SerializationError(ClientException):
