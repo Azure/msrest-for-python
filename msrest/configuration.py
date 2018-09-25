@@ -108,7 +108,7 @@ class Configuration(object):
         self.keep_alive = False
 
         self._config = configparser.ConfigParser()
-        self._config.optionxform = str
+        self._config.optionxform = str  # type: ignore
 
         if filepath:
             self.load(filepath)
@@ -157,11 +157,11 @@ class Configuration(object):
         self._config.set("Proxies", "env_settings",
                          self.proxies.use_env_settings)
 
-        self._config.set("RetryPolicy", "retries", self.retry_policy.retries)
+        self._config.set("RetryPolicy", "retries", str(self.retry_policy.retries))
         self._config.set("RetryPolicy", "backoff_factor",
-                         self.retry_policy.backoff_factor)
+                         str(self.retry_policy.backoff_factor))
         self._config.set("RetryPolicy", "max_backoff",
-                         self.retry_policy.max_backoff)
+                         str(self.retry_policy.max_backoff))
 
         self._config.set("RedirectPolicy", "allow", self.redirect_policy.allow)
         self._config.set("RedirectPolicy", "max_redirects",
@@ -209,7 +209,7 @@ class Configuration(object):
             self.redirect_policy.allow = \
                 self._config.getboolean("RedirectPolicy", "allow")
             self.redirect_policy.max_redirects = \
-                self._config.set("RedirectPolicy", "max_redirects")
+                self._config.getint("RedirectPolicy", "max_redirects")
 
         except (ValueError, EnvironmentError, NoOptionError):
             error = "Supplied config file incompatible."
