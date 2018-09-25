@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Union, TYPE_CHECKING
 
 from .universal_http import ClientRequest
 from .universal_http.async_requests import AsyncRequestsHTTPSender
-from .pipeline import Request, AsyncPipeline
+from .pipeline import Request, AsyncPipeline, AsyncHTTPPolicy, SansIOHTTPPolicy
 from .pipeline.async_requests import (
     AsyncPipelineRequestsHTTPSender,
     AsyncRequestsCredentialsPolicy
@@ -44,7 +44,6 @@ from .pipeline.universal import (
 
 if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
-    from .pipeline import AsyncHTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -79,13 +78,17 @@ class AsyncServiceClientMixin:
             self.config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]]
         if self._creds:
-            policies.insert(1, AsyncRequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
+            if isinstance(self._creds, (AsyncHTTPPolicy, SansIOHTTPPolicy)):
+                policies.insert(1, self._creds)
+            else:
+                # Assume this is the old credentials class, and then requests. Wrap it.
+                policies.insert(1, AsyncRequestsCredentialsPolicy(self._creds))
 
         return AsyncPipeline(
             policies,
             AsyncPipelineRequestsHTTPSender(
                 AsyncRequestsHTTPSender(self.config)  # Send HTTP request using requests
-              )
+            )
         )
 
     async def __aenter__(self):

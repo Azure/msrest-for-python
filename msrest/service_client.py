@@ -40,7 +40,7 @@ from .universal_http import ClientRequest
 from .universal_http.requests import (
     RequestsHTTPSender,
 )
-from .pipeline import Request, Pipeline
+from .pipeline import Request, Pipeline, HTTPPolicy, SansIOHTTPPolicy
 from .pipeline.requests import (
     PipelineRequestsHTTPSender,
     RequestsCredentialsPolicy,
@@ -56,7 +56,6 @@ if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
     from .universal_http import ClientRequest, ClientResponse  # pylint: disable=unused-import
     from .universal_http.requests import RequestsClientResponse  # pylint: disable=unused-import
-    from .pipeline import HTTPPolicy, SansIOHTTPPolicy  # pylint: disable=unused-import
 
 if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
@@ -125,7 +124,11 @@ class ServiceClient(AsyncServiceClientMixin):
             self.config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[HTTPPolicy, SansIOHTTPPolicy]]
         if self._creds:
-            policies.insert(1, RequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
+            if isinstance(self._creds, (HTTPPolicy, SansIOHTTPPolicy)):
+                policies.insert(1, self._creds)
+            else:
+                # Assume this is the old credentials class, and then requests. Wrap it.
+                policies.insert(1, RequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
 
         return Pipeline(
             policies,
