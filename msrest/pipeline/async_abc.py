@@ -54,8 +54,7 @@ class AsyncHTTPPolicy(abc.ABC, Generic[HTTPRequestType, AsyncHTTPResponseType]):
     """
     def __init__(self) -> None:
         # next will be set once in the pipeline
-        # actual type is: Union[AsyncHTTPPolicy, AsyncHTTPSender] but cannot do it in Py3.5
-        self.next = None  # type: ignore
+        self.next = None  # type: Optional[Union[AsyncHTTPPolicy[HTTPRequestType, AsyncHTTPResponseType], AsyncHTTPSender[HTTPRequestType, AsyncHTTPResponseType]]]
 
     @abc.abstractmethod
     async def send(self, request: Request, **kwargs: Any) -> Response[HTTPRequestType, AsyncHTTPResponseType]:
@@ -120,21 +119,22 @@ class AsyncPipeline(AbstractAsyncContextManager, Generic[HTTPRequestType, AsyncH
     of the HTTP sender.
     """
 
-    def __init__(self, policies: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]] = None, sender: AsyncHTTPSender = None) -> None:
-        self._impl_policies = []  # type: List[AsyncHTTPPolicy]
-        if not sender:
+    def __init__(self, policies: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]] = None, sender: Optional[AsyncHTTPSender[HTTPRequestType, AsyncHTTPResponseType]] = None) -> None:
+        self._impl_policies = []  # type: List[AsyncHTTPPolicy[HTTPRequestType, AsyncHTTPResponseType]]
+        if sender:
+            self._sender = sender
+        else:
             # Import default only if nothing is provided
             from .aiohttp import AioHTTPSender
             self._sender = AioHTTPSender()
-        else:
-            self._sender = sender
+
         for policy in (policies or []):
             if isinstance(policy, SansIOHTTPPolicy):
                 self._impl_policies.append(_SansIOAsyncHTTPPolicyRunner(policy))
             else:
                 self._impl_policies.append(policy)
         for index in range(len(self._impl_policies)-1):
-            self._impl_policies[index].next = self._impl_policies[index+1]  # type: ignore
+            self._impl_policies[index].next = self._impl_policies[index+1]
         if self._impl_policies:
             self._impl_policies[-1].next = self._sender
 
