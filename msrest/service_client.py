@@ -56,6 +56,7 @@ if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
     from .universal_http import ClientRequest, ClientResponse  # pylint: disable=unused-import
     from .universal_http.requests import RequestsClientResponse  # pylint: disable=unused-import
+    import requests  # pylint: disable=unused-import
 
 if sys.version_info >= (3, 5, 2):
     # Not executed on old Python, no syntax error
@@ -219,13 +220,13 @@ class ServiceClient(AsyncServiceClientMixin):
             pipeline_response = self.config.pipeline.run(request, **kwargs)
             # There is too much thing that expects this method to return a "requests.Response"
             # to break it in a compatible release.
-            # However, if it's a stream answer, return the ClientResponse
+            # Also, to be pragmatic in the "sync" world "requests" rules anyway.
+            # However, attach the Universal HTTP response
             # to get the streaming generator.
-            if kwargs['stream']:
-                return pipeline_response.http_response
-            else:
-                response = pipeline_response.http_response.internal_response
-                return response
+            response = pipeline_response.http_response.internal_response
+            response._universal_http_response = pipeline_response.http_response
+            response.context = pipeline_response.context
+            return response
         finally:
             self._close_local_session_if_necessary(response, kwargs['stream'])
 
@@ -235,14 +236,25 @@ class ServiceClient(AsyncServiceClientMixin):
             self.config.pipeline._sender.driver.session.close()
 
     def stream_download(self, data, callback):
-        # type: (ClientResponse, Callable) -> Iterator[bytes]
+        # type: (Union[requests.Response, ClientResponse], Callable) -> Iterator[bytes]
         """Generator for streaming request body data.
 
         :param data: A response object to be streamed.
         :param callback: Custom callback for monitoring progress.
         """
         block = self.config.connection.data_block_size
-        return data.stream_download(block, callback)
+        try:
+            # Assume this is ClientResponse, which it should be if backward compat was not important
+            return cast(ClientResponse, data).stream_download(block, callback)
+        except AttributeError:
+            try:
+                # Assume this is the patched requests.Response from "send"
+                return data._universal_http_response.stream_download(block, callback)  # type: ignore
+            except AttributeError:
+                # Assume this is a raw requests.Response
+                from .universal_http.requests import RequestsClientResponse
+                response = RequestsClientResponse(None, data)
+                return response.stream_download(block, callback)
 
     def stream_upload(self, data, callback):
         """Generator for streaming request body data.

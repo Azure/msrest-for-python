@@ -55,6 +55,7 @@ from msrest.exceptions import (
     TokenExpiredError,
     ClientRequestError)
 
+import pytest
 
 class TestRuntime(unittest.TestCase):
 
@@ -80,11 +81,12 @@ class TestRuntime(unittest.TestCase):
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
-        response = response.internal_response
-        self.assertTrue('Authorization' in response.request.headers)
-        self.assertEqual(response.request.headers['Authorization'], 'Bearer eswfld123kjhn1v5423')
+        assert 'Authorization' in response.request.headers
+        assert response.request.headers['Authorization'] == 'Bearer eswfld123kjhn1v5423'
         httpretty.has_request()
-        self.assertEqual(response.json(), [{"title": "Test Data"}])
+        assert response.json() == [{"title": "Test Data"}]
+
+        # Expiration test
 
         token['expires_in'] = '-30'
         creds = OAuthTokenAuthentication("client_id", token)
@@ -92,7 +94,7 @@ class TestRuntime(unittest.TestCase):
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
 
-        with self.assertRaises(TokenExpiredError):
+        with pytest.raises(TokenExpiredError):
             response = client.send(request)
 
     @mock.patch.object(requests, 'Session')
@@ -108,7 +110,7 @@ class TestRuntime(unittest.TestCase):
         request = client.get(url, {'check':True})
         response = client.send(request)
 
-        assert response.text() == "text"
+        assert response.text == "text"
 
         mock_requests.return_value.request.side_effect = requests.RequestException
         with self.assertRaises(ClientRequestError):
@@ -131,8 +133,7 @@ class TestRuntime(unittest.TestCase):
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.json(), "Mocked body")
+        assert response.json() == "Mocked body"
 
         with mock.patch.dict('os.environ', {'HTTP_PROXY': "http://localhost:1987"}):
             httpretty.register_uri(httpretty.GET, "http://localhost:1987/get_endpoint?check=True",
@@ -145,8 +146,7 @@ class TestRuntime(unittest.TestCase):
             url = client.format_url("/get_endpoint")
             request = client.get(url, {'check':True})
             response = client.send(request)
-            response = response.internal_response
-            self.assertEqual(response.json(), "Mocked body")
+            assert response.json() == "Mocked body"
 
 
 class TestRedirect(unittest.TestCase):
@@ -176,12 +176,11 @@ class TestRedirect(unittest.TestCase):
 
 
         response = self.client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.status_code, 200, msg="Should redirect with GET on 303 with location header")
-        self.assertEqual(response.request.method, 'GET')
+        assert response.status_code == 200, "Should redirect with GET on 303 with location header"
+        assert response.request.method == 'GET'
 
-        self.assertEqual(response.history[0].status_code, 303)
-        self.assertTrue(response.history[0].is_redirect)
+        assert response.history[0].status_code == 303
+        assert response.history[0].is_redirect
 
         httpretty.reset()
         httpretty.register_uri(httpretty.POST, "https://my_service.com/get_endpoint",
@@ -190,10 +189,9 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.status_code, 303, msg="Should not redirect on 303 without location header")
-        self.assertEqual(response.history, [])
-        self.assertFalse(response.is_redirect)
+        assert response.status_code == 303, "Should not redirect on 303 without location header"
+        assert response.history == []
+        assert not response.is_redirect
 
     @httpretty.activate
     def test_request_redirect_head(self):
@@ -209,12 +207,11 @@ class TestRedirect(unittest.TestCase):
 
 
         response = self.client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.status_code, 200, msg="Should redirect on 307 with location header")
-        self.assertEqual(response.request.method, 'HEAD')
+        assert response.status_code == 200, "Should redirect on 307 with location header"
+        assert response.request.method == 'HEAD'
 
-        self.assertEqual(response.history[0].status_code, 307)
-        self.assertTrue(response.history[0].is_redirect)
+        assert response.history[0].status_code == 307
+        assert response.history[0].is_redirect
 
         httpretty.reset()
         httpretty.register_uri(httpretty.HEAD, "https://my_service.com/get_endpoint",
@@ -223,10 +220,9 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.status_code, 307, msg="Should not redirect on 307 without location header")
-        self.assertEqual(response.history, [])
-        self.assertFalse(response.is_redirect)
+        assert response.status_code == 307, "Should not redirect on 307 without location header"
+        assert response.history == []
+        assert not response.is_redirect
 
     @httpretty.activate
     def test_request_redirect_delete(self):
@@ -242,12 +238,11 @@ class TestRedirect(unittest.TestCase):
 
 
         response = self.client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.status_code, 200, msg="Should redirect on 307 with location header")
-        self.assertEqual(response.request.method, 'DELETE')
+        assert response.status_code == 200, "Should redirect on 307 with location header"
+        assert response.request.method == 'DELETE'
 
-        self.assertEqual(response.history[0].status_code, 307)
-        self.assertTrue(response.history[0].is_redirect)
+        assert response.history[0].status_code == 307
+        assert response.history[0].is_redirect
 
         httpretty.reset()
         httpretty.register_uri(httpretty.DELETE, "https://my_service.com/get_endpoint",
@@ -256,10 +251,9 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.status_code, 307, msg="Should not redirect on 307 without location header")
-        self.assertEqual(response.history, [])
-        self.assertFalse(response.is_redirect)
+        assert response.status_code == 307, "Should not redirect on 307 without location header"
+        assert response.history == []
+        assert not response.is_redirect
 
     @httpretty.activate
     def test_request_redirect_put(self):
@@ -273,10 +267,9 @@ class TestRedirect(unittest.TestCase):
                                 ])
 
         response = self.client.send(request)
-        response = response.internal_response
-        self.assertEqual(response.status_code, 305, msg="Should not redirect on 305")
-        self.assertEqual(response.history, [])
-        self.assertFalse(response.is_redirect)
+        assert response.status_code == 305, "Should not redirect on 305"
+        assert response.history == []
+        assert not response.is_redirect
 
     @httpretty.activate
     def test_request_redirect_get(self):
