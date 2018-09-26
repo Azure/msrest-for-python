@@ -49,6 +49,7 @@ async def test_basic_aiohttp():
     request = ClientRequest("GET", "http://bing.com")
     async with AioHTTPSender() as sender:
         response = await sender.send(request)
+        assert response.body() is not None
 
     assert sender._session.closed
     assert response.status_code == 200
@@ -59,6 +60,7 @@ async def test_basic_async_requests():
     request = ClientRequest("GET", "http://bing.com")
     async with AsyncBasicRequestsHTTPSender() as sender:
         response = await sender.send(request)
+        assert response.body() is not None
 
     assert response.status_code == 200
 
@@ -69,6 +71,7 @@ async def test_conf_async_requests():
     request = ClientRequest("GET", "http://bing.com/")
     async with AsyncRequestsHTTPSender(conf) as sender:
         response = await sender.send(request)
+        assert response.body() is not None
 
     assert response.status_code == 200
 
@@ -79,6 +82,7 @@ def test_conf_async_trio_requests():
         request = ClientRequest("GET", "http://bing.com/")
         async with AsyncTrioRequestsHTTPSender(conf) as sender:
             return await sender.send(request)
+            assert response.body() is not None
 
     response = trio.run(do)
     assert response.status_code == 200

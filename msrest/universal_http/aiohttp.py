@@ -49,13 +49,19 @@ class AioHTTPSender(AsyncHTTPSender):
 
     async def send(self, request: ClientRequest, **config: Any) -> AsyncClientResponse:
         """Send the request using this HTTP sender.
+
+        Will pre-load the body into memory to be available with a sync method.
+        pass stream=True to avoid this behavior.
         """
         result = await self._session.request(
             request.method,
             request.url,
             **config
         )
-        return AioHttpClientResponse(request, result)
+        response = AioHttpClientResponse(request, result)
+        if not config.get("stream", False):
+            await response.load_body()
+        return response
 
 
 class AioHttpClientResponse(AsyncClientResponse):
@@ -65,6 +71,18 @@ class AioHttpClientResponse(AsyncClientResponse):
         self.status_code = aiohttp_response.status
         self.headers = aiohttp_response.headers
         self.reason = aiohttp_response.reason
+        self._body = None
+
+    def body(self) -> bytes:
+        """Return the whole body as bytes in memory.
+        """
+        if not self._body:
+            raise ValueError("Body is not available. Call async method load_body, or do your call with stream=False.")
+        return self._body
+
+    async def load_body(self) -> None:
+        """Load in memory the body, so it could be accessible from sync methods."""
+        self._body = await self.internal_response.read()
 
     def raise_for_status(self):
         self.internal_response.raise_for_status()
