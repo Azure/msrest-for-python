@@ -121,6 +121,10 @@ class BasicRequestsHTTPSender(HTTPSender):
         # type: (ClientRequest, Any) -> ClientResponse
         """Send request object according to configuration.
 
+        Allowed kwargs are:
+        - session : will override the driver session and use yours. Should NOT be done unless really required.
+        - anything else is sent straight to requests.
+
         :param ClientRequest request: The request object to be sent.
         """
         # It's not recommended to provide its own session, and is mostly
@@ -228,17 +232,18 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         # type: (ClientRequest, Any) -> Dict[str, str]
         """Configure the kwargs to use with requests.
 
+        See "send" for kwargs details.
+
         :param ClientRequest request: The request object to be sent.
         :returns: The requests.Session.request kwargs
         :rtype: dict[str,str]
         """
         requests_kwargs = {}  # type: Any
-        session = kwargs.get('session', self.session)
+        session = kwargs.pop('session', self.session)
 
         # If custom session was not create here
         if session is not self.session:
             self._init_session(session)
-            requests_kwargs['session'] = session
 
         session.max_redirects = int(self.config.redirect_policy())
         session.trust_env = bool(self.config.proxies.use_env_settings)
@@ -251,9 +256,6 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         proxies = self.config.proxies()
         if proxies:
             requests_kwargs['proxies'] = proxies
-
-        # Replace by pipeline kwargs
-        requests_kwargs.update(kwargs.get('requests_kwargs', {}))
 
         # Replace by operation level kwargs
         # We allow some of them, since some like stream or json are controled by msrest
@@ -285,6 +287,10 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
         if output_kwargs is not None:
             requests_kwargs = output_kwargs
 
+        # If custom session was not create here
+        if session is not self.session:
+            requests_kwargs['session'] = session
+
         ### Autorest forced kwargs now ###
 
         # If Autorest needs this response to be streamable. True for compat.
@@ -301,6 +307,20 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
     def send(self, request, **kwargs):
         # type: (ClientRequest, Any) -> ClientResponse
         """Send request object according to configuration.
+
+        Available kwargs:
+        - session : will override the driver session and use yours. Should NOT be done unless really required.
+        - A subset of what requests.Session.request can receive:
+
+            - cookies
+            - verify
+            - timeout
+            - allow_redirects
+            - proxies
+            - verify
+            - cert
+
+        Everything else will be silently ignored.
 
         :param ClientRequest request: The request object to be sent.
         """

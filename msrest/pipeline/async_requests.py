@@ -67,7 +67,6 @@ class AsyncPipelineRequestsHTTPSender(AsyncHTTPSender):
         # type: () -> RequestsContext
         return RequestsContext(
             session=self.driver.session,
-            kwargs={}
         )
 
     async def send(self, request: Request, **kwargs) -> Response:
@@ -78,8 +77,6 @@ class AsyncPipelineRequestsHTTPSender(AsyncHTTPSender):
         if request.context is None:  # Should not happen, but make mypy happy and does not hurt
             request.context = self.build_context()
 
-        if request.context.kwargs:
-            kwargs['requests_kwargs'] = request.context.kwargs
         if request.context.session is not self.driver.session:
             kwargs['session'] = request.context.session
 

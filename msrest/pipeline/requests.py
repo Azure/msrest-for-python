@@ -147,9 +147,8 @@ class RequestsPatchSession(HTTPPolicy):
                     session.adapters[protocol].max_retries = old_retries[protocol]
 
 class RequestsContext(object):
-    def __init__(self, session, kwargs):
+    def __init__(self, session):
         self.session = session
-        self.kwargs = kwargs
 
 
 class PipelineRequestsHTTPSender(HTTPSender):
@@ -175,7 +174,6 @@ class PipelineRequestsHTTPSender(HTTPSender):
         # type: () -> RequestsContext
         return RequestsContext(
             session=self.driver.session,
-            kwargs={}
         )
 
     def send(self, request, **kwargs):
@@ -187,8 +185,6 @@ class PipelineRequestsHTTPSender(HTTPSender):
         if request.context is None:  # Should not happen, but make mypy happy and does not hurt
             request.context = self.build_context()
 
-        if request.context.kwargs:
-            kwargs['requests_kwargs'] = request.context.kwargs
         if request.context.session is not self.driver.session:
             kwargs['session'] = request.context.session
 
