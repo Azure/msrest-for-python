@@ -36,7 +36,7 @@ import warnings
 from typing import List, Any, Dict, Union, IO, Tuple, Optional, Callable, Iterator, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
 from .authentication import Authentication
-from .universal_http import ClientRequest
+from .universal_http import ClientRequest, ClientResponse
 from .universal_http.requests import (
     RequestsHTTPSender,
 )
@@ -54,7 +54,6 @@ from .pipeline.universal import (
 
 if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
-    from .universal_http import ClientRequest, ClientResponse  # pylint: disable=unused-import
     from .universal_http.requests import RequestsClientResponse  # pylint: disable=unused-import
     import requests  # pylint: disable=unused-import
 
