@@ -275,7 +275,7 @@ class RequestsHTTPSender(BasicRequestsHTTPSender):
             hooks.append(make_user_hook_cb(user_hook, self.session))
 
         if hooks:
-            kwargs['hooks'] = {'response': hooks}
+            requests_kwargs['hooks'] = {'response': hooks}
 
         # Configuration callback. Deprecated, should be a policy
         output_kwargs = self.config.session_configuration_callback(
