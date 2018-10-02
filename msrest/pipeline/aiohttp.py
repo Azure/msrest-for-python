@@ -23,12 +23,40 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
-import sys
+from typing import Any, Optional
 
-from .poller import LROPoller, NoPolling, PollingMethod
-__all__ = ['LROPoller', 'NoPolling', 'PollingMethod']
+from ..universal_http.aiohttp import AioHTTPSender as _AioHTTPSenderDriver
+from . import AsyncHTTPSender, Request, Response
 
-if sys.version_info >= (3, 5, 2):
-    # Not executed on old Python, no syntax error
-    from .async_poller import AsyncNoPolling, AsyncPollingMethod, async_poller
-    __all__ += ['AsyncNoPolling', 'AsyncPollingMethod', 'async_poller']
+# Matching requests, because why not?
+CONTENT_CHUNK_SIZE = 10 * 1024
+
+class AioHTTPSender(AsyncHTTPSender):
+    """AioHttp HTTP sender implementation.
+    """
+
+    def __init__(self, driver: Optional[_AioHTTPSenderDriver] = None, *, loop=None) -> None:
+        self.driver = driver or _AioHTTPSenderDriver(loop=loop)
+
+    async def __aenter__(self):
+        await self.driver.__aenter__()
+
+    async def __aexit__(self, *exc_details):  # pylint: disable=arguments-differ
+        await self.driver.__aexit__(*exc_details)
+
+    def build_context(self) -> Any:
+        """Allow the sender to build a context that will be passed
+        across the pipeline with the request.
+
+        Return type has no constraints. Implementation is not
+        required and None by default.
+        """
+        return None
+
+    async def send(self, request: Request, **config: Any) -> Response:
+        """Send the request using this HTTP sender.
+        """
+        return Response(
+            request,
+            await self.driver.send(request.http_request)
+        )

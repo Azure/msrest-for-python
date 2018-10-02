@@ -23,7 +23,7 @@
 # THE SOFTWARE.
 #
 #--------------------------------------------------------------------------
-import time
+import asyncio
 try:
     from unittest import mock
 except ImportError:
@@ -31,20 +31,21 @@ except ImportError:
 
 import pytest
 
-from msrest.polling import *
+from msrest.polling.async_poller import *
 from msrest.service_client import ServiceClient
 from msrest.serialization import Model
 from msrest.configuration import Configuration
 
 
-def test_abc_polling():
-    abc_polling = PollingMethod()
+@pytest.mark.asyncio
+async def test_abc_polling():
+    abc_polling = AsyncPollingMethod()
 
     with pytest.raises(NotImplementedError):
         abc_polling.initialize(None, None, None)
 
     with pytest.raises(NotImplementedError):
-        abc_polling.run()
+        await abc_polling.run()
 
     with pytest.raises(NotImplementedError):
         abc_polling.status()
@@ -55,8 +56,10 @@ def test_abc_polling():
     with pytest.raises(NotImplementedError):
         abc_polling.resource()
 
-def test_no_polling():
-    no_polling = NoPolling()
+
+@pytest.mark.asyncio
+async def test_no_polling():
+    no_polling = AsyncNoPolling()
 
     initial_response = "initial response"
     def deserialization_cb(response):
@@ -64,13 +67,13 @@ def test_no_polling():
         return "Treated: "+response
 
     no_polling.initialize(None, initial_response, deserialization_cb)
-    no_polling.run() # Should no raise and do nothing
+    await no_polling.run() # Should no raise and do nothing
     assert no_polling.status() == "succeeded"
     assert no_polling.finished()
     assert no_polling.resource() == "Treated: "+initial_response
 
 
-class PollingTwoSteps(PollingMethod):
+class PollingTwoSteps(AsyncPollingMethod):
     """An empty poller that returns the deserialized initial response.
     """
     def __init__(self, sleep=0):
@@ -83,11 +86,11 @@ class PollingTwoSteps(PollingMethod):
         self._deserialization_callback = deserialization_callback
         self._finished = False
 
-    def run(self):
+    async def run(self):
         """Empty run, no polling.
         """
         self._finished = True
-        time.sleep(self._sleep) # Give me time to add callbacks!
+        await asyncio.sleep(self._sleep) # Give me time to add callbacks!
 
     def status(self):
         """Return the current status as a string.
@@ -110,7 +113,8 @@ def client():
     # Something functionnal
     return ServiceClient(None, Configuration("http://example.org"))
 
-def test_poller(client):
+@pytest.mark.asyncio
+async def test_poller(client):
 
     # Same the poller itself doesn't care about the initial_response, and there is no type constraint here
     initial_response = "Initial response"
@@ -120,49 +124,36 @@ def test_poller(client):
         assert response == initial_response
         return "Treated: "+response
 
-    method = NoPolling()
+    method = AsyncNoPolling()
 
-    poller = LROPoller(client, initial_response, deserialization_callback, method)
-
-    done_cb = mock.MagicMock()
-    poller.add_done_callback(done_cb)
-
-    result = poller.result()
-    assert poller.done()
+    result = await async_poller(client, initial_response, deserialization_callback, method)
     assert result == "Treated: "+initial_response
-    assert poller.status() == "succeeded"
-    done_cb.assert_called_once_with(method)
 
     # Test with a basic Model
-    poller = LROPoller(client, initial_response, Model, method)
-    assert poller._polling_method._deserialization_callback == Model.deserialize
+    class MockedModel(Model):
+        called = False
+        @classmethod
+        def deserialize(cls, data):
+            assert data == initial_response
+            cls.called = True
+
+    result = await async_poller(client, initial_response, MockedModel, method)
+    assert MockedModel.called
 
     # Test poller that method do a run
-    method = PollingTwoSteps(sleep=1)
-    poller = LROPoller(client, initial_response, deserialization_callback, method)
+    method = PollingTwoSteps(sleep=2)
+    result = await async_poller(client, initial_response, deserialization_callback, method)
 
-    done_cb = mock.MagicMock()
-    done_cb2 = mock.MagicMock()
-    poller.add_done_callback(done_cb)
-    poller.remove_done_callback(done_cb2)
-
-    result = poller.result()
     assert result == "Treated: "+initial_response
-    assert poller.status() == "succeeded"
-    done_cb.assert_called_once_with(method)
-    done_cb2.assert_not_called()
 
-    with pytest.raises(ValueError) as excinfo:
-        poller.remove_done_callback(done_cb)
-    assert "Process is complete" in str(excinfo.value)
-
-def test_broken_poller(client):
+@pytest.mark.asyncio
+async def test_broken_poller(client):
 
     with pytest.raises(ValueError):
-        LROPoller(None, None, None, None)
+        await async_poller(None, None, None, None)
 
     class NoPollingError(PollingTwoSteps):
-        def run(self):
+        async def run(self):
             raise ValueError("Something bad happened")
 
     initial_response = "Initial response"
@@ -170,8 +161,7 @@ def test_broken_poller(client):
         return "Treated: "+response
 
     method = NoPollingError()
-    poller = LROPoller(client, initial_response, deserialization_callback, method)
 
     with pytest.raises(ValueError) as excinfo:
-        poller.result()
+        await async_poller(client, initial_response, deserialization_callback, method)
     assert "Something bad happened" in str(excinfo.value)

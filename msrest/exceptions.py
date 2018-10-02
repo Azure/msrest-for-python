@@ -37,7 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def raise_with_traceback(exception, message="", *args, **kwargs):
-    # type: (Callable, str, str, str) -> None
+    # type: (Callable, str, Any, Any) -> None
     """Raise exception with a specified traceback.
 
     This MUST be called inside a "except" clause.
@@ -140,10 +140,13 @@ class HttpOperationError(ClientException):
 
     def __init__(self, deserialize, response,
                  resp_type=None, *args, **kwargs):
-        # type: (Deserializer, requests.Response, Optional[str], str, str) -> None
+        # type: (Deserializer, Any, Optional[str], str, str) -> None
         self.error = None
         self.message = self._DEFAULT_MESSAGE
-        self.response = response
+        if hasattr(response, 'internal_response'):
+            self.response = response.internal_response
+        else:
+            self.response = response
         try:
             if resp_type:
                 self.error = deserialize(resp_type, response)
@@ -168,9 +171,11 @@ class HttpOperationError(ClientException):
             try:
                 response.raise_for_status()
             # Two possible raises here:
-            # - Attribute error if response is not requests.RequestException. Do not catch.
-            # - requests.RequestException. Catch base class IOError to avoid explicit import of requests here.
-            except IOError as err:
+            # - Attribute error if response is not ClientResponse. Do not catch.
+            # - Any internal exception, take it.
+            except AttributeError:
+                raise
+            except Exception as err:  # pylint: disable=broad-except
                 if not self.error:
                     self.error = err
 

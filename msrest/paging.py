@@ -23,39 +23,51 @@
 # IN THE SOFTWARE.
 #
 # --------------------------------------------------------------------------
+import sys
 try:
     from collections.abc import Iterator
     xrange = range
 except ImportError:
     from collections import Iterator
 
-from typing import Dict, Any, List, Callable, Optional, TYPE_CHECKING
+from typing import Dict, Any, List, Callable, Optional, TYPE_CHECKING  # pylint: disable=unused-import
 
-if TYPE_CHECKING:
-    import requests
-
-from .serialization import Deserializer, Model
+from .serialization import Deserializer
 from .pipeline import ClientRawResponse
 
+if TYPE_CHECKING:
+    from .universal_http import ClientResponse  # pylint: disable=unused-import
+    from .serialization import Model  # pylint: disable=unused-import
 
-class Paged(Iterator):
+if sys.version_info >= (3, 5, 2):
+    # Not executed on old Python, no syntax error
+    from .async_paging import AsyncPagedMixin  # type: ignore
+else:
+    class AsyncPagedMixin(object):  # type: ignore
+        pass
+
+class Paged(AsyncPagedMixin, Iterator):
     """A container for paged REST responses.
 
-    :param requests.Response response: server response object.
+    :param ClientResponse response: server response object.
     :param callable command: Function to retrieve the next page of items.
     :param dict classes: A dictionary of class dependencies for
      deserialization.
+    :param dict raw_headers: A dict of raw headers to add if "raw" is called
     """
     _validation = {}  # type: Dict[str, Dict[str, Any]]
     _attribute_map = {}  # type: Dict[str, Dict[str, Any]]
 
-    def __init__(self, command, classes, raw_headers=None):
-        # type: (Callable[[str], requests.Response], Dict[str, Model], Dict[str, str]) -> None
+    def __init__(self, command, classes, raw_headers=None, **kwargs):
+        # type: (Callable[[str], ClientResponse], Dict[str, Model], Dict[str, str], Any) -> None
+        super(Paged, self).__init__(**kwargs)  # type: ignore
         # Sets next_link, current_page, and _current_page_iter_index.
+        self.next_link = ""
+        self._current_page_iter_index = 0
         self.reset()
         self._derserializer = Deserializer(classes)
         self._get_next = command
-        self._response = None  # type: Optional[requests.Response]
+        self._response = None  # type: Optional[ClientResponse]
         self._raw_headers = raw_headers
 
     def __iter__(self):

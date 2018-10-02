@@ -25,10 +25,7 @@
 # --------------------------------------------------------------------------
 import sys
 
-from .poller import LROPoller, NoPolling, PollingMethod
-__all__ = ['LROPoller', 'NoPolling', 'PollingMethod']
-
-if sys.version_info >= (3, 5, 2):
-    # Not executed on old Python, no syntax error
-    from .async_poller import AsyncNoPolling, AsyncPollingMethod, async_poller
-    __all__ += ['AsyncNoPolling', 'AsyncPollingMethod', 'async_poller']
+# Ignore collection of async tests for Python 2
+collect_ignore = []
+if sys.version_info < (3, 5):
+    collect_ignore.append("asynctests")

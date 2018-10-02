@@ -4,12 +4,14 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"e1839a8" = {path = ".", editable = true}
+"e1839a8" = {path = ".", extras = ["async"], editable = true}
 
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
+pytest-asyncio = {version = "*", markers="python_version >= '3.5'"}
 httpretty = ">=0.8.10"
 mock = {version = "*", markers="python_version <= '2.7'"}
 mypy = {version = "==0.630", markers="python_version > '2.7'"}
 pylint = "*"
+trio = {version = "*", markers="python_version >= '3.5'"}

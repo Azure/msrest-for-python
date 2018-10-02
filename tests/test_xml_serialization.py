@@ -26,8 +26,6 @@
 import sys
 import xml.etree.ElementTree as ET
 
-import requests
-
 import pytest
 
 from msrest.serialization import Serializer, Deserializer, Model, xml_key_extractor
@@ -132,27 +130,6 @@ class TestXmlDeserialization:
 
         s = Deserializer()
         result = s('object', basic_xml, "application/xml")
-
-        # Should be a XML tree
-        assert result.tag == "Data"
-        assert result.get("country") == "france"
-        for child in result:
-            assert child.tag == "Age"
-            assert child.text == "37"
-
-    def test_object_from_requests(self):
-        basic_xml = b"""<?xml version="1.0"?>
-            <Data country="france">
-                <Age>37</Age>
-            </Data>"""
-
-        response = requests.Response()
-        response.headers["content-type"] = "application/xml; charset=utf-8"
-        response._content = basic_xml
-        response._content_consumed = True
-
-        s = Deserializer()
-        result = s('object', response)
 
         # Should be a XML tree
         assert result.tag == "Data"

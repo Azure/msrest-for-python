@@ -28,16 +28,16 @@ import logging
 import re
 import types
 
-from typing import Any, Union, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING  # pylint: disable=unused-import
 
 if TYPE_CHECKING:
-    import requests
+    from .universal_http import ClientRequest, ClientResponse  # pylint: disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def log_request(_, request, *args, **kwargs):
-    # type: (Any, requests.PreparedRequest, str, str) -> None
+def log_request(_, request, *_args, **_kwargs):
+    # type: (Any, ClientRequest, str, str) -> None
     """Log a client request.
 
     :param _: Unused in current version (will be None)
@@ -61,12 +61,12 @@ def log_request(_, request, *args, **kwargs):
             _LOGGER.debug("File upload")
         else:
             _LOGGER.debug(str(request.body))
-    except Exception as err:
+    except Exception as err:  # pylint: disable=broad-except
         _LOGGER.debug("Failed to log request: %r", err)
 
 
-def log_response(_, request, response, *args, **kwargs):
-    # type: (Any, requests.PreparedRequest, requests.Response, str, str) -> Optional[requests.Response]
+def log_response(_, _request, response, *_args, **kwargs):
+    # type: (Any, ClientRequest, ClientResponse, str, Any) -> Optional[ClientResponse]
     """Log a server response.
 
     :param _: Unused in current version (will be None)
@@ -89,14 +89,17 @@ def log_response(_, request, response, *args, **kwargs):
 
         if header and pattern.match(header):
             filename = header.partition('=')[2]
-            _LOGGER.debug("File attachments: " + filename)
+            _LOGGER.debug("File attachments: %s", filename)
         elif response.headers.get("content-type", "").endswith("octet-stream"):
             _LOGGER.debug("Body contains binary data.")
         elif response.headers.get("content-type", "").startswith("image"):
             _LOGGER.debug("Body contains image data.")
         else:
-            _LOGGER.debug(str(response.content))
+            if kwargs.get('stream', False):
+                _LOGGER.debug("Body is streamable")
+            else:
+                _LOGGER.debug(response.text())
         return response
-    except Exception as err:
-        _LOGGER.debug("Failed to log response: " + repr(err))
+    except Exception as err:  # pylint: disable=broad-except
+        _LOGGER.debug("Failed to log response: %s", repr(err))
         return response

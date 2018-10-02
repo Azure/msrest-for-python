@@ -28,7 +28,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='msrest',
-    version='0.5.5',
+    version='0.6.0rc1',
     author='Microsoft Corporation',
     packages=find_packages(exclude=["tests", "tests.*"]),
     url=("https://github.com/Azure/msrest-for-python"),
@@ -56,5 +56,9 @@ setup(
     extras_require={
         ":python_version<'3.4'": ['enum34>=1.0.4'],
         ":python_version<'3.5'": ['typing'],
+        "async:python_version>='3.5'": [
+            'aiohttp>=3.0',
+            'aiodns'
+        ],
     }
 )

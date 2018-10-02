@@ -1,6 +1,6 @@
 ﻿#--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -34,20 +34,53 @@ try:
 except ImportError:
     import mock
 import xml.etree.ElementTree as ET
+import sys
 
-from msrest.pipeline import (
+import pytest
+
+from msrest.universal_http import (
     ClientRequest,
-    ClientRawResponse)
+)
+from msrest.pipeline import (
+    ClientRawResponse,
+    SansIOHTTPPolicy,
+    Pipeline,
+    HTTPSender
+)
 
 from msrest import Configuration
 
+
+def test_sans_io_exception():
+    class BrokenSender(HTTPSender):
+        def send(self, request, **config):
+            raise ValueError("Broken")
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            """Raise any exception triggered within the runtime context."""
+            return None
+
+    pipeline = Pipeline([SansIOHTTPPolicy()], BrokenSender())
+
+    req = ClientRequest('GET', '/')
+    with pytest.raises(ValueError):
+        pipeline.run(req)
+
+    class SwapExec(SansIOHTTPPolicy):
+        def on_exception(self, requests, **kwargs):
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            raise NotImplementedError(exc_value)
+
+    pipeline = Pipeline([SwapExec()], BrokenSender())
+    with pytest.raises(NotImplementedError):
+        pipeline.run(req)
 
 
 class TestClientRequest(unittest.TestCase):
 
     def test_request_data(self):
 
-        request = ClientRequest()
+        request = ClientRequest('GET', '/')
         data = "Lots of dataaaa"
         request.add_content(data)
 
@@ -55,7 +88,7 @@ class TestClientRequest(unittest.TestCase):
         self.assertEqual(request.headers.get('Content-Length'), '17')
 
     def test_request_xml(self):
-        request = ClientRequest()
+        request = ClientRequest('GET', '/')
         data = ET.Element("root")
         request.add_content(data)
 
@@ -63,7 +96,7 @@ class TestClientRequest(unittest.TestCase):
 
     def test_request_url_with_params(self):
 
-        request = ClientRequest()
+        request = ClientRequest('GET', '/')
         request.url = "a/b/c?t=y"
         request.format_parameters({'g': 'h'})
 

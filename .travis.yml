@@ -20,11 +20,11 @@ _autorest_install: &_autorest_install
 jobs:
   include:
     - stage: MyPy
-      python: 3.5
+      python: 3.6
       install:
         - pip install mypy
       script:
-        - mypy msrest --ignore-missing-imports
+        - mypy msrest
     - stage: Test
       python: 2.7
       env: TOXENV=py27

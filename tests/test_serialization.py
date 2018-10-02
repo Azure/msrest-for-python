@@ -31,10 +31,6 @@ import logging
 from enum import Enum
 from datetime import datetime, timedelta, date
 import unittest
-try:
-    from unittest import mock
-except ImportError:
-    import mock
 
 import xml.etree.ElementTree as ET
 
@@ -180,10 +176,7 @@ class TestModelDeserialization(unittest.TestCase):
           "location": "westus"
         }
 
-        resp = mock.create_autospec(Response)
-        resp.text = json.dumps(data)
-        resp.headers = {"content-type": "application/json; charset=utf8"}
-        model = self.d('GenericResource', resp)
+        model = self.d('GenericResource', json.dumps(data), 'application/json')
         self.assertEqual(model.properties['platformFaultDomainCount'], 3)
         self.assertEqual(model.location, 'westus')
 
@@ -1305,47 +1298,6 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.d = Deserializer()
         return super(TestRuntimeDeserialized, self).setUp()
 
-    def test_unpack(self):
-        result = Deserializer._unpack_content("<groot/>", content_type="application/xml")
-        assert result.tag == "groot"
-
-        # Catch some weird situation where content_type is XML, but content is JSON
-        result = Deserializer._unpack_content('{"ugly": true}', content_type="application/xml")
-        assert result["ugly"] is True
-
-        # Be sure I catch the correct exception if it's neither XML nor JSON
-        with pytest.raises(ET.ParseError):
-            result = Deserializer._unpack_content('gibberish', content_type="application/xml")
-        with pytest.raises(ET.ParseError):
-            result = Deserializer._unpack_content('{{gibberish}}', content_type="application/xml")
-
-        result = Deserializer._unpack_content('{"success": true}', content_type="application/json")
-        assert result["success"] is True
-
-        # For compat, if no content-type, and direct string, just return it
-        result = Deserializer._unpack_content('data')
-        assert result == "data"
-
-        # Decore bytes
-        result = Deserializer._unpack_content(b'data')
-        assert result == "data"
-
-        response = Response()
-        response.headers["content-type"] = "application/json"
-        response._content = b'{"success": true}'
-        response._content_consumed = True
-
-        result = Deserializer._unpack_content(response)
-        assert result["success"] is True
-
-        # If no content-type, assume it's JSON
-        response = Response()
-        response._content = b'{"success": true}'
-        response._content_consumed = True
-
-        result = Deserializer._unpack_content(response)
-        assert result["success"] is True
-
     def test_cls_method_deserialization(self):
         json_data = {
             'id': 'myid',
@@ -1517,80 +1469,56 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         Test invalid JSON
         """
-        response_data = mock.create_autospec(Response)
-        response_data.headers = {"content-type": "application/json; charset=utf8"}
-        response_data.text = '["tata"]]'
-
         with self.assertRaises(DeserializationError):
-            self.d("[str]", response_data)
+            self.d("[str]", '["tata"]]', 'application/json')
 
 
     def test_non_obj_deserialization(self):
         """
         Test direct deserialization of simple types.
         """
-        response_data = mock.create_autospec(Response)
-        response_data.headers = {"content-type": "application/json; charset=utf8"}
-
-        response_data.text = ''
         with self.assertRaises(DeserializationError):
-            self.d("[str]", response_data)
+            self.d("[str]", '', 'application/json')
 
-        response_data.text = json.dumps('')
         with self.assertRaises(DeserializationError):
-            self.d("[str]", response_data)
+            self.d("[str]", json.dumps(''), 'application/json')
 
-        response_data.text = json.dumps({})
         with self.assertRaises(DeserializationError):
-            self.d("[str]", response_data)
+            self.d("[str]", json.dumps({}), 'application/json')
 
         message = ["a","b","b"]
-        response_data.text = json.dumps(message)
-        response = self.d("[str]", response_data)
+        response = self.d("[str]", json.dumps(message), 'application/json')
         self.assertEqual(response, message)
 
-        response_data.text = json.dumps(12345)
         with self.assertRaises(DeserializationError):
-            self.d("[str]", response_data)
+            self.d("[str]", json.dumps(12345), 'application/json')
 
-        response_data.text = json.dumps('true')
-        response = self.d('bool', response_data)
+        response = self.d('bool', json.dumps('true'), 'application/json')
         self.assertEqual(response, True)
 
-        response_data.text = json.dumps(1)
-        response = self.d('bool', response_data)
+        response = self.d('bool', json.dumps(1), 'application/json')
         self.assertEqual(response, True)
 
-        response_data.text = json.dumps("true1")
         with self.assertRaises(DeserializationError):
-            self.d('bool', response_data)
+            self.d('bool', json.dumps("true1"), 'application/json')
 
 
     def test_obj_with_no_attr(self):
         """
         Test deserializing an object with no attributes.
         """
-
-        response_data = mock.create_autospec(Response)
-        response_data.text = json.dumps({"a":"b"})
-        response_data.headers = {"content-type": "application/json; charset=utf8"}
-
         class EmptyResponse(Model):
             _attribute_map = {}
             _header_map = {}
 
 
-        derserialized = self.d(EmptyResponse, response_data)
-        self.assertIsInstance(derserialized, EmptyResponse)
+        deserialized = self.d(EmptyResponse, json.dumps({"a":"b"}), 'application/json')
+        self.assertIsInstance(deserialized, EmptyResponse)
 
     def test_obj_with_malformed_map(self):
         """
         Test deserializing an object with a malformed attributes_map.
         """
-        response_data = mock.create_autospec(Response)
-        response_data.text = json.dumps({"a":"b"})
-        response_data.headers = {"content-type": "application/json; charset=utf8"}
-
         class BadResponse(Model):
             _attribute_map = None
 
@@ -1598,7 +1526,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 pass
 
         with self.assertRaises(DeserializationError):
-            self.d(BadResponse, response_data)
+            self.d(BadResponse, json.dumps({"a":"b"}), 'application/json')
 
         class BadResponse(Model):
             _attribute_map = {"attr":"val"}
@@ -1607,7 +1535,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 pass
 
         with self.assertRaises(DeserializationError):
-            self.d(BadResponse, response_data)
+            self.d(BadResponse, json.dumps({"a":"b"}), 'application/json')
 
         class BadResponse(Model):
             _attribute_map = {"attr":{"val":1}}
@@ -1616,141 +1544,89 @@ class TestRuntimeDeserialized(unittest.TestCase):
                 pass
 
         with self.assertRaises(DeserializationError):
-            self.d(BadResponse, response_data)
+            self.d(BadResponse, json.dumps({"a":"b"}), 'application/json')
 
     def test_attr_none(self):
         """
         Test serializing an object with None attributes.
         """
-        response_data = mock.create_autospec(Response)
-        response_data.headers = {"content-type": "application/json; charset=utf8"}
-        response_data.text = 'null'
-
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, 'null', 'application/json')
         self.assertIsNone(response)
 
     def test_attr_int(self):
         """
         Test deserializing an object with Int attributes.
         """
-        response_data = mock.create_autospec(Response)
-        response_data.status_code = 200
-        response_data.headers = {
-            'client-request-id':"123",
-            'etag':456.3,
-            "content-type": "application/json; charset=utf8"
-        }
-        response_data.text = ''
-
         message = {'AttrB':'1234'}
-        response_data.text = json.dumps(message)
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         self.assertTrue(hasattr(response, 'attr_b'))
         self.assertEqual(response.attr_b, int(message['AttrB']))
 
         with self.assertRaises(DeserializationError):
-            response_data.text = json.dumps({'AttrB':'NotANumber'})
-            response = self.d(self.TestObj, response_data)
+            response = self.d(self.TestObj, json.dumps({'AttrB':'NotANumber'}), 'application/json')
 
     def test_attr_str(self):
         """
         Test deserializing an object with Str attributes.
         """
         message = {'id':'InterestingValue'}
-        response_data = mock.create_autospec(Response)
-        response_data.status_code = 200
-        response_data.headers = {
-            'client-request-id': 'a',
-            'etag': 'b',
-            "content-type": "application/json; charset=utf8"
-        }
-        response_data.text = json.dumps(message)
 
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         self.assertTrue(hasattr(response, 'attr_a'))
         self.assertEqual(response.attr_a, message['id'])
 
         message = {'id':1234}
-        response_data.text = json.dumps(message)
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         self.assertEqual(response.attr_a, str(message['id']))
 
         message = {'id':list()}
-        response_data.text = json.dumps(message)
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         self.assertEqual(response.attr_a, str(message['id']))
 
-        response_data.text = json.dumps({'id':None})
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps({'id':None}), 'application/json')
         self.assertEqual(response.attr_a, None)
 
     def test_attr_bool(self):
         """
         Test deserializing an object with bool attributes.
         """
-        response_data = mock.create_autospec(Response)
-        response_data.status_code = 200
-        response_data.headers = {
-            'client-request-id': 'a',
-            'etag': 'b',
-            "content-type": "application/json; charset=utf8"
-        }
-        response_data.text = json.dumps({'Key_C':True})
-
-        response = self.d(self.TestObj, response_data)
-
+        response = self.d(self.TestObj, json.dumps({'Key_C':True}), 'application/json')
         self.assertTrue(hasattr(response, 'attr_c'))
         self.assertEqual(response.attr_c, True)
 
-        response_data.text = json.dumps({'Key_C':[]})
         with self.assertRaises(DeserializationError):
-            response = self.d(self.TestObj, response_data)
+            response = self.d(self.TestObj, json.dumps({'Key_C':[]}), 'application/json')
 
-        response_data.text = json.dumps({'Key_C':0})
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps({'Key_C':0}), 'application/json')
         self.assertEqual(response.attr_c, False)
 
-        response_data.text = json.dumps({'Key_C':"value"})
         with self.assertRaises(DeserializationError):
-            response = self.d(self.TestObj, response_data)
+            response = self.d(self.TestObj, json.dumps({'Key_C':"value"}), 'application/json')
 
     def test_attr_list_simple(self):
         """
         Test deserializing an object with simple-typed list attributes
         """
-        response_data = mock.create_autospec(Response)
-        response_data.status_code = 200
-        response_data.headers = {
-            'client-request-id': 'a',
-            'etag': 'b',
-            "content-type": "application/json; charset=utf8"
-        }
-        response_data.text = json.dumps({'AttrD': []})
-
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps({'AttrD': []}), 'application/json')
         deserialized_list = [d for d in response.attr_d]
         self.assertEqual(deserialized_list, [])
 
         message = {'AttrD': [1,2,3]}
-        response_data.text = json.dumps(message)
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         deserialized_list = [d for d in response.attr_d]
         self.assertEqual(deserialized_list, message['AttrD'])
 
         message = {'AttrD': ["1","2","3"]}
-        response_data.text = json.dumps(message)
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         deserialized_list = [d for d in response.attr_d]
         self.assertEqual(deserialized_list, [int(i) for i in message['AttrD']])
 
-        response_data.text = json.dumps({'AttrD': ["test","test2","test3"]})
         with self.assertRaises(DeserializationError):
-            response = self.d(self.TestObj, response_data)
+            response = self.d(self.TestObj, json.dumps({'AttrD': ["test","test2","test3"]}), 'application/json')
             deserialized_list = [d for d in response.attr_d]
 
-        response_data.text = json.dumps({'AttrD': "NotAList"})
         with self.assertRaises(DeserializationError):
-            response = self.d(self.TestObj, response_data)
+            response = self.d(self.TestObj, json.dumps({'AttrD': "NotAList"}), 'application/json')
             deserialized_list = [d for d in response.attr_d]
 
         self.assertListEqual(sorted(self.d("[str]", ["a", "b", "c"])), ["a", "b", "c"])
@@ -1760,49 +1636,30 @@ class TestRuntimeDeserialized(unittest.TestCase):
         """
         Test deserializing a list of lists
         """
-        response_data = mock.create_autospec(Response)
-        response_data.status_code = 200
-        response_data.headers = {
-            'client-request-id': 'a',
-            'etag': 'b',
-            "content-type": "application/json; charset=utf8"
-        }
-        response_data.text = json.dumps({'AttrF':[]})
-
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps({'AttrF':[]}), 'application/json')
         self.assertTrue(hasattr(response, 'attr_f'))
         self.assertEqual(response.attr_f, [])
 
-        response_data.text = json.dumps({'AttrF':None})
-
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps({'AttrF':None}), 'application/json')
         self.assertTrue(hasattr(response, 'attr_f'))
         self.assertEqual(response.attr_f, None)
 
-        response_data.text = json.dumps({})
-
-        response = self.d(self.TestObj, response_data)
-
+        response = self.d(self.TestObj, json.dumps({}), 'application/json')
         self.assertTrue(hasattr(response, 'attr_f'))
         self.assertEqual(response.attr_f, None)
 
         message = {'AttrF':[[]]}
-        response_data.text = json.dumps(message)
-
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         self.assertTrue(hasattr(response, 'attr_f'))
         self.assertEqual(response.attr_f, message['AttrF'])
 
         message = {'AttrF':[[1,2,3], ['a','b','c']]}
-        response_data.text = json.dumps(message)
-
-        response = self.d(self.TestObj, response_data)
+        response = self.d(self.TestObj, json.dumps(message), 'application/json')
         self.assertTrue(hasattr(response, 'attr_f'))
         self.assertEqual(response.attr_f, [[str(i) for i in k] for k in message['AttrF']])
 
         with self.assertRaises(DeserializationError):
-            response_data.text = json.dumps({'AttrF':[1,2,3]})
-            response = self.d(self.TestObj, response_data)
+            response = self.d(self.TestObj, json.dumps({'AttrF':[1,2,3]}), 'application/json')
 
     def test_attr_list_complex(self):
         """
@@ -1816,17 +1673,8 @@ class TestRuntimeDeserialized(unittest.TestCase):
             _attribute_map = {'attr_a': {'key':'id', 'type':'[ListObj]'}}
 
 
-        response_data = mock.create_autospec(Response)
-        response_data.status_code = 200
-        response_data.headers = {
-            'client-request-id': 'a',
-            'etag': 'b',
-            "content-type": "application/json; charset=utf8"
-        }
-        response_data.text = json.dumps({"id":[{"ABC": "123"}]})
-
         d = Deserializer({'ListObj':ListObj})
-        response = d(CmplxTestObj, response_data)
+        response = d(CmplxTestObj, json.dumps({"id":[{"ABC": "123"}]}), 'application/json')
         deserialized_list = list(response.attr_a)
 
         self.assertIsInstance(deserialized_list[0], ListObj)
