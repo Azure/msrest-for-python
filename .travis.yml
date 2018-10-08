@@ -4,7 +4,7 @@ language: python
 cache: pip
 _test: &_test
   install:
-    - pip install tox
+    - pip install tox tox-virtualenv-no-download
   script:
     - tox
   after_success:
