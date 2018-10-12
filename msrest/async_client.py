@@ -49,7 +49,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class AsyncSDKClientMixin:
-    """The base class of all generated SDK client.
+    """Mixin that provides async context manager if the client is async compatible.
+    
+    This mixin brings no value if the client does not provide async methods.
     """
     async def __aenter__(self):
         await self._client.__aenter__()
