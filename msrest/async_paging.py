@@ -37,8 +37,8 @@ class AsyncPagedMixin(AsyncIterator):
         """
         self._async_get_next = kwargs.get("async_command")
         if not self._async_get_next:
-            _LOGGER.warning("Paging async iterator protocol is not available for %s",
-                            self.__class__.__name__)
+            _LOGGER.debug("Paging async iterator protocol is not available for %s",
+                          self.__class__.__name__)
 
     async def async_get(self, url):
         """Get an arbitrary page.
@@ -53,13 +53,18 @@ class AsyncPagedMixin(AsyncIterator):
         return await self.async_advance_page()
 
     async def async_advance_page(self):
+        if not self._async_get_next:
+            raise NotImplementedError(
+                "The class %s does not support async paging at the moment.",
+                self.__class__.__name__
+            )
         if self.next_link is None:
             raise StopAsyncIteration("End of paging")
         self._current_page_iter_index = 0
         self._response = await self._async_get_next(self.next_link)
         self._derserializer(self, self._response)
         return self.current_page
-    
+
     async def __anext__(self):
         """Iterate through responses."""
         # Storing the list iterator might work out better, but there's no
