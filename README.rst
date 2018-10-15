@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2018-10-15 Version 0.6.1
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Remove unecessary verbose "warnings" log #126
+
 2018-10-02 Version 0.6.0
 ++++++++++++++++++++++++
 
