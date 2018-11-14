@@ -51,9 +51,6 @@ HTTPRequestType = TypeVar("HTTPRequestType")
 # might provide our own implementation
 from requests.structures import CaseInsensitiveDict
 
-if TYPE_CHECKING:
-    from ..universal_http import ClientResponse
-
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -260,8 +257,10 @@ class Response(Generic[HTTPRequestType, HTTPResponseType]):
         self.context = context or {}
 
 
-
 # ClientRawResponse is in Pipeline for compat, but technically there is nothing Pipeline here, this is deserialization
+
+if TYPE_CHECKING:
+    from ..universal_http import ClientResponse
 
 class ClientRawResponse(object):
     """Wrapper for response object.
