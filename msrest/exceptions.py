@@ -31,7 +31,7 @@ from typing import Callable, Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import requests
-    from msrest.serialization import Deserializer
+    from .serialization import Deserializer
 
 _LOGGER = logging.getLogger(__name__)
 

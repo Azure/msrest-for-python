@@ -34,8 +34,6 @@ except ImportError:
 
 from typing import TYPE_CHECKING, Optional, Dict, List, Any, Callable  # pylint: disable=unused-import
 
-from .exceptions import raise_with_traceback
-
 from .pipeline import Pipeline
 from .universal_http.requests import (
     RequestHTTPSenderConfiguration

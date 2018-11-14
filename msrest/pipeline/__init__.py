@@ -51,11 +51,8 @@ HTTPRequestType = TypeVar("HTTPRequestType")
 # might provide our own implementation
 from requests.structures import CaseInsensitiveDict
 
-from ..exceptions import ClientRequestError, raise_with_traceback
-from ..universal_http import ClientResponse
-
 if TYPE_CHECKING:
-    from ..serialization import Model  # pylint: disable=unused-import
+    from ..universal_http import ClientResponse
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -277,18 +274,19 @@ class ClientRawResponse(object):
     """
 
     def __init__(self, output, response):
-        # type: (Union[Model, List[Model]], Optional[Union[Response, ClientResponse]]) -> None
+        # type: (Union[Any], Optional[Union[Response, ClientResponse]]) -> None
         from ..serialization import Deserializer
 
         if isinstance(response, Response):
             # If pipeline response, remove that layer
             response = response.http_response
 
-        if isinstance(response, ClientResponse):
+        try:
             # If universal driver, remove that layer
-            self.response = response.internal_response
-        else:
+            self.response = response.internal_response  # type: ignore
+        except AttributeError:
             self.response = response
+
         self.output = output
         self.headers = {}  # type: Dict[str, Optional[Any]]
         self._deserialize = Deserializer()
