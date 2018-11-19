@@ -43,8 +43,6 @@ import isodate
 
 from typing import Dict, Any
 
-from .pipeline.universal import RawDeserializer
-
 from .exceptions import (
     ValidationError,
     SerializationError,
@@ -1354,6 +1352,10 @@ class Deserializer(object):
         :raises JSONDecodeError: If JSON is requested and parsing is impossible.
         :raises UnicodeDecodeError: If bytes is not UTF8
         """
+        # This avoids a circular dependency. We might want to consider RawDesializer is more generic
+        # than the pipeline concept, and put it in a toolbox, used both here and in pipeline. TBD.
+        from .pipeline.universal import RawDeserializer
+
         # Assume this is enough to detect a Pipeline Response without importing it
         context = getattr(raw_data, "context", {})
         if context:

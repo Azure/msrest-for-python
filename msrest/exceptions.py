@@ -29,9 +29,6 @@ import sys
 
 from typing import Callable, Any, Optional, TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import requests
-    from msrest.serialization import Deserializer
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -121,6 +118,11 @@ class AuthenticationError(ClientException):
     """Client request failed to authenticate."""
     pass
 
+
+# Needed only here for type checking
+if TYPE_CHECKING:
+    import requests
+    from .serialization import Deserializer
 
 class HttpOperationError(ClientException):
     """Client request failed due to server-specified HTTP operation error.

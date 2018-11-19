@@ -25,6 +25,8 @@ jobs:
         - pip install mypy
       script:
         - mypy msrest
+        - pipenv install --dev --skip-lock
+        - pipenv run python -c 'import typing; typing.TYPE_CHECKING = True; import msrest'  # Testing there is no circular dependencies in Type checking mode
     - stage: Test
       python: 2.7
       env: TOXENV=py27
