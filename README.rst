@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2018-11-19 Version 0.6.2
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix circular dependency in TYPE_CHECKING mode #128
+
 2018-10-15 Version 0.6.1
 ++++++++++++++++++++++++
 
