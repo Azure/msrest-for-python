@@ -24,7 +24,6 @@
 #
 # --------------------------------------------------------------------------
 
-import asyncio
 import functools
 import logging
 
@@ -42,17 +41,21 @@ from .pipeline.universal import (
     RawDeserializer,
 )
 
+from .service_client import _ServiceClientCore
+
 if TYPE_CHECKING:
     from .configuration import Configuration  # pylint: disable=unused-import
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class AsyncSDKClientMixin:
-    """Mixin that provides async context manager if the client is async compatible.
-    
-    This mixin brings no value if the client does not provide async methods.
+class SDKClientAsync:
+    """The base class of all generated SDK async client.
     """
+
+    def __init__(self, config: 'Configuration') -> None:
+        self._client = ServiceClientAsync(config)
+
     async def __aenter__(self):
         await self._client.__aenter__()
         return self
@@ -61,30 +64,27 @@ class AsyncSDKClientMixin:
         await self._client.__aexit__(*exc_details)
 
 
-class AsyncServiceClientMixin:
+class ServiceClientAsync(_ServiceClientCore):
 
-    def __init__(self, creds: Any, config: 'Configuration') -> None:
-        # Don't do super, since I know it will be "object"
-        # super(AsyncServiceClientMixin, self).__init__(creds, config)
+    def __init__(self, config: 'Configuration') -> None:
+        super(ServiceClientAsync, self).__init__(config)
 
-        # "async_pipeline" be should accessible from "config"
-        # In legacy mode this is weird, this config is a parameter of "pipeline"
-        # Should be revamp one day.
-        self.config.async_pipeline = self._create_default_async_pipeline()  # type: ignore
+        self.config.pipeline = self._create_default_pipeline()  # type: ignore
 
-    def _create_default_async_pipeline(self):
+    def _create_default_pipeline(self):
+        creds = self.config.credentials
 
         policies = [
             self.config.user_agent_policy,  # UserAgent policy
             RawDeserializer(),         # Deserialize the raw bytes
             self.config.http_logger_policy  # HTTP request/response log
         ]  # type: List[Union[AsyncHTTPPolicy, SansIOHTTPPolicy]]
-        if self._creds:
-            if isinstance(self._creds, (AsyncHTTPPolicy, SansIOHTTPPolicy)):
-                policies.insert(1, self._creds)
+        if creds:
+            if isinstance(creds, (AsyncHTTPPolicy, SansIOHTTPPolicy)):
+                policies.insert(1, creds)
             else:
                 # Assume this is the old credentials class, and then requests. Wrap it.
-                policies.insert(1, AsyncRequestsCredentialsPolicy(self._creds))
+                policies.insert(1, AsyncRequestsCredentialsPolicy(creds))
 
         return AsyncPipeline(
             policies,
@@ -94,11 +94,11 @@ class AsyncServiceClientMixin:
         )
 
     async def __aenter__(self):
-        await self.config.async_pipeline.__aenter__()
+        await self.config.pipeline.__aenter__()
         return self
 
     async def __aexit__(self, *exc_details):
-        await self.config.async_pipeline.__aexit__(*exc_details)
+        await self.config.pipeline.__aexit__(*exc_details)
 
     async def async_send(self, request, **kwargs):
         """Prepare and send request object according to configuration.
@@ -112,7 +112,7 @@ class AsyncServiceClientMixin:
         # In the current backward compatible implementation, return the HTTP response
         # and plug context inside. Could be remove if we modify Autorest,
         # but we still need it to be backward compatible
-        pipeline_response = await self.config.async_pipeline.run(request, **kwargs)
+        pipeline_response = await self.config.pipeline.run(request, **kwargs)
         response = pipeline_response.http_response
         response.context = pipeline_response.context
         return response

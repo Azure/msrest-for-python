@@ -66,15 +66,14 @@ class Configuration(RequestHTTPSenderConfiguration):
         # HTTP logger policy
         self.http_logger_policy = HTTPLogger()
 
-        # The sync pipeline (will be replaced by the SDK default one, this instance if just for mypy)
-        self.pipeline = Pipeline()  # type: Pipeline
-
-        # The async pipeline
-        # This is actual optional, since on 2.7 this will be None
-        self.async_pipeline = None  # type: Optional[AsyncPipeline]
+        # The pipeline. We don't know until a ServiceClient use this configuration if it will be sync or async
+        self.pipeline = None  # type: Union[Pipeline, AsyncPipeline]
 
         # If set to True, ServiceClient will own the sessionn
         self.keep_alive = False
+
+        # Potential credentials pre-declared
+        self.credentials = None
 
         if filepath:
             self.load(filepath)
