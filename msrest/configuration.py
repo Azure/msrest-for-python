@@ -32,7 +32,7 @@ except ImportError:
     import ConfigParser as configparser  # type: ignore
     from ConfigParser import NoOptionError  # type: ignore
 
-from typing import TYPE_CHECKING, Optional, Dict, List, Any, Callable  # pylint: disable=unused-import
+from typing import TYPE_CHECKING, Optional, Dict, List, Any, Callable, Union  # pylint: disable=unused-import
 
 from .pipeline import Pipeline
 from .universal_http.requests import (
@@ -67,7 +67,9 @@ class Configuration(RequestHTTPSenderConfiguration):
         self.http_logger_policy = HTTPLogger()
 
         # The pipeline. We don't know until a ServiceClient use this configuration if it will be sync or async
-        self.pipeline = None  # type: Union[Pipeline, AsyncPipeline]
+        # We instantiate with a default empty Pipeline for mypy mostly, trying to use a pipeline from a pure
+        # configuration object doesn't make sense.
+        self.pipeline = Pipeline()  # type: Union[Pipeline, AsyncPipeline]
 
         # If set to True, ServiceClient will own the sessionn
         self.keep_alive = False

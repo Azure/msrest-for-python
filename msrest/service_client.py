@@ -291,7 +291,7 @@ class ServiceClient(_ServiceClientCore):
         # type: () -> None
         """Close the pipeline if keep_alive is True.
         """
-        self.config.pipeline.__exit__()
+        self.config.pipeline.__exit__()  # type: ignore
 
     def send_formdata(self, request, headers=None, content=None, **config):
         """Send data as a multipart form-data request.
