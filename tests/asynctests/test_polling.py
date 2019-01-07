@@ -32,7 +32,7 @@ except ImportError:
 import pytest
 
 from msrest.polling.async_poller import *
-from msrest.service_client import ServiceClient
+from msrest.async_client import ServiceClientAsync
 from msrest.serialization import Model
 from msrest.configuration import Configuration
 
@@ -109,9 +109,9 @@ class PollingTwoSteps(AsyncPollingMethod):
 
 @pytest.fixture
 def client():
-    # We need a ServiceClient instance, but the poller itself don't use it, so we don't need
+    # We need a ServiceClientAsync instance, but the poller itself don't use it, so we don't need
     # Something functionnal
-    return ServiceClient(None, Configuration("http://example.org"))
+    return ServiceClientAsync(Configuration("http://example.org"))
 
 @pytest.mark.asyncio
 async def test_poller(client):

@@ -40,7 +40,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from oauthlib import oauth2
 
-from msrest import ServiceClient
+from msrest.async_client import ServiceClientAsync
 from msrest.authentication import OAuthTokenAuthentication
 from msrest.configuration import Configuration
 
@@ -58,9 +58,9 @@ class TestServiceClient(object):
 
         cfg = Configuration("/")
         cfg.headers = {'Test': 'true'}
-        creds = mock.create_autospec(OAuthTokenAuthentication)
+        cfg.credentials = mock.create_autospec(OAuthTokenAuthentication)
 
-        client = ServiceClient(creds, cfg)
+        client = ServiceClientAsync(cfg)
 
         req_response = requests.Response()
         req_response._content = br'{"real": true}'  # Has to be valid bytes JSON
@@ -79,10 +79,9 @@ class TestServiceClient(object):
         # Be sure the mock does not trick me
         assert not hasattr(session.resolve_redirects, 'is_msrest_patched')
 
-        client.config.async_pipeline._sender.driver.session = session
-
-        client._creds.signed_session.return_value = session
-        client._creds.refresh_session.return_value = session
+        client.config.pipeline._sender.driver.session = session
+        client.config.credentials.signed_session.return_value = session
+        client.config.credentials.refresh_session.return_value = session
 
         request = ClientRequest('GET', '/')
         await client.async_send(request, stream=False)

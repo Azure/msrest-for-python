@@ -63,6 +63,7 @@ class TestServiceClient(unittest.TestCase):
         self.cfg = Configuration("https://my_endpoint.com")
         self.cfg.headers = {'Test': 'true'}
         self.creds = mock.create_autospec(OAuthTokenAuthentication)
+        self.cfg.credentials = self.creds
         return super(TestServiceClient, self).setUp()
 
 
@@ -81,9 +82,9 @@ class TestServiceClient(unittest.TestCase):
                     assert self.first_session is session
                 else:
                     self.first_session = session
-        creds = Creds()
+        cfg.credentials = Creds()
 
-        with SDKClient(creds, cfg) as client:
+        with SDKClient(None, cfg) as client:
             assert cfg.keep_alive
 
             req = client._client.get('/')
@@ -100,7 +101,7 @@ class TestServiceClient(unittest.TestCase):
                 pass
 
         assert not cfg.keep_alive
-        assert creds.called == 2
+        assert cfg.credentials.called == 2
 
     def test_context_manager(self):
 
@@ -118,9 +119,9 @@ class TestServiceClient(unittest.TestCase):
                     assert self.first_session is session
                 else:
                     self.first_session = session
-        creds = Creds()
+        cfg.credentials = Creds()
 
-        with ServiceClient(creds, cfg) as client:
+        with ServiceClient(None, cfg) as client:
             assert cfg.keep_alive
 
             req = client.get('/')
@@ -137,7 +138,7 @@ class TestServiceClient(unittest.TestCase):
                 pass
 
         assert not cfg.keep_alive
-        assert creds.called == 2
+        assert cfg.credentials.called == 2
 
     def test_keep_alive(self):
 
@@ -156,9 +157,9 @@ class TestServiceClient(unittest.TestCase):
                     assert self.first_session is session
                 else:
                     self.first_session = session
-        creds = Creds()
+        cfg.credentials = Creds()
 
-        client = ServiceClient(creds, cfg)
+        client = ServiceClient(None, cfg)
         req = client.get('/')
         try:
             # Will fail, I don't care, that's not the point of the test
@@ -172,7 +173,7 @@ class TestServiceClient(unittest.TestCase):
         except Exception:
             pass
 
-        assert creds.called == 2
+        assert cfg.credentials.called == 2
         # Manually close the client in "keep_alive" mode
         client.close()
 
@@ -273,8 +274,8 @@ class TestServiceClient(unittest.TestCase):
 
         client.config.pipeline._sender.driver.session = session
 
-        client._creds.signed_session.return_value = session
-        client._creds.refresh_session.return_value = session
+        client.config.credentials.signed_session.return_value = session
+        client.config.credentials.refresh_session.return_value = session
 
         request = ClientRequest('GET', '/')
         client.send(request, stream=False)

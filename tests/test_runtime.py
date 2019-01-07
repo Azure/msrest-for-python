@@ -73,10 +73,10 @@ class TestRuntime(unittest.TestCase):
             'expires_in': '3600',
         }
 
-        creds = OAuthTokenAuthentication("client_id", token)
         cfg = Configuration("https://my_service.com")
+        cfg.credentials = OAuthTokenAuthentication("client_id", token)
 
-        client = ServiceClient(creds, cfg)
+        client = ServiceClient(None, cfg)
 
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
@@ -89,8 +89,8 @@ class TestRuntime(unittest.TestCase):
         # Expiration test
 
         token['expires_in'] = '-30'
-        creds = OAuthTokenAuthentication("client_id", token)
-        client = ServiceClient(creds, cfg)
+        cfg.credentials = OAuthTokenAuthentication("client_id", token)
+        client = ServiceClient(None, cfg)
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
 
@@ -103,9 +103,9 @@ class TestRuntime(unittest.TestCase):
         mock_requests.return_value.request.return_value = mock.Mock(text="text")
 
         cfg = Configuration("https://my_service.com")
-        creds = Authentication()
+        cfg.credentials = Authentication()
 
-        client = ServiceClient(creds, cfg)
+        client = ServiceClient(None, cfg)
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
@@ -122,14 +122,14 @@ class TestRuntime(unittest.TestCase):
 
         cfg = Configuration("http://my_service.com")
         cfg.proxies.add("http://my_service.com", 'http://localhost:57979')
-        creds = Authentication()
+        cfg.credentials = Authentication()
 
         httpretty.register_uri(httpretty.GET, "http://localhost:57979/get_endpoint?check=True",
                     body='"Mocked body"',
                     content_type="application/json",
                     status=200)
 
-        client = ServiceClient(creds, cfg)
+        client = ServiceClient(None, cfg)
         url = client.format_url("/get_endpoint")
         request = client.get(url, {'check':True})
         response = client.send(request)
@@ -142,7 +142,7 @@ class TestRuntime(unittest.TestCase):
                         status=200)
 
             cfg = Configuration("http://my_service.com")
-            client = ServiceClient(creds, cfg)
+            client = ServiceClient(None, cfg)
             url = client.format_url("/get_endpoint")
             request = client.get(url, {'check':True})
             response = client.send(request)
@@ -156,9 +156,9 @@ class TestRedirect(unittest.TestCase):
         cfg = Configuration("https://my_service.com")
         cfg.retry_policy.backoff_factor=0
         cfg.redirect_policy.max_redirects=2
-        creds = Authentication()
+        cfg.credentials = Authentication()
 
-        self.client = ServiceClient(creds, cfg)
+        self.client = ServiceClient(None, cfg)
 
         return super(TestRedirect, self).setUp()
 

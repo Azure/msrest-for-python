@@ -130,7 +130,7 @@ class TestModelDeserialization(unittest.TestCase):
                 self.location = kwargs.get('location', None)
 
         validation = MyModel().validate()
-        self.assertEquals(str(validation[0]), "Parameter 'MyModel.name' can not be None.")
+        self.assertEqual(str(validation[0]), "Parameter 'MyModel.name' can not be None.")
 
     @unittest.skipIf(sys.version_info < (3,4), "assertLogs not supported before 3.4")
     def test_model_kwargs_logs(self):
@@ -153,13 +153,13 @@ class TestModelDeserialization(unittest.TestCase):
 
         with self.assertLogs('msrest.serialization', level='WARNING') as cm:
             MyModel(name="test", id="123") # Should log that id is readonly
-        self.assertEquals(len(cm.output), 1)
+        self.assertEqual(len(cm.output), 1)
         self.assertIn("attribute id", cm.output[0])
         self.assertIn("Readonly", cm.output[0])
 
         with self.assertLogs('msrest.serialization', level='WARNING') as cm:
             MyModel(something="ioprez") # Should log that this is unknown
-        self.assertEquals(len(cm.output), 1)
+        self.assertEqual(len(cm.output), 1)
         self.assertIn("not a known attribute", cm.output[0])
 
     def test_response(self):
@@ -358,7 +358,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         obj.obj = TestObj("ab")
 
         broken_rules = obj.validate()
-        self.assertEquals(5, len(broken_rules))
+        self.assertEqual(5, len(broken_rules))
         str_broken_rules = [str(v) for v in broken_rules]
         self.assertIn(
             "Parameter 'TestObj.name' must have length greater than 3.",
@@ -588,7 +588,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         test_obj.attr_f = timedelta(days=1)
 
         message = self.s._serialize(test_obj)
-        self.assertEquals("P1D", message["AttrF"])
+        self.assertEqual("P1D", message["AttrF"])
 
         test_obj = self.TestObj()
         test_obj.attr_f = isodate.parse_duration("P3Y6M4DT12H30M5S")
@@ -596,7 +596,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         message = self.s.body({
             "attr_f": isodate.parse_duration("P3Y6M4DT12H30M5S")},
             'TestObj')
-        self.assertEquals("P3Y6M4DT12H30M5S", message["AttrF"])
+        self.assertEqual("P3Y6M4DT12H30M5S", message["AttrF"])
 
     def test_attr_list_simple(self):
         """
@@ -1446,9 +1446,9 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         storage_account = StorageAccount.deserialize(json_storage)
 
-        self.assertEquals(storage_account.id, json_storage['id']) # basic
-        self.assertEquals(storage_account.sku.name, storage_models.SkuName(json_storage['sku']['name'])) # Nested + enum
-        self.assertEquals(storage_account.primary_location, json_storage['properties']['primaryLocation']) # Flatten
+        self.assertEqual(storage_account.id, json_storage['id']) # basic
+        self.assertEqual(storage_account.sku.name, storage_models.SkuName(json_storage['sku']['name'])) # Nested + enum
+        self.assertEqual(storage_account.primary_location, json_storage['properties']['primaryLocation']) # Flatten
 
         json_storage_output = storage_account.serialize()
         self.assertEqual(len(json_storage_output), 3) # Only 3 keys are not readonly
@@ -1712,7 +1712,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
     def test_deserialize_date(self):
         # https://github.com/OAI/OpenAPI-Specification/blob/4d5a749c365682e6718f5a78f113a64391911647/versions/2.0.md#data-types
         a = Deserializer.deserialize_date('2018-12-27')
-        self.assertEquals(date(2018,12,27), a)
+        self.assertEqual(date(2018,12,27), a)
 
         with self.assertRaises(DeserializationError):
             a = Deserializer.deserialize_date('201O-18-90')
@@ -1944,7 +1944,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         }
         animal = self.d(Animal, message)
         self.assertIsInstance(animal, Animal)
-        self.assertEquals(animal.name, "Didier")
+        self.assertEqual(animal.name, "Didier")
 
     @unittest.skipIf(sys.version_info < (3,4), "assertLogs not supported before 3.4")
     def test_polymorphic_missing_info(self):
@@ -1967,7 +1967,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         }
         with self.assertLogs('msrest.serialization', level="WARNING"):
             animal = self.d(Animal, message)
-        self.assertEquals(animal.name, "Didier")
+        self.assertEqual(animal.name, "Didier")
 
         message = {
             "dType": "Penguin",
@@ -1976,7 +1976,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         }
         with self.assertLogs('msrest.serialization', level="WARNING"):
             animal = self.d(Animal, message)
-        self.assertEquals(animal.name, "Fido")
+        self.assertEqual(animal.name, "Fido")
 
     def test_polymorphic_deserialization_with_escape(self):
 
@@ -2044,12 +2044,12 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         m = d('AdditionalTest', message)
 
-        self.assertEquals(m.name, "test")
-        self.assertEquals(m.display_name, "diplay_name")
-        self.assertEquals(m.additional_properties['PropInt'], 2)
-        self.assertEquals(m.additional_properties['PropStr'], "AdditionalProperty")
-        self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
-        self.assertEquals(m.additional_properties['PropDict'], {"a": "b"})
+        self.assertEqual(m.name, "test")
+        self.assertEqual(m.display_name, "diplay_name")
+        self.assertEqual(m.additional_properties['PropInt'], 2)
+        self.assertEqual(m.additional_properties['PropStr'], "AdditionalProperty")
+        self.assertEqual(m.additional_properties['PropArray'], [1,2,3])
+        self.assertEqual(m.additional_properties['PropDict'], {"a": "b"})
 
     def test_additional_properties_declared(self):
 
@@ -2078,11 +2078,11 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         m = d('AdditionalTest', message)
 
-        self.assertEquals(m.name, "test")
-        self.assertEquals(m.additional_properties['PropInt'], 2)
-        self.assertEquals(m.additional_properties['PropStr'], "AdditionalProperty")
-        self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
-        self.assertEquals(m.additional_properties['PropDict'], {"a": "b"})
+        self.assertEqual(m.name, "test")
+        self.assertEqual(m.additional_properties['PropInt'], 2)
+        self.assertEqual(m.additional_properties['PropStr'], "AdditionalProperty")
+        self.assertEqual(m.additional_properties['PropArray'], [1,2,3])
+        self.assertEqual(m.additional_properties['PropDict'], {"a": "b"})
 
 
     def test_additional_properties_not_configured(self):
@@ -2108,11 +2108,11 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         m = d('AdditionalTest', message)
 
-        self.assertEquals(m.name, "test")
-        self.assertEquals(m.additional_properties['PropInt'], 2)
-        self.assertEquals(m.additional_properties['PropStr'], "AdditionalProperty")
-        self.assertEquals(m.additional_properties['PropArray'], [1,2,3])
-        self.assertEquals(m.additional_properties['PropDict'], {"a": "b"})
+        self.assertEqual(m.name, "test")
+        self.assertEqual(m.additional_properties['PropInt'], 2)
+        self.assertEqual(m.additional_properties['PropStr'], "AdditionalProperty")
+        self.assertEqual(m.additional_properties['PropArray'], [1,2,3])
+        self.assertEqual(m.additional_properties['PropDict'], {"a": "b"})
 
     def test_additional_properties_flattening(self):
 
@@ -2140,9 +2140,9 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         m = d('AdditionalTest', message)
 
-        self.assertEquals(m.name, "test")
-        self.assertEquals(m.content, "Content")
-        self.assertEquals(m.additional_properties, {})
+        self.assertEqual(m.name, "test")
+        self.assertEqual(m.content, "Content")
+        self.assertEqual(m.additional_properties, {})
 
     def test_attr_enum(self):
         """
@@ -2165,13 +2165,13 @@ class TestRuntimeDeserialized(unittest.TestCase):
             'ABC': 'Value'
         })
 
-        self.assertEquals(obj.abc, TestEnum.val)
+        self.assertEqual(obj.abc, TestEnum.val)
 
         obj = deserializer('TestEnumObj', {
             'ABC': 'azerty'
         })
 
-        self.assertEquals(obj.abc, 'azerty')
+        self.assertEqual(obj.abc, 'azerty')
 
         class TestEnum2(Enum):
             val2 = "Value"
@@ -2185,7 +2185,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         obj = deserializer('TestEnumObj', {
             'ABC': TestEnum2.val2
         })
-        self.assertEquals(obj.abc, TestEnum.val)
+        self.assertEqual(obj.abc, TestEnum.val)
 
     def test_long_as_type_object(self):
         """Test irrelevant on Python 3. But still doing it to test regresssion.
