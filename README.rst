@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2019-01-08 Version 0.6.3
+++++++++++++++++++++++++
+
+**Features**
+
+- Updated **experimental** async support. Requires Autorest.Python 4.0.64.
+
 2018-11-19 Version 0.6.2
 ++++++++++++++++++++++++
 
@@ -53,7 +60,7 @@ Release History
   - pipeline - The current pipeline used by the SDK client
   - async_pipeline - The current async pipeline used by the async SDK client
 
-- Installing "msrest[async]" now installs the **experimental** async support
+- Installing "msrest[async]" now installs the **experimental** async support. Works ONLY for Autorest.Python 4.0.63.
 
 **Breaking changes**
 
