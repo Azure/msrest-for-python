@@ -1,6 +1,6 @@
 ﻿#--------------------------------------------------------------------------
 #
-# Copyright (c) Microsoft Corporation. All rights reserved. 
+# Copyright (c) Microsoft Corporation. All rights reserved.
 #
 # The MIT License (MIT)
 #
@@ -86,8 +86,8 @@ class TestAuthentication(unittest.TestCase):
         session = basic.signed_session()
 
         req = session.prepare_request(self.request)
-        self.assertTrue('Authorization' in req.headers)
-        self.assertEquals(req.headers['Authorization'], 'Bearer 123456789')
+        assert 'Authorization' in req.headers
+        assert req.headers['Authorization'] == 'Bearer 123456789'
 
     def test_token_auth(self):
 
@@ -119,7 +119,7 @@ class TestAuthentication(unittest.TestCase):
         )
         session = auth.signed_session()
         prep_req = session.prepare_request(self.request)
-        self.assertIn("testquery=testparamvalue", prep_req.path_url)
+        assert "testquery=testparamvalue" in prep_req.path_url
 
     def test_cs_auth(self):
         auth = CognitiveServicesCredentials("mysubkey")

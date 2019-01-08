@@ -57,21 +57,10 @@ if TYPE_CHECKING:
     from .universal_http.requests import RequestsClientResponse  # pylint: disable=unused-import
     import requests  # pylint: disable=unused-import
 
-if sys.version_info >= (3, 5, 2):
-    # Not executed on old Python, no syntax error
-    from .async_client import AsyncServiceClientMixin, AsyncSDKClientMixin  # type: ignore
-else:
-    class AsyncSDKClientMixin(object):  # type: ignore
-        pass
-
-    class AsyncServiceClientMixin(object):  # type: ignore
-        def __init__(self, creds, config):
-            pass
-
 
 _LOGGER = logging.getLogger(__name__)
 
-class SDKClient(AsyncSDKClientMixin):
+class SDKClient(object):
     """The base class of all generated SDK client.
     """
     def __init__(self, creds, config):
@@ -93,63 +82,19 @@ class SDKClient(AsyncSDKClientMixin):
         self._client.__exit__(*exc_details)
 
 
-class ServiceClient(AsyncServiceClientMixin):
-    """REST Service Client.
-    Maintains client pipeline and handles all requests and responses.
+class _ServiceClientCore(object):
+    """Service client core methods.
 
+    This contains methods are sans I/O and not tight to sync or async implementation.
     :param Configuration config: Service configuration.
     :param Authentication creds: Authenticated credentials.
     """
 
-    def __init__(self, creds, config):
+    def __init__(self, config):
         # type: (Any, Configuration) -> None
         if config is None:
             raise ValueError("Config is a required parameter")
         self.config = config
-        self._creds = creds
-        # Call the mixin AFTER self.config and self._creds
-        super(ServiceClient, self).__init__(creds, config)
-
-        # "pipeline" be should accessible from "config"
-        # In legacy mode this is weird, this config is a parameter of "pipeline"
-        # Should be revamp one day.
-        self.config.pipeline = self._create_default_pipeline()
-
-    def _create_default_pipeline(self):
-        # type: () -> Pipeline[ClientRequest, RequestsClientResponse]
-
-        policies = [
-            self.config.user_agent_policy,  # UserAgent policy
-            RequestsPatchSession(),         # Support deprecated operation config at the session level
-            self.config.http_logger_policy  # HTTP request/response log
-        ]  # type: List[Union[HTTPPolicy, SansIOHTTPPolicy]]
-        if self._creds:
-            if isinstance(self._creds, (HTTPPolicy, SansIOHTTPPolicy)):
-                policies.insert(1, self._creds)
-            else:
-                # Assume this is the old credentials class, and then requests. Wrap it.
-                policies.insert(1, RequestsCredentialsPolicy(self._creds))  # Set credentials for requests based session
-
-        return Pipeline(
-            policies,
-            PipelineRequestsHTTPSender(RequestsHTTPSender(self.config))  # Send HTTP request using requests
-        )
-
-    def __enter__(self):
-        # type: () -> ServiceClient
-        self.config.keep_alive = True
-        self.config.pipeline.__enter__()
-        return self
-
-    def __exit__(self, *exc_details):
-        self.config.pipeline.__exit__(*exc_details)
-        self.config.keep_alive = False
-
-    def close(self):
-        # type: () -> None
-        """Close the pipeline if keep_alive is True.
-        """
-        self.config.pipeline.__exit__()
 
     def _request(self, method, url, params, headers, content, form_content):
         # type: (str, str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
@@ -182,79 +127,6 @@ class ServiceClient(AsyncServiceClientMixin):
 
         return request
 
-    def send_formdata(self, request, headers=None, content=None, **config):
-        """Send data as a multipart form-data request.
-        We only deal with file-like objects or strings at this point.
-        The requests is not yet streamed.
-
-        This method is deprecated, and shouldn't be used anymore.
-
-        :param ClientRequest request: The request object to be sent.
-        :param dict headers: Any headers to add to the request.
-        :param dict content: Dictionary of the fields of the formdata.
-        :param config: Any specific config overrides.
-        """
-        request.headers = headers
-        request.add_formdata(content)
-        return self.send(request, **config)
-
-    def send(self, request, headers=None, content=None, **kwargs):
-        """Prepare and send request object according to configuration.
-
-        :param ClientRequest request: The request object to be sent.
-        :param dict headers: Any headers to add to the request.
-        :param content: Any body data to add to the request.
-        :param config: Any specific config overrides
-        """
-        # "content" and "headers" are deprecated, only old SDK
-        if headers:
-            request.headers.update(headers)
-        if not request.files and request.data is None and content is not None:
-            request.add_content(content)
-        # End of deprecation
-
-        response = None
-        kwargs.setdefault('stream', True)
-        try:
-            pipeline_response = self.config.pipeline.run(request, **kwargs)
-            # There is too much thing that expects this method to return a "requests.Response"
-            # to break it in a compatible release.
-            # Also, to be pragmatic in the "sync" world "requests" rules anyway.
-            # However, attach the Universal HTTP response
-            # to get the streaming generator.
-            response = pipeline_response.http_response.internal_response
-            response._universal_http_response = pipeline_response.http_response
-            response.context = pipeline_response.context
-            return response
-        finally:
-            self._close_local_session_if_necessary(response, kwargs['stream'])
-
-    def _close_local_session_if_necessary(self, response, stream):
-        # Here, it's a local session, I might close it.
-        if not self.config.keep_alive and (not response or not stream):
-            self.config.pipeline._sender.driver.session.close()
-
-    def stream_download(self, data, callback):
-        # type: (Union[requests.Response, ClientResponse], Callable) -> Iterator[bytes]
-        """Generator for streaming request body data.
-
-        :param data: A response object to be streamed.
-        :param callback: Custom callback for monitoring progress.
-        """
-        block = self.config.connection.data_block_size
-        try:
-            # Assume this is ClientResponse, which it should be if backward compat was not important
-            return cast(ClientResponse, data).stream_download(block, callback)
-        except AttributeError:
-            try:
-                # Assume this is the patched requests.Response from "send"
-                return data._universal_http_response.stream_download(block, callback)  # type: ignore
-            except AttributeError:
-                # Assume this is a raw requests.Response
-                from .universal_http.requests import RequestsClientResponse
-                response = RequestsClientResponse(None, data)
-                return response.stream_download(block, callback)
-
     def stream_upload(self, data, callback):
         """Generator for streaming request body data.
 
@@ -283,21 +155,6 @@ class ServiceClient(AsyncServiceClientMixin):
             base = self.config.base_url.format(**kwargs).rstrip('/')
             url = urljoin(base + '/', url)
         return url
-
-    def add_header(self, header, value):
-        # type: (str, str) -> None
-        """Add a persistent header - this header will be applied to all
-        requests sent during the current client session.
-
-        .. deprecated:: 0.5.0
-           Use config.headers instead
-
-        :param str header: The header name.
-        :param str value: The header value.
-        """
-        warnings.warn("Private attribute _client.add_header is deprecated. Use config.headers instead.",
-                      DeprecationWarning)
-        self.config.headers[header] = value
 
     def get(self, url, params=None, headers=None, content=None, form_content=None):
         # type: (str, Optional[Dict[str, str]], Optional[Dict[str, str]], Any, Optional[Dict[str, Any]]) -> ClientRequest
@@ -383,3 +240,143 @@ class ServiceClient(AsyncServiceClientMixin):
         """
         request = self._request('MERGE', url, params, headers, content, form_content)
         return request
+
+
+class ServiceClient(_ServiceClientCore):
+    """REST Service Client.
+    Maintains client pipeline and handles all requests and responses.
+
+    :param _: Ignored, here for backward compat. Creds are now read from config.credentials.
+    :param Configuration config: Service configuration.
+    """
+
+    def __init__(self, _, config):
+        # type: (Any, Configuration) -> None
+        super(ServiceClient, self).__init__(config)
+
+        self.config.pipeline = self._create_default_pipeline()
+
+    def _create_default_pipeline(self):
+        # type: () -> Pipeline[ClientRequest, RequestsClientResponse]
+        creds = self.config.credentials
+
+        policies = [
+            self.config.user_agent_policy,  # UserAgent policy
+            RequestsPatchSession(),         # Support deprecated operation config at the session level
+            self.config.http_logger_policy  # HTTP request/response log
+        ]  # type: List[Union[HTTPPolicy, SansIOHTTPPolicy]]
+        if creds:
+            if isinstance(creds, (HTTPPolicy, SansIOHTTPPolicy)):
+                policies.insert(1, creds)
+            else:
+                # Assume this is the old credentials class, and then requests. Wrap it.
+                policies.insert(1, RequestsCredentialsPolicy(creds))  # Set credentials for requests based session
+
+        return Pipeline(
+            policies,
+            PipelineRequestsHTTPSender(RequestsHTTPSender(self.config))  # Send HTTP request using requests
+        )
+
+    def __enter__(self):
+        # type: () -> ServiceClient
+        self.config.keep_alive = True
+        self.config.pipeline.__enter__()
+        return self
+
+    def __exit__(self, *exc_details):
+        self.config.pipeline.__exit__(*exc_details)
+        self.config.keep_alive = False
+
+    def close(self):
+        # type: () -> None
+        """Close the pipeline if keep_alive is True.
+        """
+        self.config.pipeline.__exit__()  # type: ignore
+
+    def send_formdata(self, request, headers=None, content=None, **config):
+        """Send data as a multipart form-data request.
+        We only deal with file-like objects or strings at this point.
+        The requests is not yet streamed.
+
+        This method is deprecated, and shouldn't be used anymore.
+
+        :param ClientRequest request: The request object to be sent.
+        :param dict headers: Any headers to add to the request.
+        :param dict content: Dictionary of the fields of the formdata.
+        :param config: Any specific config overrides.
+        """
+        request.headers = headers
+        request.add_formdata(content)
+        return self.send(request, **config)
+
+    def send(self, request, headers=None, content=None, **kwargs):
+        """Prepare and send request object according to configuration.
+
+        :param ClientRequest request: The request object to be sent.
+        :param dict headers: Any headers to add to the request.
+        :param content: Any body data to add to the request.
+        :param config: Any specific config overrides
+        """
+        # "content" and "headers" are deprecated, only old SDK
+        if headers:
+            request.headers.update(headers)
+        if not request.files and request.data is None and content is not None:
+            request.add_content(content)
+        # End of deprecation
+
+        response = None
+        kwargs.setdefault('stream', True)
+        try:
+            pipeline_response = self.config.pipeline.run(request, **kwargs)
+            # There is too much thing that expects this method to return a "requests.Response"
+            # to break it in a compatible release.
+            # Also, to be pragmatic in the "sync" world "requests" rules anyway.
+            # However, attach the Universal HTTP response
+            # to get the streaming generator.
+            response = pipeline_response.http_response.internal_response
+            response._universal_http_response = pipeline_response.http_response
+            response.context = pipeline_response.context
+            return response
+        finally:
+            self._close_local_session_if_necessary(response, kwargs['stream'])
+
+    def _close_local_session_if_necessary(self, response, stream):
+        # Here, it's a local session, I might close it.
+        if not self.config.keep_alive and (not response or not stream):
+            self.config.pipeline._sender.driver.session.close()
+
+    def stream_download(self, data, callback):
+        # type: (Union[requests.Response, ClientResponse], Callable) -> Iterator[bytes]
+        """Generator for streaming request body data.
+
+        :param data: A response object to be streamed.
+        :param callback: Custom callback for monitoring progress.
+        """
+        block = self.config.connection.data_block_size
+        try:
+            # Assume this is ClientResponse, which it should be if backward compat was not important
+            return cast(ClientResponse, data).stream_download(block, callback)
+        except AttributeError:
+            try:
+                # Assume this is the patched requests.Response from "send"
+                return data._universal_http_response.stream_download(block, callback)  # type: ignore
+            except AttributeError:
+                # Assume this is a raw requests.Response
+                from .universal_http.requests import RequestsClientResponse
+                response = RequestsClientResponse(None, data)
+                return response.stream_download(block, callback)
+
+    def add_header(self, header, value):
+        # type: (str, str) -> None
+        """Add a persistent header - this header will be applied to all
+        requests sent during the current client session.
+
+        .. deprecated:: 0.5.0
+           Use config.headers instead
+
+        :param str header: The header name.
+        :param str value: The header value.
+        """
+        warnings.warn("Private attribute _client.add_header is deprecated. Use config.headers instead.",
+                      DeprecationWarning)
+        self.config.headers[header] = value

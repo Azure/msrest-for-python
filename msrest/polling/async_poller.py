@@ -26,7 +26,7 @@
 from .poller import NoPolling as _NoPolling
 
 from ..serialization import Model
-from ..service_client import ServiceClient
+from ..async_client import ServiceClientAsync
 from ..pipeline import ClientRawResponse
 
 class AsyncPollingMethod(object):
@@ -73,7 +73,7 @@ async def async_poller(client, initial_response, deserialization_callback, polli
     """
 
     try:
-        client = client if isinstance(client, ServiceClient) else client._client
+        client = client if isinstance(client, ServiceClientAsync) else client._client
     except AttributeError:
         raise ValueError("Poller client parameter must be a low-level msrest Service Client or a SDK client.")
     response = initial_response.response if isinstance(initial_response, ClientRawResponse) else initial_response
