@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2019-01-09 Version 0.6.4
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix regression on credentials configuration if used outside of Autorest scope #135
+
 2019-01-08 Version 0.6.3
 ++++++++++++++++++++++++
 
