@@ -246,13 +246,19 @@ class ServiceClient(_ServiceClientCore):
     """REST Service Client.
     Maintains client pipeline and handles all requests and responses.
 
-    :param _: Ignored, here for backward compat. Creds are now read from config.credentials.
+    :param creds: Deprecated, will be removed in next major version. Creds are now read from config.credentials.
     :param Configuration config: Service configuration.
     """
 
-    def __init__(self, _, config):
+    def __init__(self, creds, config):
         # type: (Any, Configuration) -> None
         super(ServiceClient, self).__init__(config)
+
+        # If not Autorest, check if credentials comes from here and not config
+        if creds and config.credentials is None:
+            warnings.warn("Creds parameter is deprecated. Set config.credentials instead.",
+                          DeprecationWarning)
+            config.credentials = creds
 
         self.config.pipeline = self._create_default_pipeline()
 
