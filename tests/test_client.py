@@ -67,6 +67,20 @@ class TestServiceClient(unittest.TestCase):
         return super(TestServiceClient, self).setUp()
 
 
+    def test_deprecated_creds(self):
+        """Test that creds parameters gets populated correctly.
+
+        https://github.com/Azure/msrest-for-python/issues/135
+        """
+
+        cfg = Configuration("http://127.0.0.1/")
+        assert cfg.credentials is None
+
+        creds = Authentication()
+
+        client = SDKClient(creds, cfg)
+        assert cfg.credentials is creds
+
     def test_sdk_context_manager(self):
         cfg = Configuration("http://127.0.0.1/")
 
