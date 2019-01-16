@@ -86,7 +86,7 @@ except ImportError:
 _FLATTEN = re.compile(r"(?<!\\)\.")
 
 def attribute_transformer(key, attr_desc, value):
-    """A key transfomer that returns the Python attribute.
+    """A key transformer that returns the Python attribute.
 
     :param str key: The attribute name
     :param dict attr_desc: The attribute metadata
@@ -96,7 +96,7 @@ def attribute_transformer(key, attr_desc, value):
     return (key, value)
 
 def full_restapi_key_transformer(key, attr_desc, value):
-    """A key transfomer that returns the full RestAPI key path.
+    """A key transformer that returns the full RestAPI key path.
 
     :param str _: The attribute name
     :param dict attr_desc: The attribute metadata
@@ -107,7 +107,7 @@ def full_restapi_key_transformer(key, attr_desc, value):
     return ([_decode_attribute_map_key(k) for k in keys], value)
 
 def last_restapi_key_transformer(key, attr_desc, value):
-    """A key transfomer that returns the last RestAPI key.
+    """A key transformer that returns the last RestAPI key.
 
     :param str key: The attribute name
     :param dict attr_desc: The attribute metadata
@@ -259,7 +259,7 @@ class Model(object):
         See the three examples in this file:
 
         - attribute_transformer
-        - full_restapi_key_transfomer
+        - full_restapi_key_transformer
         - last_restapi_key_transformer
 
         :param function key_transformer: A key transformer function.
