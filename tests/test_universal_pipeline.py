@@ -145,6 +145,12 @@ def test_raw_deserializer():
     result = response.context["deserialized_data"]
     assert result["success"] is True
 
+    # JSON with UTF-8 BOM
+    response = build_response(b'\xef\xbb\xbf{"success": true}', content_type="application/json; charset=utf-8")
+    raw_deserializer.on_response(None, response, stream=False)
+    result = response.context["deserialized_data"]
+    assert result["success"] is True
+
     # For compat, if no content-type, decode JSON
     response = build_response(b'"data"')
     raw_deserializer.on_response(None, response, stream=False)
