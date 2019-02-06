@@ -46,6 +46,8 @@ if TYPE_CHECKING:
 
 _LOGGER = logging.getLogger(__name__)
 
+BOM = codecs.BOM_UTF8.decode(encoding='utf-8')
+
 
 class HeadersPolicy(SansIOHTTPPolicy):
     """A simple policy that sends the given headers
@@ -158,9 +160,7 @@ class RawDeserializer(SansIOHTTPPolicy):
             data_as_str = cast(str, data)
 
             # Remove Byte Order Mark if present in string
-            bom = codecs.BOM_UTF8.decode(encoding='utf-8')
-            if data_as_str.startswith(bom):
-                data_as_str = data_as_str.lstrip(bom)
+            data_as_str = data_as_str.lstrip(BOM)
 
         if content_type is None:
             return data
