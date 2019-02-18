@@ -179,6 +179,7 @@ class TestModelDeserialization(unittest.TestCase):
         model = self.d('GenericResource', json.dumps(data), 'application/json')
         self.assertEqual(model.properties['platformFaultDomainCount'], 3)
         self.assertEqual(model.location, 'westus')
+        self.assertGreater(len(model), 0)
 
 class TestRuntimeSerialized(unittest.TestCase):
 

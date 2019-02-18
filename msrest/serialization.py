@@ -173,6 +173,9 @@ class Model(object):
     def __str__(self):
         return str(self.__dict__)
 
+    def __len__(self):
+        return len(self.__dict__)
+
     @classmethod
     def enable_additional_properties_sending(cls):
         if cls.is_xml_model():
