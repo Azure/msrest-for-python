@@ -31,6 +31,7 @@ import logging
 import os
 import xml.etree.ElementTree as ET
 import platform
+import codecs
 
 from typing import Mapping, Any, Optional, AnyStr, Union, IO, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
@@ -44,6 +45,8 @@ if TYPE_CHECKING:
 
 
 _LOGGER = logging.getLogger(__name__)
+
+_BOM = codecs.BOM_UTF8.decode(encoding='utf-8')
 
 
 class HeadersPolicy(SansIOHTTPPolicy):
@@ -155,6 +158,9 @@ class RawDeserializer(SansIOHTTPPolicy):
         else:
             # Explain to mypy the correct type.
             data_as_str = cast(str, data)
+
+            # Remove Byte Order Mark if present in string
+            data_as_str = data_as_str.lstrip(_BOM)
 
         if content_type is None:
             return data

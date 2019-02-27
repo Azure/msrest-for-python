@@ -338,10 +338,10 @@ class HTTPClientResponse(object):
         # type: (str) -> str
         """Return the whole body as a string.
 
-        :param str encoding: The encoding to apply. If None, use "utf-8".
+        :param str encoding: The encoding to apply. If None, use "utf-8-sig".
          Implementation can be smarter if they want (using headers).
         """
-        return self.body().decode(encoding or "utf-8")
+        return self.body().decode(encoding or "utf-8-sig")
 
     def raise_for_status(self):
         """Raise for status. Should be overriden, but basic implementation provided.
