@@ -784,6 +784,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         with self.assertRaises(SerializationError):
             self.s.serialize_iter("I am a string", 'str')
 
+    def test_serialize_int_as_iter_with_div(self):
+        # https://github.com/Azure/azure-sdk-for-python/issues/4501
+        assert self.s.serialize_iter([1,2,3,4], "int", ",") == "1,2,3,4"
+
     def test_serialize_from_dict_datetime(self):
         class DateTimeTest(Model):
             _attribute_map = {
