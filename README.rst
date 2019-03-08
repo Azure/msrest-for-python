@@ -20,6 +20,16 @@ To install:
 Release History
 ---------------
 
+2019-03-11 Version 0.6.5
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix list of integers serialization if div is provided #151
+- Fix parsing of UTF8 with BOM #145
+
+Thanks to eduardomourar for his contribution
+
 2019-01-09 Version 0.6.4
 ++++++++++++++++++++++++
 
