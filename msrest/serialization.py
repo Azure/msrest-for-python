@@ -785,7 +785,7 @@ class Serializer(object):
                 serialized.append(None)
 
         if div:
-            serialized = ['' if s is None else s for s in serialized]
+            serialized = ['' if s is None else str(s) for s in serialized]
             serialized = div.join(serialized)
 
         if 'xml' in serialization_ctxt:
