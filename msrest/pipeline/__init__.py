@@ -323,3 +323,5 @@ try:
     __all__ += _async_all
 except SyntaxError: # Python 2
     pass
+except ImportError: # pyinstaller won't include Py3 files in Py2.7 mode
+    pass
