@@ -20,6 +20,16 @@ To install:
 Release History
 ---------------
 
+2019-03-21 Version 0.6.6
+++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Make 0.6.x series compatible with pyinstaller again
+- sdist now includes tests
+
+Thanks to dotlambda for the contribution
+
 2019-03-11 Version 0.6.5
 ++++++++++++++++++++++++
 
@@ -28,7 +38,7 @@ Release History
 - Fix list of integers serialization if div is provided #151
 - Fix parsing of UTF8 with BOM #145
 
-Thanks to eduardomourar for his contribution
+Thanks to eduardomourar for the contribution
 
 2019-01-09 Version 0.6.4
 ++++++++++++++++++++++++
@@ -97,7 +107,7 @@ Thanks to eduardomourar for his contribution
 
 - Fix "long" on Python 2 if used with the "object" type  #121
 
-Thanks to robgolding for his contribution
+Thanks to robgolding for the contribution
 
 2018-09-04 Version 0.5.5
 ++++++++++++++++++++++++
@@ -147,7 +157,7 @@ This release likely breaks already generated XML SDKs, that needs to be regenera
 - Lower Accept header overwrite logging message #110
 - Fix 'object' type and XML format
 
-Thanks to dharmab for his contribution
+Thanks to dharmab for the contribution
 
 2018-06-12 Version 0.5.0
 ++++++++++++++++++++++++
@@ -359,7 +369,7 @@ This means for users of "msrestazure", that they are guaranted that all AD class
 - Add a flag to Serializer to disable client-side-validation (#51)
 - Remove "import requests" from "exceptions.py" for apps that require fast loading time (#23)
 
-Thank you to jayden-at-arista for his contribution
+Thank you to jayden-at-arista for the contribution
 
 2017-08-23 Version 0.4.14
 +++++++++++++++++++++++++
