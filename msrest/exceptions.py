@@ -55,7 +55,11 @@ def raise_with_traceback(exception, message="", *args, **kwargs):
 
 
 class ClientException(Exception):
-    """Base exception for all Client Runtime exceptions."""
+    """Base exception for all Client Runtime exceptions.
+
+    :param str message: Description of exception.
+    :param Exception inner_exception: Nested exception (optional).
+    """
 
     def __init__(self, message, inner_exception=None, *args, **kwargs):
         # type: (str, Any, str, str) -> None
@@ -80,7 +84,12 @@ class TokenExpiredError(ClientException):
 
 
 class ValidationError(ClientException):
-    """Request parameter validation failed."""
+    """Request parameter validation failed.
+
+    :param str rule: Validation rule.
+    :param str target: Target value for the rule.
+    :param str value: Value that was invalid.
+    """
 
     _messages = {
         "min_length": "must have length greater than {!r}.",
@@ -133,6 +142,7 @@ class HttpOperationError(ClientException):
     :param requests.Response response: Server response
     :param str resp_type: Objects type to deserialize response.
     :param args: Additional args to pass to exception object.
+    :ivar error: Deserialized error object.
     """
     _DEFAULT_MESSAGE = "Unknown error"
 
