@@ -142,7 +142,7 @@ class HttpOperationError(ClientException):
     :param requests.Response response: Server response
     :param str resp_type: Objects type to deserialize response.
     :param args: Additional args to pass to exception object.
-    :ivar error: Deserialized error object.
+    :ivar Model error: Deserialized error model.
     """
     _DEFAULT_MESSAGE = "Unknown error"
 
