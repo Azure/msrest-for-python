@@ -729,6 +729,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         date_str = Serializer.serialize_iso(date_obj)
         assert date_str == '2012-02-24T00:53:52.780Z'
 
+        date_str_in = "2019-06-10T10:50:10.1234567890123456789Z"
+        date_str_out = Serializer.serialize_iso(date_str_in)
+        assert date_str_in is date_str_out
+
     def test_serialize_primitive_types(self):
 
         a = self.s.serialize_data(1, 'int')

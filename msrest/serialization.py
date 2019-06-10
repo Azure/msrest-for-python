@@ -997,6 +997,7 @@ class Serializer(object):
 
     @staticmethod
     def serialize_iso(attr, **kwargs):
+        # (Union[str, datetime.datetime], Dict[str, Any]) -> str
         """Serialize Datetime object into ISO-8601 formatted string.
 
         :param Datetime attr: Object to be serialized.
@@ -1004,7 +1005,9 @@ class Serializer(object):
         :raises: SerializationError if format invalid.
         """
         if isinstance(attr, str):
-            attr = isodate.parse_datetime(attr)
+            # Just check if valid date, and return it as-is
+            isodate.parse_datetime(attr)
+            return attr
         try:
             if not attr.tzinfo:
                 _LOGGER.warning(
