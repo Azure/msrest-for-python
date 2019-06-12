@@ -250,4 +250,22 @@ class TopicCredentials(ApiKeyCredentials):
                 self._topic_key_header: topic_key,
             }
         )
-    
+
+class DomainCredentials(ApiKeyCredentials):
+    """Event Grid domain authentication.
+
+    :param str domain_key: The Event Grid domain key
+    """
+
+    _domain_key_header = 'aeg-sas-key'
+
+    def __init__(self, domain_key):
+        # type: (str) -> None
+        if not domain_key:
+            raise ValueError("Domain key cannot be None")
+        super(DomainCredentials, self).__init__(
+            in_headers={
+                self._domain_key_header: domain_key,
+            }
+        )
+        
