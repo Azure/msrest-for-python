@@ -20,6 +20,15 @@ To install:
 Release History
 ---------------
 
+2019-06-12 Version 0.6.7
+++++++++++++++++++++++++
+
+**Features**
+
+- Add DomainCredentials credentials for EventGrid
+
+Thanks to kalyanaj for the contribution
+
 2019-03-21 Version 0.6.6
 ++++++++++++++++++++++++
 
