@@ -1130,6 +1130,8 @@ def xml_key_extractor(attr, attr_desc, data):
     # - Internal type is an enum (considered basic types)
     # - Internal type has no XML/Name node
     if is_wrapped or (internal_type and (issubclass(internal_type, Enum) or 'name' not in internal_type._xml_map)):
+        if not is_wrapped:
+            xml_name = xml_desc.get("itemsName", xml_name)
         children = data.findall(xml_name, ns)
     # If internal type has a local name and it's not a list, I use that name
     elif not is_iter_type and internal_type and 'name' in internal_type._xml_map:
