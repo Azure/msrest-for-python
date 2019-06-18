@@ -33,6 +33,11 @@ import threading
 from typing import TYPE_CHECKING, List, Callable, Iterator, Any, Union, Dict, Optional  # pylint: disable=unused-import
 import warnings
 
+try:
+    from configparser import NoOptionError
+except ImportError:
+    from ConfigParser import NoOptionError  # type: ignore
+
 from oauthlib import oauth2
 import requests
 from requests.models import CONTENT_CHUNK_SIZE
