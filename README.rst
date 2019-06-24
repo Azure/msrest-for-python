@@ -20,6 +20,17 @@ To install:
 Release History
 ---------------
 
+2019-06-24 Version 0.6.8
+++++++++++++++++++++++++
+
+**BugFixes**
+
+- Impossible to serialize XML if model contains UTF8 characters on Python 2.7  #165
+- Impossible to deserialize a HTTP response as XML if body contains UTF8 characters on Python 2.7  #165
+- Loading a serialized configuration fails with NameError on NoOptionError  #162
+
+Thanks to cclauss for the contribution
+
 2019-06-12 Version 0.6.7
 ++++++++++++++++++++++++
 
