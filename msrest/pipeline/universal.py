@@ -174,9 +174,9 @@ class RawDeserializer(SansIOHTTPPolicy):
             try:
 
                 try:
-                    if isinstance(data, unicode):
+                    if isinstance(data, unicode):  # type: ignore
                         # If I'm Python 2.7 and unicode XML will scream if I try a "fromstring" on unicode string
-                        data_as_str = data_as_str.encode(encoding="utf-8")
+                        data_as_str = data_as_str.encode(encoding="utf-8")  # type: ignore
                 except NameError:
                     pass
 
