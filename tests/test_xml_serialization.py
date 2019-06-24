@@ -86,8 +86,8 @@ class TestXmlDeserialization:
 
     def test_basic_unicode(self):
         """Test a XML with unicode."""
-        basic_xml = """<?xml version="1.0" encoding="utf-8"?>
-            <Data language="français">"""
+        basic_xml = u"""<?xml version="1.0" encoding="utf-8"?>
+            <Data language="français"/>"""
 
         class XmlModel(Model):
             _attribute_map = {
@@ -100,7 +100,7 @@ class TestXmlDeserialization:
         s = Deserializer({"XmlModel": XmlModel})
         result = s(XmlModel, basic_xml, "application/xml")
 
-        assert result.country == u"français"
+        assert result.language == u"français"
 
     def test_add_prop(self):
         """Test addProp as a dict.
@@ -473,8 +473,8 @@ class TestXmlSerialization:
 
     def test_basic_unicode(self):
         """Test a XML with unicode."""
-        basic_xml = """<?xml version="1.0" encoding="utf-8"?>
-            <Data language="français">"""
+        basic_xml = ET.fromstring(u"""<?xml version="1.0" encoding="utf-8"?>
+            <Data language="français"/>""".encode("utf-8"))
 
         class XmlModel(Model):
             _attribute_map = {
