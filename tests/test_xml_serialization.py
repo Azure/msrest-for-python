@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 #--------------------------------------------------------------------------
 #
 # Copyright (c) Microsoft Corporation. All rights reserved.
@@ -82,6 +83,24 @@ class TestXmlDeserialization:
         assert result.country == "france"
         assert result.empty_string == ""
         assert result.not_set is None
+
+    def test_basic_unicode(self):
+        """Test a XML with unicode."""
+        basic_xml = u"""<?xml version="1.0" encoding="utf-8"?>
+            <Data language="français"/>"""
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'language': {'key': 'language', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        s = Deserializer({"XmlModel": XmlModel})
+        result = s(XmlModel, basic_xml, "application/xml")
+
+        assert result.language == u"français"
 
     def test_add_prop(self):
         """Test addProp as a dict.
@@ -451,6 +470,29 @@ class TestXmlSerialization:
         rawxml = s.body(mymodel, 'XmlModel')
 
         assert_xml_equals(rawxml, basic_xml)
+
+    def test_basic_unicode(self):
+        """Test a XML with unicode."""
+        basic_xml = ET.fromstring(u"""<?xml version="1.0" encoding="utf-8"?>
+            <Data language="français"/>""".encode("utf-8"))
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'language': {'key': 'language', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            language=u"français"
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
 
     @pytest.mark.skipif(sys.version_info < (3,6),
                         reason="Dict ordering not guaranted before 3.6, makes this complicated to test.")

@@ -746,13 +746,16 @@ class Serializer(object):
         :param data: Object to be serialized.
         :rtype: str
         """
-        try:
+        try:  # If I received an enum, return its value
             return data.value
         except AttributeError:
             pass
+
         try:
             if isinstance(data, unicode):
-                return data.encode(encoding='utf-8')
+                # Don't change it, JSON and XML ElementTree are totally able
+                # to serialize correctly u'' strings
+                return data
         except NameError:
             return str(data)
         else:
