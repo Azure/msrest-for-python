@@ -91,7 +91,7 @@ class TestXmlDeserialization:
 
         class XmlModel(Model):
             _attribute_map = {
-                'language': {'key': 'country', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
+                'language': {'key': 'language', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
             }
             _xml_map = {
                 'name': 'Data'
@@ -478,7 +478,7 @@ class TestXmlSerialization:
 
         class XmlModel(Model):
             _attribute_map = {
-                'language': {'key': 'country', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
+                'language': {'key': 'language', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
             }
             _xml_map = {
                 'name': 'Data'
