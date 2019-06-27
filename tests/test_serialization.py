@@ -1260,10 +1260,11 @@ class TestRuntimeSerialized(unittest.TestCase):
             https://github.com/Azure/msrest-for-python/pull/121
         """
 
-        if sys.version_info > (3,):
-            long_type = int
-        else:
+        try:
             long_type = long
+        except NameError:
+            long_type = int
+ 
 
         class TestModel(Model):
             _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
@@ -2197,10 +2198,11 @@ class TestRuntimeDeserialized(unittest.TestCase):
             https://github.com/Azure/msrest-for-python/pull/121
         """
 
-        if sys.version_info > (3,):
-            long_type = int
-        else:
+        try:
             long_type = long
+        except NameError:
+            long_type = int
+
 
         class TestModel(Model):
             _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
