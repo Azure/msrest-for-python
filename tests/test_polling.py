@@ -107,7 +107,7 @@ class PollingTwoSteps(PollingMethod):
 @pytest.fixture
 def client():
     # We need a ServiceClient instance, but the poller itself don't use it, so we don't need
-    # Something functionnal
+    # Something functional
     return ServiceClient(None, Configuration("http://example.org"))
 
 def test_poller(client):

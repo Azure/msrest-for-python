@@ -13,7 +13,7 @@ from msrest.serialization import Model
 
 
 class ServiceSasParameters(Model):
-    """The parameters to list service SAS credentials of a speicific resource.
+    """The parameters to list service SAS credentials of a specific resource.
 
     :param canonicalized_resource: The canonical path to the signed resource.
     :type canonicalized_resource: str
