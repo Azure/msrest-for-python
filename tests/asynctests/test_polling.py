@@ -110,7 +110,7 @@ class PollingTwoSteps(AsyncPollingMethod):
 @pytest.fixture
 def client():
     # We need a ServiceClientAsync instance, but the poller itself don't use it, so we don't need
-    # Something functionnal
+    # Something functional
     return ServiceClientAsync(Configuration("http://example.org"))
 
 @pytest.mark.asyncio
