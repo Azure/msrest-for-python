@@ -32,6 +32,7 @@ import os
 import xml.etree.ElementTree as ET
 import platform
 import codecs
+import re
 
 from typing import Mapping, Any, Optional, AnyStr, Union, IO, cast, TYPE_CHECKING  # pylint: disable=unused-import
 
@@ -129,10 +130,9 @@ class HTTPLogger(SansIOHTTPPolicy):
 
 class RawDeserializer(SansIOHTTPPolicy):
 
-    JSON_MIMETYPES = [
-        'application/json',
-        'text/json' # Because we're open minded people...
-    ]
+    # Accept "text" because we're open minded people...
+    JSON_REGEXP = re.compile(r'(application|text)/([a-z+.]+\+)?json')
+
     # Name used in context
     CONTEXT_NAME = "deserialized_data"
 
@@ -165,7 +165,7 @@ class RawDeserializer(SansIOHTTPPolicy):
         if content_type is None:
             return data
 
-        if content_type in cls.JSON_MIMETYPES:
+        if cls.JSON_REGEXP.fullmatch(content_type):
             try:
                 return json.loads(data_as_str)
             except ValueError as err:

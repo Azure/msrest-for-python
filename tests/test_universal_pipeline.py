@@ -151,6 +151,12 @@ def test_raw_deserializer():
     result = response.context["deserialized_data"]
     assert result["success"] is True
 
+    # Simple JSON with complex content_type
+    response = build_response(b'{"success": true}', content_type="application/vnd.microsoft.appconfig.kv+json")
+    raw_deserializer.on_response(None, response, stream=False)
+    result = response.context["deserialized_data"]
+    assert result["success"] is True
+
     # JSON with UTF-8 BOM
     response = build_response(b'\xef\xbb\xbf{"success": true}', content_type="application/json; charset=utf-8")
     raw_deserializer.on_response(None, response, stream=False)
