@@ -577,6 +577,9 @@ class Serializer(object):
             errors = _recursive_validate(data_type, data_type, data)
             if errors:
                 raise errors[0]
+
+        if hasattr(data, "serialize"):
+            return data.serialize()
         return self._serialize(data, data_type, **kwargs)
 
     def url(self, name, data, data_type, **kwargs):
