@@ -625,7 +625,7 @@ class Serializer(object):
             if kwargs.get('skip_quote') is True:
                 output = str(output)
             else:
-                output = quote(str(output), safe='')
+                output = quote(str(output), safe=',')
         except SerializationError:
             raise TypeError("{} must be type {}.".format(name, data_type))
         else:
