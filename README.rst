@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2019-07-24 Versopm 0.6.9
+++++++++++++++++++++++++
+
+**Features**
+
+- Accept extensions of JSON mimetype as valid JSON  #167
+
 2019-06-24 Version 0.6.8
 ++++++++++++++++++++++++
 
