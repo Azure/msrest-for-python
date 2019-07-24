@@ -131,7 +131,7 @@ class HTTPLogger(SansIOHTTPPolicy):
 class RawDeserializer(SansIOHTTPPolicy):
 
     # Accept "text" because we're open minded people...
-    JSON_REGEXP = re.compile(r'(application|text)/([a-z+.]+\+)?json')
+    JSON_REGEXP = re.compile(r'^(application|text)/([a-z+.]+\+)?json$')
 
     # Name used in context
     CONTEXT_NAME = "deserialized_data"
@@ -165,7 +165,7 @@ class RawDeserializer(SansIOHTTPPolicy):
         if content_type is None:
             return data
 
-        if cls.JSON_REGEXP.fullmatch(content_type):
+        if cls.JSON_REGEXP.match(content_type):
             try:
                 return json.loads(data_as_str)
             except ValueError as err:
