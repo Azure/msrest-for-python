@@ -123,7 +123,7 @@ class Paged(AsyncPagedMixin, Iterator):
         :return: The current page list
         :rtype: list
         """
-        if self.next_link is None:
+        if self.next_link is None or self.next_link == '':
             raise StopIteration("End of paging")
         self._current_page_iter_index = 0
         self._response = self._get_next(self.next_link)
