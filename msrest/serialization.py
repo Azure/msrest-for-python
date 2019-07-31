@@ -225,7 +225,7 @@ class Model(object):
             validation_result += _recursive_validate(attr_name, attr_type, value)
         return validation_result
 
-    def serialize(self, keep_readonly=False):
+    def serialize(self, keep_readonly=False, **kwargs):
         """Return the JSON that would be sent to azure from this model.
 
         This is an alias to `as_dict(full_restapi_key_transformer, keep_readonly=False)`.
@@ -235,9 +235,9 @@ class Model(object):
         :rtype: dict
         """
         serializer = Serializer(self._infer_class_models())
-        return serializer._serialize(self, keep_readonly=keep_readonly)
+        return serializer._serialize(self, keep_readonly=keep_readonly, **kwargs)
 
-    def as_dict(self, keep_readonly=True, key_transformer=attribute_transformer):
+    def as_dict(self, keep_readonly=True, key_transformer=attribute_transformer, **kwargs):
         """Return a dict that can be JSONify using json.dump.
 
         Advanced usage might optionaly use a callback as parameter:
@@ -267,7 +267,7 @@ class Model(object):
         :rtype: dict
         """
         serializer = Serializer(self._infer_class_models())
-        return serializer._serialize(self, key_transformer=key_transformer, keep_readonly=keep_readonly)
+        return serializer._serialize(self, key_transformer=key_transformer, keep_readonly=keep_readonly, **kwargs)
 
     @classmethod
     def _infer_class_models(cls):
@@ -577,6 +577,8 @@ class Serializer(object):
             errors = _recursive_validate(data_type, data_type, data)
             if errors:
                 raise errors[0]
+        if hasattr(data, "serialize"):
+            return data.serialize(**kwargs)
         return self._serialize(data, data_type, **kwargs)
 
     def url(self, name, data, data_type, **kwargs):
