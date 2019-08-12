@@ -1605,10 +1605,13 @@ class Deserializer(object):
     def deserialize_enum(data, enum_obj):
         """Deserialize string into enum object.
 
-        :param str data: response string to be deserialized.
+        If the string is not a valid enum value it will be returned as-is
+        and a warning will be logged.
+
+        :param str data: Response string to be deserialized. If this value is
+         None or invalid it will be returned as-is.
         :param Enum enum_obj: Enum object to deserialize to.
         :rtype: Enum
-        :raises: DeserializationError if string is not valid enum value.
         """
         if isinstance(data, enum_obj) or data is None:
             return data
