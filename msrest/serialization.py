@@ -54,7 +54,7 @@ try:
     unicode_str = unicode  # type: ignore
 except NameError:
     basestring = str  # type: ignore
-    unicode_str = str
+    unicode_str = str  # type: ignore
 
 _LOGGER = logging.getLogger(__name__)
 

@@ -102,7 +102,6 @@ class TestXmlDeserialization:
 
         assert result.language == u"français"
 
-        
     def test_add_prop(self):
         """Test addProp as a dict.
         """
@@ -494,7 +493,6 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
-
     def test_nested_unicode(self):
 
         class XmlModel(Model):
@@ -517,7 +515,6 @@ class TestXmlSerialization:
         body = s.body(mymodel_with_unicode, 'XmlModel')
         xml_content = ET.tostring(body, encoding="utf8")
         assert xml_content == b"<?xml version='1.0' encoding='utf8'?>\n<Message><MessageText>message1\xe3\x9a\x88</MessageText></Message>"
-
 
     @pytest.mark.skipif(sys.version_info < (3,6),
                         reason="Dict ordering not guaranted before 3.6, makes this complicated to test.")
