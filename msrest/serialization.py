@@ -1610,7 +1610,7 @@ class Deserializer(object):
         :rtype: Enum
         :raises: DeserializationError if string is not valid enum value.
         """
-        if isinstance(data, enum_obj):
+        if isinstance(data, enum_obj) or data is None:
             return data
         if isinstance(data, Enum):
             data = data.value
