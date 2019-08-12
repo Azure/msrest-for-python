@@ -51,8 +51,10 @@ from .exceptions import (
 
 try:
     basestring  # type: ignore
+    unicode_str = unicode  # type: ignore
 except NameError:
     basestring = str  # type: ignore
+    unicode_str = str
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -513,7 +515,7 @@ class Serializer(object):
                                 xml_desc.get('prefix', None),
                                 xml_desc.get('ns', None)
                             )
-                            local_node.text = str(new_attr)
+                            local_node.text = unicode_str(new_attr)
                             serialized.append(local_node)
                     else: # JSON
                         for k in reversed(keys):
