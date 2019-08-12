@@ -169,25 +169,25 @@ class TestModelDeserialization(unittest.TestCase):
             success = "success"
             failed = "failed"
 
-        s = Deserializer({"StatusType": StatusType})
+        d = Deserializer({"StatusType": StatusType})
 
         with self.assertRaises(AssertionError):
             with self.assertLogs('msrest.serialization', level='WARNING') as cm:
-                result = s(StatusType, "failed")
-        assert len(cm.output) == 0
-        assert result == StatusType.failed
+                result = d(StatusType, "failed")
+        self.assertEqual(len(cm.output), 0)
+        self.assertEqual(result, StatusType.failed)
 
         with self.assertRaises(AssertionError):
             with self.assertLogs('msrest.serialization', level='WARNING') as cm:
-                result = s(StatusType, None)
-        assert len(cm.output) == 0
-        assert result is None
+                result = d(StatusType, None)
+        self.assertEqual(len(cm.output), 0)
+        self.assertEqual(result, None)
 
         with self.assertLogs('msrest.serialization', level='WARNING') as cm:
-            result = s(StatusType, "aborted")
+            result = d(StatusType, "aborted")
         self.assertEqual(result, 'aborted')
         self.assertEqual(len(cm.output), 1)
-        assert cm.output[0].endswith("Deserializer is not able to find aborted as valid enum in <enum 'StatusType'>")
+        self.assertTrue("Deserializer is not able to find aborted as valid enum" in cm.output[0])
 
     def test_response(self):
 
