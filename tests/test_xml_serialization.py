@@ -422,6 +422,35 @@ class TestXmlDeserialization:
 
         assert [apple.name for apple in result.good_apples] == ["granny", "fuji"]
 
+    def test_basic_additional_properties(self):
+        """Test an ultra basic XML."""
+        basic_xml = """<?xml version="1.0"?>
+            <Metadata>
+              <number>1</number>
+              <name>bob</name>
+            </Metadata>"""
+
+        class XmlModel(Model):
+ 
+            _attribute_map = {
+                'additional_properties': {'key': '', 'type': '{str}', 'xml': {'name': 'additional_properties'}},
+                'encrypted': {'key': 'Encrypted', 'type': 'str', 'xml': {'name': 'Encrypted', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Metadata'
+            }
+
+            def __init__(self, **kwargs):
+                super(XmlModel, self).__init__(**kwargs)
+                self.additional_properties = kwargs.get('additional_properties', None)
+                self.encrypted = kwargs.get('encrypted', None)
+
+        s = Deserializer({"XmlModel": XmlModel})
+        result = s(XmlModel, basic_xml, "application/xml")
+
+        assert result.additional_properties == {'name': 'bob', 'number': '1'}
+        assert result.encrypted is None
+
     def test_basic_namespace(self):
         """Test an ultra basic XML."""
         basic_xml = """<?xml version="1.0"?>

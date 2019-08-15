@@ -1309,10 +1309,13 @@ class Deserializer(object):
         if "additional_properties" in attribute_map and attribute_map.get("additional_properties", {}).get("key") != '':
             # Check empty string. If it's not empty, someone has a real "additionalProperties"
             return None
-        known_json_keys = {_decode_attribute_map_key(_FLATTEN.split(desc['key'])[0])
-                           for desc in attribute_map.values() if desc['key'] != ''}
-        present_json_keys = set(data.keys())
-        missing_keys = present_json_keys - known_json_keys
+        if attribute_map.get("additional_properties", {}).get("xml") and isinstance(data, ET.Element):
+            data = {el.tag: el.text for el in data}
+
+        known_keys = {_decode_attribute_map_key(_FLATTEN.split(desc['key'])[0])
+                      for desc in attribute_map.values() if desc['key'] != ''}
+        present_keys = set(data.keys())
+        missing_keys = present_keys - known_keys
         return {key: data[key] for key in missing_keys}
 
     def _classify_target(self, target, data):
