@@ -150,7 +150,8 @@ class Model(object):
     _validation = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, **kwargs):
-        if not self.is_xml_model():
+        is_xml_model_serialization = kwargs.get("is_xml", False)
+        if not self.is_xml_model() and not is_xml_model_serialization:
             self.additional_properties = {}
         for k in kwargs:
             if k not in self._attribute_map:
@@ -422,15 +423,6 @@ class Serializer(object):
         self.key_transformer = full_restapi_key_transformer
         self.client_side_validation = True
 
-    @staticmethod
-    def _create_serialized_base(target_obj):
-        """Create the base for this serialization.
-
-        - For JSON, it's a simple empty dict
-        - For XML, it's an element (with namespace if needed)
-        """
-        return {} if not target_obj.is_xml_model() else target_obj._create_xml_node()
-
     def _serialize(self, target_obj, data_type=None, **kwargs):
         """Serialize data into a string according to type.
 
@@ -463,7 +455,9 @@ class Serializer(object):
         except KeyError:
             is_xml_model_serialization = kwargs.setdefault("is_xml", target_obj.is_xml_model())
 
-        serialized = self._create_serialized_base(target_obj)  # Could be JSON or XML
+        serialized = {}
+        if is_xml_model_serialization:
+            serialized = target_obj._create_xml_node()
         try:
             attributes = target_obj._attribute_map
             for attr, attr_desc in attributes.items():
@@ -478,7 +472,7 @@ class Serializer(object):
                 try:
                     ### Extract sub-data to serialize from model ###
                     orig_attr = getattr(target_obj, attr)
-                    if target_obj.is_xml_model():
+                    if is_xml_model_serialization or target_obj.is_xml_model():
                         pass # Don't provide "transformer" for XML for now. Keep "orig_attr"
                     else: # JSON
                         keys, orig_attr = key_transformer(attr, attr_desc.copy(), orig_attr)
@@ -552,13 +546,14 @@ class Serializer(object):
         # Just in case this is a dict
         internal_data_type = data_type.strip('[]{}')
         internal_data_type = self.dependencies.get(internal_data_type, None)
+        is_xml_model_serialization = kwargs.get("is_xml", False)
         if internal_data_type and not isinstance(internal_data_type, Enum):
             try:
                 deserializer = Deserializer(self.dependencies)
                 # Since it's on serialization, it's almost sure that format is not JSON REST
                 # We're not able to deal with additional properties for now.
                 deserializer.additional_properties_detection = False
-                if issubclass(internal_data_type, Model) and internal_data_type.is_xml_model():
+                if issubclass(internal_data_type, Model) and (internal_data_type.is_xml_model() or is_xml_model_serialization):
                     deserializer.key_extractors = [
                         attribute_key_case_insensitive_extractor,
                     ]
@@ -726,8 +721,8 @@ class Serializer(object):
         Serializes objects to str, int, float or bool.
 
         Possible kwargs:
-        - is_xml bool : If set, adapt basic serializers without the need for basic_types_serializers
         - basic_types_serializers dict[str, callable] : If set, use the callable as serializer
+        - is_xml bool : If set, use xml_basic_types_serializers
 
         :param data: Object to be serialized.
         :param str data_type: Type of object in the iterable.
