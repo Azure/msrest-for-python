@@ -145,7 +145,7 @@ class LROPoller(object):
         """Start the long running operation.
         On completion, runs any callbacks.
 
-        :param callable update_cmd: The API reuqest to check the status of
+        :param callable update_cmd: The API request to check the status of
          the operation.
         """
         try:

@@ -163,6 +163,32 @@ class TestModelDeserialization(unittest.TestCase):
         self.assertEqual(len(cm.output), 1)
         self.assertIn("not a known attribute", cm.output[0])
 
+    @unittest.skipIf(sys.version_info < (3,4), "assertLogs not supported before 3.4")
+    def test_empty_enum_logs(self):
+        class StatusType(str, Enum):
+            success = "success"
+            failed = "failed"
+
+        d = Deserializer({"StatusType": StatusType})
+
+        with self.assertRaises(AssertionError):
+            with self.assertLogs('msrest.serialization', level='WARNING') as cm:
+                result = d(StatusType, "failed")
+        self.assertEqual(len(cm.output), 0)
+        self.assertEqual(result, StatusType.failed)
+
+        with self.assertRaises(AssertionError):
+            with self.assertLogs('msrest.serialization', level='WARNING') as cm:
+                result = d(StatusType, None)
+        self.assertEqual(len(cm.output), 0)
+        self.assertEqual(result, None)
+
+        with self.assertLogs('msrest.serialization', level='WARNING') as cm:
+            result = d(StatusType, "aborted")
+        self.assertEqual(result, 'aborted')
+        self.assertEqual(len(cm.output), 1)
+        self.assertTrue("Deserializer is not able to find aborted as valid enum" in cm.output[0])
+
     def test_response(self):
 
         data = {
