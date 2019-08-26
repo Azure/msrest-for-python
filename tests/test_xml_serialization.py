@@ -493,6 +493,28 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    def test_nested_unicode(self):
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'message_text': {'key': 'MessageText', 'type': 'str', 'xml': {'name': 'MessageText'}},
+            }
+        
+            _xml_map = {
+                'name': 'Message'
+            }
+
+        mymodel_no_unicode = XmlModel(message_text=u'message1')
+        s = Serializer({"XmlModel": XmlModel})
+        body = s.body(mymodel_no_unicode, 'XmlModel')
+        xml_content = ET.tostring(body, encoding="utf8")
+        assert xml_content == b"<?xml version='1.0' encoding='utf8'?>\n<Message><MessageText>message1</MessageText></Message>"
+
+        mymodel_with_unicode = XmlModel(message_text=u'message1㚈')
+        s = Serializer({"XmlModel": XmlModel})
+        body = s.body(mymodel_with_unicode, 'XmlModel')
+        xml_content = ET.tostring(body, encoding="utf8")
+        assert xml_content == b"<?xml version='1.0' encoding='utf8'?>\n<Message><MessageText>message1\xe3\x9a\x88</MessageText></Message>"
 
     @pytest.mark.skipif(sys.version_info < (3,6),
                         reason="Dict ordering not guaranted before 3.6, makes this complicated to test.")
