@@ -472,7 +472,7 @@ class Serializer(object):
                 try:
                     ### Extract sub-data to serialize from model ###
                     orig_attr = getattr(target_obj, attr)
-                    if is_xml_model_serialization or target_obj.is_xml_model():
+                    if is_xml_model_serialization:
                         pass # Don't provide "transformer" for XML for now. Keep "orig_attr"
                     else: # JSON
                         keys, orig_attr = key_transformer(attr, attr_desc.copy(), orig_attr)
@@ -546,14 +546,20 @@ class Serializer(object):
         # Just in case this is a dict
         internal_data_type = data_type.strip('[]{}')
         internal_data_type = self.dependencies.get(internal_data_type, None)
-        is_xml_model_serialization = kwargs.get("is_xml", False)
+        try:
+            is_xml_model_serialization = kwargs["is_xml"]
+        except KeyError:
+            if internal_data_type and issubclass(internal_data_type, Model):
+                is_xml_model_serialization = kwargs.setdefault("is_xml", internal_data_type.is_xml_model())
+            else:
+                is_xml_model_serialization = False
         if internal_data_type and not isinstance(internal_data_type, Enum):
             try:
                 deserializer = Deserializer(self.dependencies)
                 # Since it's on serialization, it's almost sure that format is not JSON REST
                 # We're not able to deal with additional properties for now.
                 deserializer.additional_properties_detection = False
-                if issubclass(internal_data_type, Model) and (internal_data_type.is_xml_model() or is_xml_model_serialization):
+                if is_xml_model_serialization:
                     deserializer.key_extractors = [
                         attribute_key_case_insensitive_extractor,
                     ]

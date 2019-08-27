@@ -1275,6 +1275,27 @@ class TestRuntimeSerialized(unittest.TestCase):
             'data': {'id': long_type(1)}
         }
 
+    def test_json_with_xml_map(self):
+        basic_json = {'age': 37, 'country': 'france'}
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age'}},
+                'country': {'key': 'country', 'type': 'str', 'xml':{'name': 'country', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            age=37,
+            country="france",
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel', is_xml=False)
+
+        assert rawxml==basic_json
 
 class TestRuntimeDeserialized(unittest.TestCase):
 
