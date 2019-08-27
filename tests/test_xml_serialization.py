@@ -431,7 +431,7 @@ class TestXmlDeserialization:
             </Metadata>"""
 
         class XmlModel(Model):
- 
+
             _attribute_map = {
                 'additional_properties': {'key': '', 'type': '{str}', 'xml': {'name': 'additional_properties'}},
                 'encrypted': {'key': 'Encrypted', 'type': 'str', 'xml': {'name': 'Encrypted', 'attr': True}},
@@ -528,7 +528,7 @@ class TestXmlSerialization:
             _attribute_map = {
                 'message_text': {'key': 'MessageText', 'type': 'str', 'xml': {'name': 'MessageText'}},
             }
-        
+
             _xml_map = {
                 'name': 'Message'
             }
@@ -928,3 +928,435 @@ class TestXmlSerialization:
 
         assert_xml_equals(rawxml, basic_xml)
 
+    def test_basic_is_xml(self):
+        """Test an ultra basic XML."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data country="france">
+                <Age>37</Age>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age'}},
+                'country': {'key': 'country', 'type': 'str', 'xml':{'name': 'country', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            age=37,
+            country="france",
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_basic_unicode_is_xml(self):
+        """Test a XML with unicode."""
+        basic_xml = ET.fromstring(u"""<?xml version="1.0" encoding="utf-8"?>
+            <Data language="français"/>""".encode("utf-8"))
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'language': {'key': 'language', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            language=u"français"
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+
+    @pytest.mark.skipif(sys.version_info < (3,6),
+                        reason="Dict ordering not guaranted before 3.6, makes this complicated to test.")
+    def test_add_prop_is_xml(self):
+        """Test addProp as a dict.
+        """
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data>
+                <Metadata>
+                  <Key1>value1</Key1>
+                  <Key2>value2</Key2>
+                </Metadata>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'metadata': {'key': 'Metadata', 'type': '{str}', 'xml': {'name': 'Metadata'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            metadata={
+                'Key1': 'value1',
+                'Key2': 'value2',
+            }
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_object_is_xml(self):
+        """Test serialize object as is.
+        """
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data country="france">
+                <Age>37</Age>
+            </Data>""")
+
+        s = Serializer()
+        rawxml = s.body(basic_xml, 'object', is_xml=True)
+
+        # It should actually be the same object, should not even try to touch it
+        assert rawxml is basic_xml
+
+    @pytest.mark.skipif(sys.version_info < (3,6),
+                        reason="Unstable before python3.6 for some reasons")
+    def test_type_basic_is_xml(self):
+        """Test some types."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data>
+                <Age>37</Age>
+                <Enabled>true</Enabled>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age'}},
+                'enabled': {'key': 'enabled', 'type': 'bool', 'xml':{'name': 'Enabled'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            age=37,
+            enabled=True
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_direct_array_is_xml(self):
+        """Test an ultra basic XML."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <bananas>
+               <Data country="france"/>
+            </bananas>
+            """)
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'country': {'key': 'country', 'type': 'str', 'xml':{'name': 'country', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            country="france"
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(
+            [mymodel],
+            '[XmlModel]',
+            serialization_ctxt={'xml': {'name': 'bananas', 'wrapped': True}},
+            is_xml=True
+        )
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_wrapped_basic_types_is_xml(self):
+        """Test XML list and wrap, items is basic type and there is no itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <GoodApples>granny</GoodApples>
+                  <GoodApples>fuji</GoodApples>
+                </GoodApples>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples', 'wrapped': True}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=['granny', 'fuji']
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel})
+        rawxml = s.body(mymodel, 'AppleBarrel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_not_wrapped_basic_types_is_xml(self):
+        """Test XML list and no wrap, items is basic type and there is no itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>granny</GoodApples>
+                <GoodApples>fuji</GoodApples>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[str]', 'xml': {'name': 'GoodApples'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=['granny', 'fuji']
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel})
+        rawxml = s.body(mymodel, 'AppleBarrel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_wrapped_items_name_complex_types_is_xml(self):
+        """Test XML list and wrap, items is ref and there is itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <Apple name="granny"/>
+                  <Apple name="fuji"/>
+                </GoodApples>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                # Pomme should be ignored, since it's invalid to define itemsName for a $ref type
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'wrapped': True, 'itemsName': 'Pomme'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_not_wrapped_items_name_complex_types_is_xml(self):
+        """Test XML list and wrap, items is ref and there is itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <Apple name="granny"/>
+                <Apple name="fuji"/>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                # Pomme should be ignored, since it's invalid to define itemsName for a $ref type
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'itemsName': 'Pomme'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_wrapped_complex_types_is_xml(self):
+        """Test XML list and wrap, items is ref and there is no itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <GoodApples>
+                  <Apple name="granny"/>
+                  <Apple name="fuji"/>
+                </GoodApples>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples', 'wrapped': True}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    def test_list_not_wrapped_complex_types_is_xml(self):
+        """Test XML list and wrap, items is ref and there is no itemsName.
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <Apple name="granny"/>
+                <Apple name="fuji"/>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                # Name is ignored if "wrapped" is False
+                'good_apples': {'key': 'GoodApples', 'type': '[Apple]', 'xml': {'name': 'GoodApples'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+                'name': 'Apple'
+            }
+
+        mymodel = AppleBarrel(
+            good_apples=[
+                Apple(name='granny'),
+                Apple(name='fuji')
+            ]
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    @pytest.mark.skipif(sys.version_info < (3,6),
+                        reason="Unstable before python3.6 for some reasons")
+    def test_two_complex_same_type_is_xml(self):
+        """Two different attribute are same type
+        """
+
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <AppleBarrel>
+                <EuropeanApple name="granny"/>
+                <USAApple name="fuji"/>
+            </AppleBarrel>""")
+
+        class AppleBarrel(Model):
+            _attribute_map = {
+                'eu_apple': {'key': 'EuropeanApple', 'type': 'Apple', 'xml': {'name': 'EuropeanApple'}},
+                'us_apple': {'key': 'USAApple', 'type': 'Apple', 'xml': {'name': 'USAApple'}},
+            }
+            _xml_map = {
+                'name': 'AppleBarrel'
+            }
+
+        class Apple(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml':{'name': 'name', 'attr': True}},
+            }
+            _xml_map = {
+            }
+
+        mymodel = AppleBarrel(
+            eu_apple=Apple(name='granny'),
+            us_apple=Apple(name='fuji'),
+        )
+
+        s = Serializer({"AppleBarrel": AppleBarrel, "Apple": Apple})
+        rawxml = s.body(mymodel, 'AppleBarrel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+
+    def test_basic_namespace_is_xml(self):
+        """Test an ultra basic XML."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <Data xmlns:fictional="http://characters.example.com">
+                <fictional:Age>37</fictional:Age>
+            </Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'age': {'key': 'age', 'type': 'int', 'xml':{'name': 'Age', 'prefix':'fictional','ns':'http://characters.example.com'}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            age=37,
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
