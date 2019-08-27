@@ -152,8 +152,7 @@ class Model(object):
     _validation = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, **kwargs):
-        if not self.is_xml_model():
-            self.additional_properties = {}
+        self.additional_properties = {}
         for k in kwargs:
             if k not in self._attribute_map:
                 _LOGGER.warning("%s is not a known attribute of class %s and will be ignored", k, self.__class__)
@@ -177,8 +176,6 @@ class Model(object):
 
     @classmethod
     def enable_additional_properties_sending(cls):
-        if cls.is_xml_model():
-            raise ValueError("XML model are not compatible with additionalProperties")
         cls._attribute_map['additional_properties'] = {'key': '', 'type': '{object}'}
 
     @classmethod
@@ -1311,10 +1308,13 @@ class Deserializer(object):
         if "additional_properties" in attribute_map and attribute_map.get("additional_properties", {}).get("key") != '':
             # Check empty string. If it's not empty, someone has a real "additionalProperties"
             return None
-        known_json_keys = {_decode_attribute_map_key(_FLATTEN.split(desc['key'])[0])
-                           for desc in attribute_map.values() if desc['key'] != ''}
-        present_json_keys = set(data.keys())
-        missing_keys = present_json_keys - known_json_keys
+        if isinstance(data, ET.Element):
+            data = {el.tag: el.text for el in data}
+
+        known_keys = {_decode_attribute_map_key(_FLATTEN.split(desc['key'])[0])
+                      for desc in attribute_map.values() if desc['key'] != ''}
+        present_keys = set(data.keys())
+        missing_keys = present_keys - known_keys
         return {key: data[key] for key in missing_keys}
 
     def _classify_target(self, target, data):
