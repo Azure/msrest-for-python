@@ -152,9 +152,7 @@ class Model(object):
     _validation = {}  # type: Dict[str, Dict[str, Any]]
 
     def __init__(self, **kwargs):
-        is_xml_model_serialization = kwargs.get("is_xml", False)
-        if not self.is_xml_model() and not is_xml_model_serialization:
-            self.additional_properties = {}
+        self.additional_properties = {}
         for k in kwargs:
             if k not in self._attribute_map:
                 _LOGGER.warning("%s is not a known attribute of class %s and will be ignored", k, self.__class__)
