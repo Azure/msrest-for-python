@@ -1107,6 +1107,9 @@ def xml_key_extractor(attr, attr_desc, data):
     if 'xml' not in attr_desc:
         return None
 
+    if isinstance(data, dict):
+        return None
+
     xml_desc = attr_desc['xml']
     xml_name = xml_desc['name']
     xml_ns = xml_desc.get('ns', None)
