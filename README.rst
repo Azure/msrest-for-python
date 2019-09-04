@@ -20,7 +20,22 @@ To install:
 Release History
 ---------------
 
-2019-07-24 Versopm 0.6.9
+2019-09-04 Version 0.6.10
++++++++++++++++++++++++++
+
+**Features**
+
+- XML mode now supports OpenAPI additional properties  # 174
+
+**Bugfixes**
+
+- Accept "is_xml" kwargs to force XML serialization  #178
+- Disable XML deserialization if received element is not an ElementTree  #178
+- A "null" enum deserialize as None, and not "None" anymore  #173
+- Fix some UTF8 encoding issue in Python 2.7 and XML mode  #172
+
+
+2019-07-24 Version 0.6.9
 ++++++++++++++++++++++++
 
 **Features**
