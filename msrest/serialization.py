@@ -171,6 +171,10 @@ class Model(object):
         """Compare objects by comparing all attributes."""
         return not self.__eq__(other)
 
+    def __hash__(self):
+        """Compute a hash of this model by hashing all attributes."""
+        return sum([hash('{}:{}'.format(k, v)) for k, v in self.__dict__.items()])
+
     def __str__(self):
         return str(self.__dict__)
 
