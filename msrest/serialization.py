@@ -484,7 +484,7 @@ class Serializer(object):
                     if is_xml_model_serialization:
                         xml_desc = attr_desc['xml']
                         xml_name = xml_desc['name']
-                        if "attr" in xml_desc and xml_desc["attr"]:
+                        if xml_desc.get("attr", False):
                             serialized.set(xml_name, new_attr)
                             continue
                         if isinstance(new_attr, list):
@@ -796,7 +796,7 @@ class Serializer(object):
             xml_name = xml_desc['name']
 
             # Create a wrap node if necessary (use the fact that Element and list have "append")
-            is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+            is_wrapped = xml_desc.get("wrapped", False)
             node_name = xml_desc.get("itemsName", xml_name)
             if is_wrapped:
                 final_result = _create_xml_node(
@@ -1115,7 +1115,7 @@ def xml_key_extractor(attr, attr_desc, data):
     xml_ns = xml_desc.get('ns', None)
 
     # If it's an attribute, that's simple
-    if "attr" in xml_desc and xml_desc["attr"]:
+    if xml_desc.get("attr", False):
         return data.get(xml_name)
 
     # Integrate namespace if necessary
@@ -1127,7 +1127,7 @@ def xml_key_extractor(attr, attr_desc, data):
 
     # Look for a children
     is_iter_type = attr_desc['type'].startswith("[")
-    is_wrapped = "wrapped" in xml_desc and xml_desc["wrapped"]
+    is_wrapped = xml_desc.get("wrapped", False)
     internal_type = attr_desc.get("internalType", None)
 
     # Scenario where I take the local name:
