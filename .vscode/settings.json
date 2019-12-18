@@ -1,7 +1,7 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-    "python.testing.pyTestArgs": [],
-    "python.testing.pyTestEnabled": true,
+    "python.testing.pytestArgs": [],
+    "python.testing.pytestEnabled": true,
     "files.exclude": {
         "**/*.pyc": true
     },
