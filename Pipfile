@@ -8,7 +8,7 @@ name = "pypi"
 
 [dev-packages]
 pytest = "*"
-pytest-cov = "2.8.1"
+pytest-cov = "==2.8.1"
 coverage = "<5.0.0"
 pytest-asyncio = {version = "*", markers="python_version >= '3.5'"}
 httpretty = ">=0.8.10"
