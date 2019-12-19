@@ -188,12 +188,12 @@ class Model(object):
 
     @classmethod
     def _create_xml_node(cls):
-        """Create XML node from "_xml_map".
+        """Create XML node.
         """
         try:
             xml_map = cls._xml_map
         except AttributeError:
-            raise ValueError("This model has no XML definition")
+            xml_map = {}
 
         return _create_xml_node(
             xml_map.get('name', cls.__name__),
@@ -224,19 +224,21 @@ class Model(object):
             validation_result += _recursive_validate(attr_name, attr_type, value)
         return validation_result
 
-    def serialize(self, keep_readonly=False):
+    def serialize(self, keep_readonly=False, **kwargs):
         """Return the JSON that would be sent to azure from this model.
 
         This is an alias to `as_dict(full_restapi_key_transformer, keep_readonly=False)`.
+
+        If you want XML serialization, you can pass the kwargs is_xml=True.
 
         :param bool keep_readonly: If you want to serialize the readonly attributes
         :returns: A dict JSON compatible object
         :rtype: dict
         """
         serializer = Serializer(self._infer_class_models())
-        return serializer._serialize(self, keep_readonly=keep_readonly)
+        return serializer._serialize(self, keep_readonly=keep_readonly, **kwargs)
 
-    def as_dict(self, keep_readonly=True, key_transformer=attribute_transformer):
+    def as_dict(self, keep_readonly=True, key_transformer=attribute_transformer, **kwargs):
         """Return a dict that can be JSONify using json.dump.
 
         Advanced usage might optionaly use a callback as parameter:
@@ -261,12 +263,14 @@ class Model(object):
         - full_restapi_key_transformer
         - last_restapi_key_transformer
 
+        If you want XML serialization, you can pass the kwargs is_xml=True.
+
         :param function key_transformer: A key transformer function.
         :returns: A dict JSON compatible object
         :rtype: dict
         """
         serializer = Serializer(self._infer_class_models())
-        return serializer._serialize(self, key_transformer=key_transformer, keep_readonly=keep_readonly)
+        return serializer._serialize(self, key_transformer=key_transformer, keep_readonly=keep_readonly, **kwargs)
 
     @classmethod
     def _infer_class_models(cls):
@@ -482,8 +486,8 @@ class Serializer(object):
 
                     ### Incorporate this data in the right place ###
                     if is_xml_model_serialization:
-                        xml_desc = attr_desc['xml']
-                        xml_name = xml_desc['name']
+                        xml_desc = attr_desc.get('xml', {})
+                        xml_name = xml_desc.get('name', attr_desc['key'])
                         if xml_desc.get("attr", False):
                             serialized.set(xml_name, new_attr)
                             continue
@@ -764,7 +768,9 @@ class Serializer(object):
         """Serialize iterable.
 
         Supported kwargs:
-        serialization_ctxt dict : The current entry of _attribute_map, or same format. serialization_ctxt['type'] should be same as data_type.
+        - serialization_ctxt dict : The current entry of _attribute_map, or same format.
+          serialization_ctxt['type'] should be same as data_type.
+        - is_xml bool : If set, serialize as XML
 
         :param list attr: Object to be serialized.
         :param str iter_type: Type of object in the iterable.
@@ -778,6 +784,7 @@ class Serializer(object):
             raise SerializationError("Refuse str type as a valid iter type.")
 
         serialization_ctxt = kwargs.get("serialization_ctxt", {})
+        is_xml = kwargs.get("is_xml", False)
 
         serialized = []
         for d in data:
@@ -790,10 +797,12 @@ class Serializer(object):
             serialized = ['' if s is None else str(s) for s in serialized]
             serialized = div.join(serialized)
 
-        if 'xml' in serialization_ctxt:
+        if 'xml' in serialization_ctxt or is_xml:
             # XML serialization is more complicated
-            xml_desc = serialization_ctxt['xml']
-            xml_name = xml_desc['name']
+            xml_desc = serialization_ctxt.get('xml', {})
+            xml_name = xml_desc.get('name')
+            if not xml_name:
+                xml_name = serialization_ctxt['key']
 
             # Create a wrap node if necessary (use the fact that Element and list have "append")
             is_wrapped = xml_desc.get("wrapped", False)
@@ -1103,15 +1112,15 @@ def attribute_key_case_insensitive_extractor(attr, _, data):
     return data.get(found_key)
 
 def xml_key_extractor(attr, attr_desc, data):
-    # Test if this model is XML ready first
-    if 'xml' not in attr_desc:
-        return None
-
     if isinstance(data, dict):
         return None
 
-    xml_desc = attr_desc['xml']
-    xml_name = xml_desc['name']
+    # Test if this model is XML ready first
+    if not isinstance(data, ET.Element):
+        return None
+
+    xml_desc = attr_desc.get('xml', {})
+    xml_name = xml_desc.get('name', attr_desc['key'])
     xml_ns = xml_desc.get('ns', None)
 
     # If it's an attribute, that's simple
@@ -1134,18 +1143,19 @@ def xml_key_extractor(attr, attr_desc, data):
     # - Wrapped node
     # - Internal type is an enum (considered basic types)
     # - Internal type has no XML/Name node
-    if is_wrapped or (internal_type and (issubclass(internal_type, Enum) or 'name' not in internal_type._xml_map)):
+    internal_type_xml_map = getattr(internal_type, "_xml_map", {})
+    if is_wrapped or (internal_type and (issubclass(internal_type, Enum) or 'name' not in internal_type_xml_map)):
         children = data.findall(xml_name, ns)
     # If internal type has a local name and it's not a list, I use that name
-    elif not is_iter_type and internal_type and 'name' in internal_type._xml_map:
-        xml_name = internal_type._xml_map["name"]
-        ns = internal_type._xml_map.get("ns", None)
+    elif not is_iter_type and internal_type and 'name' in internal_type_xml_map:
+        xml_name = internal_type_xml_map["name"]
+        ns = internal_type_xml_map.get("ns", None)
         children = data.findall(xml_name, ns)
     # That's an array
     else:
         if internal_type: # Complex type, ignore itemsName and use the complex type name
-            items_name = internal_type._xml_map["name"]
-            ns = internal_type._xml_map.get("ns", None)
+            items_name = internal_type_xml_map.get('name', internal_type.__name__)
+            ns = internal_type_xml_map.get("ns", None)
         else:
             items_name = xml_desc.get("itemsName", xml_name)
         children = data.findall(items_name, ns)
