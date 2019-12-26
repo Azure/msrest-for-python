@@ -711,7 +711,7 @@ class TestRuntimeSerialized(unittest.TestCase):
 
         with pytest.raises(ValidationError) as err:
             test_obj.validate()
-        assert "Parameter 'attr_e' must be of type 'dictionnary of float'" in str(err.value)
+        assert "Parameter 'attr_e' must be of type 'dict[str, float]'" in str(err.value)
 
         test_obj.attr_e = {"value": "NotAFloat"}
 

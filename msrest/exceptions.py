@@ -111,7 +111,7 @@ class ValidationError(ClientException):
     def _format_message(rule, reason, value):
         if rule == "type" and value.startswith(r"{"):
             internal_type = value.strip(r"{}")
-            value = "dictionnary of {}".format(internal_type)
+            value = "dict[str, {}]".format(internal_type)
         return reason.format(value)
 
     def __init__(self, rule, target, value, *args, **kwargs):
