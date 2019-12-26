@@ -217,6 +217,9 @@ class Model(object):
 
             try:
                 debug_name = "{}.{}".format(self.__class__.__name__, attr_name)
+                # https://github.com/Azure/msrest-for-python/issues/85
+                if value is not None and attr_type in Serializer.basic_types.values():
+                    value = Serializer.serialize_basic(value, attr_type)
                 Serializer.validate(value, debug_name, **self._validation.get(attr_name, {}))
             except ValidationError as validation_error:
                 validation_result.append(validation_error)
@@ -578,6 +581,14 @@ class Serializer(object):
                 raise errors[0]
         return self._serialize(data, data_type, **kwargs)
 
+    def _http_component_validation(self, data, data_type, name, **kwargs):
+        if self.client_side_validation:
+            # https://github.com/Azure/msrest-for-python/issues/85
+            if data is not None and data_type in self.basic_types.values():
+                data = self.serialize_basic(data, data_type, **kwargs)
+            data = self.validate(data, name, required=True, **kwargs)
+        return data
+
     def url(self, name, data, data_type, **kwargs):
         """Serialize data intended for a URL path.
 
@@ -587,8 +598,7 @@ class Serializer(object):
         :raises: TypeError if serialization fails.
         :raises: ValueError if data is None
         """
-        if self.client_side_validation:
-            data = self.validate(data, name, required=True, **kwargs)
+        data = self._http_component_validation(data, data_type, name, **kwargs)
         try:
             output = self.serialize_data(data, data_type, **kwargs)
             if data_type == 'bool':
@@ -612,8 +622,7 @@ class Serializer(object):
         :raises: TypeError if serialization fails.
         :raises: ValueError if data is None
         """
-        if self.client_side_validation:
-            data = self.validate(data, name, required=True, **kwargs)
+        data = self._http_component_validation(data, data_type, name, **kwargs)
         try:
             if data_type in ['[str]']:
                 data = ["" if d is None else d for d in data]
@@ -639,8 +648,7 @@ class Serializer(object):
         :raises: TypeError if serialization fails.
         :raises: ValueError if data is None
         """
-        if self.client_side_validation:
-            data = self.validate(data, name, required=True, **kwargs)
+        data = self._http_component_validation(data, data_type, name, **kwargs)
         try:
             if data_type in ['[str]']:
                 data = ["" if d is None else d for d in data]
@@ -713,14 +721,16 @@ class Serializer(object):
         else:
             return self._serialize(data, **kwargs)
 
-    def _get_custom_serializers(self, data_type, **kwargs):
+    @classmethod
+    def _get_custom_serializers(cls, data_type, **kwargs):
         custom_serializer = kwargs.get("basic_types_serializers", {}).get(data_type)
         if custom_serializer:
             return custom_serializer
         if kwargs.get("is_xml", False):
-            return self._xml_basic_types_serializers.get(data_type)
+            return cls._xml_basic_types_serializers.get(data_type)
 
-    def serialize_basic(self, data, data_type, **kwargs):
+    @classmethod
+    def serialize_basic(cls, data, data_type, **kwargs):
         """Serialize basic builting data type.
         Serializes objects to str, int, float or bool.
 
@@ -731,14 +741,15 @@ class Serializer(object):
         :param data: Object to be serialized.
         :param str data_type: Type of object in the iterable.
         """
-        custom_serializer = self._get_custom_serializers(data_type, **kwargs)
+        custom_serializer = cls._get_custom_serializers(data_type, **kwargs)
         if custom_serializer:
             return custom_serializer(data)
         if data_type == 'str':
-            return self.serialize_unicode(data)
+            return cls.serialize_unicode(data)
         return eval(data_type)(data)
 
-    def serialize_unicode(self, data):
+    @classmethod
+    def serialize_unicode(cls, data):
         """Special handling for serializing unicode strings in Py2.
         Encode to UTF-8 if unicode, otherwise handle as a str.
 

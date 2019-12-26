@@ -245,6 +245,32 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.s = Serializer({'TestObj': self.TestObj})
         return super(TestRuntimeSerialized, self).setUp()
 
+    def test_validation_type(self):
+        # https://github.com/Azure/msrest-for-python/issues/85
+        s = Serializer()
+
+        s.query("filter", 186, "int", maximum=666)
+        s.query("filter", "186", "int", maximum=666)
+
+        class TestValidationObj(Model):
+
+            _attribute_map = {
+                'attr_a': {'key':'id', 'type':'int'},
+            }
+            _validation = {
+                'attr_a': {'maximum': 4294967295, 'minimum': 1},
+            }
+
+
+        test_obj = TestValidationObj()
+        test_obj.attr_a = 186
+        errors_found = test_obj.validate()
+        assert not errors_found
+
+        test_obj.attr_a = '186'
+        errors_found = test_obj.validate()
+        assert not errors_found
+
     def test_validation_flag(self):
         s = Serializer()
         s.client_side_validation = True
