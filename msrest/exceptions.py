@@ -107,6 +107,13 @@ class ValidationError(ClientException):
         "type": "must be of type {!r}"
     }
 
+    @staticmethod
+    def _format_message(rule, reason, value):
+        if rule == "type" and value.startswith(r"{"):
+            internal_type = value.strip(r"{}")
+            value = "dictionnary of {}".format(internal_type)
+        return reason.format(value)
+
     def __init__(self, rule, target, value, *args, **kwargs):
         # type: (str, str, str, str, str) -> None
         self.rule = rule
@@ -114,7 +121,7 @@ class ValidationError(ClientException):
         message = "Parameter {!r} ".format(target)
         reason = self._messages.get(
             rule, "failed to meet validation requirement.")
-        message += reason.format(value)
+        message += self._format_message(rule, reason, value)
         super(ValidationError, self).__init__(message, *args, **kwargs)
 
 

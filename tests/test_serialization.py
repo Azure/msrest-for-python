@@ -709,6 +709,10 @@ class TestRuntimeSerialized(unittest.TestCase):
         with self.assertRaises(SerializationError):
             self.s._serialize(test_obj)
 
+        with pytest.raises(ValidationError) as err:
+            test_obj.validate()
+        assert "Parameter 'attr_e' must be of type 'dictionnary of float'" in str(err.value)
+
         test_obj.attr_e = {"value": "NotAFloat"}
 
         with self.assertRaises(SerializationError):
@@ -1290,7 +1294,7 @@ class TestRuntimeSerialized(unittest.TestCase):
             long_type = long
         except NameError:
             long_type = int
- 
+
 
         class TestModel(Model):
             _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
