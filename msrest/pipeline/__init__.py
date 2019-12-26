@@ -268,8 +268,10 @@ class ClientRawResponse(object):
     for example deserialized headers.
     It also allows the raw response object to be passed back to the user.
 
-    :param output: Deserialized response object.
-    :param response: Raw response object.
+    :param output: Deserialized response object. This is the type that would have been returned
+     directly by the main operation without raw=True.
+    :param response: Raw response object (by default requests.Response instance)
+    :type response: ~requests.Response
     """
 
     def __init__(self, output, response):
