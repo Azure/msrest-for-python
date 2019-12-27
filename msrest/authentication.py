@@ -183,16 +183,20 @@ class KerberosAuthentication(Authentication):
         If a session object is provided, configure it directly. Otherwise,
         create a new session and return it.
 
+        Note: mutual_authentication is not being required. Client
+        authenication occurs as normal and server authenication may be
+        performed by another mechanism, e.g. TLS.
+
         :param session: The session to configure for authentication
         :type session: requests.Session
         :rtype: requests.Session
         """
         session = super(KerberosAuthentication, self).signed_session(session)
         try:
-            from requests_kerberos import HTTPKerberosAuth
+            from requests_kerberos import HTTPKerberosAuth, OPTIONAL
         except ImportError:
             raise ImportError("In order to use KerberosAuthentication please do 'pip install requests_kerberos' first")
-        session.auth = HTTPKerberosAuth()
+        session.auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
         return session
 
 
