@@ -183,7 +183,6 @@ class KerberosAuthentication(Authentication):
         super(KerberosAuthentication, self).__init__()
         self.mutual_authentication = mutual_authentication
 
-
     def signed_session(self, session=None):
         """Create requests session with Negotiate (SPNEGO) headers applied.
 
