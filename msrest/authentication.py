@@ -176,16 +176,19 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
 class KerberosAuthentication(Authentication):
     """Kerberos Authentication
     Kerberos Single Sign On (SSO); requires requests_kerberos is installed.
+
+    :param mutual_authentication: whether to require mutual authentication. Use values from requests_kerberos import REQUIRED, OPTIONAL, or DISABLED
     """
+    def __init__(self, mutual_authentication=None):
+        super(KerberosAuthentication, self).__init__()
+        self.mutual_authentication = mutual_authentication
+
+
     def signed_session(self, session=None):
         """Create requests session with Negotiate (SPNEGO) headers applied.
 
         If a session object is provided, configure it directly. Otherwise,
         create a new session and return it.
-
-        Note: mutual_authentication is not being required. Client
-        authenication occurs as normal and server authenication may be
-        performed by another mechanism, e.g. TLS.
 
         :param session: The session to configure for authentication
         :type session: requests.Session
@@ -193,10 +196,13 @@ class KerberosAuthentication(Authentication):
         """
         session = super(KerberosAuthentication, self).signed_session(session)
         try:
-            from requests_kerberos import HTTPKerberosAuth, OPTIONAL
+            from requests_kerberos import HTTPKerberosAuth
         except ImportError:
             raise ImportError("In order to use KerberosAuthentication please do 'pip install requests_kerberos' first")
-        session.auth = HTTPKerberosAuth(mutual_authentication=OPTIONAL)
+        if self.mutual_authentication:
+            session.auth = HTTPKerberosAuth(mutual_authentication=self.mutual_authentication)
+        else:
+            session.auth = HTTPKerberosAuth()
         return session
 
 
