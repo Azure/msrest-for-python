@@ -297,6 +297,20 @@ class TestRuntimeSerialized(unittest.TestCase):
         s.header("filter", "", "str", min_length=666)
         s.body(test_obj, 'TestObj')
 
+    def test_serialize_query(self):
+        s = Serializer()
+
+        assert s.query("filter", "boo", "str") == "boo"
+        assert s.query("filter", "boo,bar", "str", skip_quote=True) == "boo,bar"
+        assert s.query("filter", 12, "int") == "12"
+
+        assert s.query("filter", [1, 2, 3], "[int]", div=",") == "1,2,3"
+
+        assert s.query("filter", ['a', 'b', 'c'], "[str]", div=",") == "a,b,c"
+        assert s.query("filter", ['a', None, 'c'], "[str]", div=",") == "a,,c"
+        assert s.query("filter", [',', ',', ','], "[str]", div=",") == "%2C,%2C,%2C"
+        assert s.query("filter", [',', ',', ','], "[str]", div="|", skip_quote=True) == ",|,|,"
+
     def test_serialize_direct_model(self):
         testobj = self.TestObj()
         testobj.attr_a = "myid"

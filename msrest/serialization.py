@@ -624,9 +624,23 @@ class Serializer(object):
         """
         data = self._http_component_validation(data, data_type, name, **kwargs)
         try:
-            if data_type in ['[str]']:
-                data = ["" if d is None else d for d in data]
+            # Treat the list aside, since we don't want to encode the div separator
+            if data_type.startswith("["):
+                internal_data_type = data_type[1:-1]
+                data = [
+                    self.serialize_data(d, internal_data_type, **kwargs) if d is not None else ""
+                    for d
+                    in data
+                ]
+                if not kwargs.get('skip_quote', False):
+                    data = [
+                        quote(str(d), safe='')
+                        for d
+                        in data
+                    ]
+                return str(self.serialize_iter(data, internal_data_type, **kwargs))
 
+            # Not a list, regular serialization
             output = self.serialize_data(data, data_type, **kwargs)
             if data_type == 'bool':
                 output = json.dumps(output)
