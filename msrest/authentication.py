@@ -172,6 +172,39 @@ class OAuthTokenAuthentication(BasicTokenAuthentication):
         session.auth = oauth.OAuth2(self.id, token=self.token)
         return session
 
+
+class KerberosAuthentication(Authentication):
+    """Kerberos Authentication
+    Kerberos Single Sign On (SSO); requires requests_kerberos is installed.
+
+    :param mutual_authentication: whether to require mutual authentication. Use values from requests_kerberos import REQUIRED, OPTIONAL, or DISABLED
+    """
+    def __init__(self, mutual_authentication=None):
+        super(KerberosAuthentication, self).__init__()
+        self.mutual_authentication = mutual_authentication
+
+    def signed_session(self, session=None):
+        """Create requests session with Negotiate (SPNEGO) headers applied.
+
+        If a session object is provided, configure it directly. Otherwise,
+        create a new session and return it.
+
+        :param session: The session to configure for authentication
+        :type session: requests.Session
+        :rtype: requests.Session
+        """
+        session = super(KerberosAuthentication, self).signed_session(session)
+        try:
+            from requests_kerberos import HTTPKerberosAuth
+        except ImportError:
+            raise ImportError("In order to use KerberosAuthentication please do 'pip install requests_kerberos' first")
+        if self.mutual_authentication:
+            session.auth = HTTPKerberosAuth(mutual_authentication=self.mutual_authentication)
+        else:
+            session.auth = HTTPKerberosAuth()
+        return session
+
+
 class ApiKeyCredentials(Authentication):
     """Represent the ApiKey feature of Swagger.
 
@@ -209,10 +242,11 @@ class ApiKeyCredentials(Authentication):
         session.headers.update(self.in_headers)
         try:
             # params is actually Union[bytes, MutableMapping[Text, Text]]
-            session.params.update(self.in_query) # type: ignore
+            session.params.update(self.in_query)  # type: ignore
         except AttributeError:  # requests.params can be bytes
             raise ValueError("session.params must be a dict to be used in ApiKeyCredentials")
         return session
+
 
 class CognitiveServicesCredentials(ApiKeyCredentials):
     """Cognitive Services authentication.
@@ -233,6 +267,7 @@ class CognitiveServicesCredentials(ApiKeyCredentials):
             }
         )
 
+
 class TopicCredentials(ApiKeyCredentials):
     """Event Grid authentication.
 
@@ -251,6 +286,7 @@ class TopicCredentials(ApiKeyCredentials):
             }
         )
 
+
 class DomainCredentials(ApiKeyCredentials):
     """Event Grid domain authentication.
 
@@ -268,4 +304,3 @@ class DomainCredentials(ApiKeyCredentials):
                 self._domain_key_header: domain_key,
             }
         )
-        
