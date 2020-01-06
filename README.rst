@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2019-12-19 Version 0.6.11
++++++++++++++++++++++++++
+
+**Features**
+
+- XML mode can now be enabled even if the given Model has no XML metadata  #184
+
 2019-09-04 Version 0.6.10
 +++++++++++++++++++++++++
 
