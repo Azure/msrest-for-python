@@ -20,12 +20,21 @@ To install:
 Release History
 ---------------
 
-2019-12-19 Version 0.6.11
+2019-01-07 Version 0.6.11
 +++++++++++++++++++++++++
 
 **Features**
 
 - XML mode can now be enabled even if the given Model has no XML metadata  #184
+- Add Kerberos Authentication  #186
+- Improve error message if expected type is dictionnary and something else is provided  #188
+
+**Bugfixes**
+
+- Fix comma separated serialization of array in query  #186
+- Fix validation of basic types in some complex scenario  #189
+
+Thanks to catatonicprime for the contribution
 
 2019-09-04 Version 0.6.10
 +++++++++++++++++++++++++
