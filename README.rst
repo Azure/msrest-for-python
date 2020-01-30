@@ -20,7 +20,7 @@ To install:
 Release History
 ---------------
 
-2019-01-07 Version 0.6.11
+2019-01-30 Version 0.6.11
 +++++++++++++++++++++++++
 
 **Features**
