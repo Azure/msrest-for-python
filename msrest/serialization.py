@@ -1101,7 +1101,7 @@ def rest_key_extractor(attr, attr_desc, data):
     key = attr_desc['key']
     working_data = data
 
-    while '.' in key:
+    while '.' in key and working_data:
         dict_keys = _FLATTEN.split(key)
         if len(dict_keys) == 1:
             key = _decode_attribute_map_key(dict_keys[0])
@@ -1116,7 +1116,7 @@ def rest_key_case_insensitive_extractor(attr, attr_desc, data):
     key = attr_desc['key']
     working_data = data
 
-    while '.' in key:
+    while '.' in key and working_data:
         dict_keys = _FLATTEN.split(key)
         if len(dict_keys) == 1:
             key = _decode_attribute_map_key(dict_keys[0])
