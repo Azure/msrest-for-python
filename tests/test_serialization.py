@@ -30,7 +30,7 @@ import json
 import isodate
 import logging
 from enum import Enum
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, time
 import unittest
 
 import xml.etree.ElementTree as ET
@@ -799,6 +799,14 @@ class TestRuntimeSerialized(unittest.TestCase):
         date_obj = isodate.parse_datetime('2012-02-24T00:53:52.780Z')
         date_str = Serializer.serialize_iso(date_obj)
         assert date_str == '2012-02-24T00:53:52.780Z'
+
+    def test_serialize_time(self):
+
+        time_str = Serializer.serialize_time(time(11,22,33))
+        assert time_str == "11:22:33"
+
+        time_str = Serializer.serialize_time(time(11,22,33,444))
+        assert time_str == "11:22:33.444"
 
     def test_serialize_primitive_types(self):
 
@@ -1813,6 +1821,13 @@ class TestRuntimeDeserialized(unittest.TestCase):
 
         with self.assertRaises(DeserializationError):
             a = Deserializer.deserialize_date('201O-18-90')
+
+    def test_deserialize_time(self):
+        a = Deserializer.deserialize_time('11:22:33')
+        assert time(11,22,33) == a
+
+        with self.assertRaises(DeserializationError):
+            Deserializer.deserialize_time('1O:22:33')
 
     def test_deserialize_datetime(self):
 
