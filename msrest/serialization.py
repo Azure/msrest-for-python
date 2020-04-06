@@ -416,6 +416,7 @@ class Serializer(object):
             'unix-time': Serializer.serialize_unix,
             'duration': Serializer.serialize_duration,
             'date': Serializer.serialize_date,
+            'time': Serializer.serialize_time,
             'decimal': Serializer.serialize_decimal,
             'long': Serializer.serialize_long,
             'bytearray': Serializer.serialize_bytearray,
@@ -1000,6 +1001,20 @@ class Serializer(object):
         return t
 
     @staticmethod
+    def serialize_time(attr, **kwargs):
+        """Serialize Time object into ISO-8601 formatted string.
+
+        :param datetime.time attr: Object to be serialized.
+        :rtype: str
+        """
+        if isinstance(attr, str):
+            attr = isodate.parse_time(attr)
+        t = "{:02}:{:02}:{:02}".format(attr.hour, attr.minute, attr.second)
+        if attr.microsecond:
+            t += ".{:02}".format(attr.microsecond)
+        return t
+
+    @staticmethod
     def serialize_duration(attr, **kwargs):
         """Serialize TimeDelta object into ISO-8601 formatted string.
 
@@ -1230,6 +1245,7 @@ class Deserializer(object):
             'unix-time': Deserializer.deserialize_unix,
             'duration': Deserializer.deserialize_duration,
             'date': Deserializer.deserialize_date,
+            'time': Deserializer.deserialize_time,
             'decimal': Deserializer.deserialize_decimal,
             'long': Deserializer.deserialize_long,
             'bytearray': Deserializer.deserialize_bytearray,
@@ -1762,6 +1778,20 @@ class Deserializer(object):
             raise DeserializationError("Date must have only digits and -. Received: %s" % attr)
         # This must NOT use defaultmonth/defaultday. Using None ensure this raises an exception.
         return isodate.parse_date(attr, defaultmonth=None, defaultday=None)
+
+    @staticmethod
+    def deserialize_time(attr):
+        """Deserialize ISO-8601 formatted string into time object.
+
+        :param str attr: response string to be deserialized.
+        :rtype: datetime.time
+        :raises: DeserializationError if string format invalid.
+        """
+        if isinstance(attr, ET.Element):
+            attr = attr.text
+        if re.search(r"[^\W\d_]", attr, re.I + re.U):
+            raise DeserializationError("Date must have only digits and -. Received: %s" % attr)
+        return isodate.parse_time(attr)
 
     @staticmethod
     def deserialize_rfc(attr):
