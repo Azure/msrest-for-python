@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2020-04-06 Version 0.6.12
++++++++++++++++++++++++++
+
+**Features**
+
+- Add "time" serializer/deserializer  #196
+
 2020-01-30 Version 0.6.11
 +++++++++++++++++++++++++
 
