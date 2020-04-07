@@ -1527,6 +1527,46 @@ class TestRuntimeDeserialized(unittest.TestCase):
         obj = TestObj.from_dict({'name': 'ab'})
         self.assertEqual('ab', obj.name)
 
+    def test_deserialize_flattening(self):
+        # https://github.com/Azure/msrest-for-python/issues/197
+
+        json_body = {
+            "properties" : {
+                "properties": None
+            }
+        }
+
+        class ComputeResource(Model):
+
+            _attribute_map = {
+                'properties': {'key': 'properties', 'type': 'VirtualMachine'},
+            }
+
+            def __init__(self, properties=None, **kwargs):
+                self.properties = properties
+
+        class VirtualMachine(Model):
+
+            _attribute_map = {
+                'virtual_machine_size': {'key': 'properties.virtualMachineSize', 'type': 'str'},
+                'ssh_port': {'key': 'properties.sshPort', 'type': 'int'},
+                'address': {'key': 'properties.address', 'type': 'str'},
+                'administrator_account': {'key': 'properties.administratorAccount', 'type': 'VirtualMachineSshCredentials'},
+            }
+
+            def __init__(self, **kwargs):
+                super(VirtualMachine, self).__init__(**kwargs)
+                self.virtual_machine_size = kwargs.get('virtual_machine_size', None)
+                self.ssh_port = kwargs.get('ssh_port', None)
+                self.address = kwargs.get('address', None)
+                self.administrator_account = kwargs.get('administrator_account', None)
+
+        d = Deserializer({
+            'ComputeResource': ComputeResource,
+            'VirtualMachine': VirtualMachine,
+        })
+        response = d(ComputeResource, json.dumps(json_body), 'application/json')
+
     def test_deserialize_storage(self):
         StorageAccount = storage_models.StorageAccount
 
