@@ -1101,13 +1101,18 @@ def rest_key_extractor(attr, attr_desc, data):
     key = attr_desc['key']
     working_data = data
 
-    while '.' in key and working_data:
+    while '.' in key:
         dict_keys = _FLATTEN.split(key)
         if len(dict_keys) == 1:
             key = _decode_attribute_map_key(dict_keys[0])
             break
         working_key = _decode_attribute_map_key(dict_keys[0])
         working_data = working_data.get(working_key, data)
+        if working_data is None:
+            # If at any point while following flatten JSON path see None, it means
+            # that all properties under are None as well
+            # https://github.com/Azure/msrest-for-python/issues/197
+            return None
         key = '.'.join(dict_keys[1:])
 
     return working_data.get(key)
@@ -1116,13 +1121,18 @@ def rest_key_case_insensitive_extractor(attr, attr_desc, data):
     key = attr_desc['key']
     working_data = data
 
-    while '.' in key and working_data:
+    while '.' in key:
         dict_keys = _FLATTEN.split(key)
         if len(dict_keys) == 1:
             key = _decode_attribute_map_key(dict_keys[0])
             break
         working_key = _decode_attribute_map_key(dict_keys[0])
         working_data = attribute_key_case_insensitive_extractor(working_key, None, working_data)
+        if working_data is None:
+            # If at any point while following flatten JSON path see None, it means
+            # that all properties under are None as well
+            # https://github.com/Azure/msrest-for-python/issues/197
+            return None
         key = '.'.join(dict_keys[1:])
 
     if working_data:
