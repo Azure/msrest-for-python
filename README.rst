@@ -20,6 +20,15 @@ To install:
 Release History
 ---------------
 
+2020-04-06 Version 0.6.13
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix deserializer and flattening if intermediate node is None  #198
+- Fix validation exception message for minimum/maximum checks  #199
+
+
 2020-04-06 Version 0.6.12
 +++++++++++++++++++++++++
 
