@@ -1974,6 +1974,35 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEqual(utc.tm_sec, 52)
         self.assertEqual(a.microsecond, 780000)
 
+    def test_deserialize_datetime_rfc(self):
+        d = "Mon, 20 Nov 1995 19:12:08 -0500"
+
+        a = Deserializer.deserialize_rfc("Mon, 20 Nov 1995 19:12:08 -0500")
+        utc = a.utctimetuple()
+
+        # UTC: 21 Nov, 00:12:08
+        self.assertEqual(utc.tm_year, 1995)
+        self.assertEqual(utc.tm_mon, 11)
+        self.assertEqual(utc.tm_mday, 21)
+        self.assertEqual(utc.tm_hour, 0)
+        self.assertEqual(utc.tm_min, 12)
+        self.assertEqual(utc.tm_sec, 8)
+        self.assertEqual(a.microsecond, 0)
+
+        d = "Mon, 20 Nov 1995 19:12:08 -0500"
+
+        a = Deserializer.deserialize_rfc("Mon, 20 Nov 1995 19:12:08")
+        utc = a.utctimetuple()
+
+        # UTC: No info is considered UTC
+        self.assertEqual(utc.tm_year, 1995)
+        self.assertEqual(utc.tm_mon, 11)
+        self.assertEqual(utc.tm_mday, 20)
+        self.assertEqual(utc.tm_hour, 19)
+        self.assertEqual(utc.tm_min, 12)
+        self.assertEqual(utc.tm_sec, 8)
+        self.assertEqual(a.microsecond, 0)
+
     def test_polymorphic_deserialization(self):
 
         class Zoo(Model):

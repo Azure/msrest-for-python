@@ -28,6 +28,7 @@ from base64 import b64decode, b64encode
 import calendar
 import datetime
 import decimal
+import email
 from enum import Enum
 import json
 import logging
@@ -78,6 +79,26 @@ class UTC(datetime.tzinfo):
         """No daylight saving for UTC."""
         return datetime.timedelta(hours=1)
 
+class _FixedOffset(datetime.tzinfo):
+    """Fixed offset in minutes east from UTC.
+    Copy/pasted from Python doc
+    :param int offset: offset in minutes
+    """
+
+    def __init__(self, offset):
+        self.__offset = datetime.timedelta(minutes=offset)
+
+    def utcoffset(self, dt):
+        return self.__offset
+
+    def tzname(self, dt):
+        return str(self.__offset.total_seconds()/3600)
+
+    def __repr__(self):
+        return "<FixedOffset {}>".format(self.tzname(None))
+
+    def dst(self, dt):
+        return datetime.timedelta(0)
 
 try:
     from datetime import timezone
@@ -1814,10 +1835,12 @@ class Deserializer(object):
         if isinstance(attr, ET.Element):
             attr = attr.text
         try:
-            date_obj = datetime.datetime.strptime(
-                attr, "%a, %d %b %Y %H:%M:%S %Z")
-            if not date_obj.tzinfo:
-                date_obj = date_obj.replace(tzinfo=TZ_UTC)
+            parsed_date = email.utils.parsedate_tz(attr)
+            date_obj = datetime.datetime(
+                *parsed_date[:6],
+                tzinfo=_FixedOffset(parsed_date[9]/60)
+            )
+            date_obj.astimezone(tz=TZ_UTC)
         except ValueError as err:
             msg = "Cannot deserialize to rfc datetime object."
             raise_with_traceback(DeserializationError, msg, err)
