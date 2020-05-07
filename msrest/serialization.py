@@ -1840,7 +1840,7 @@ class Deserializer(object):
                 *parsed_date[:6],
                 tzinfo=_FixedOffset(parsed_date[9]/60)
             )
-            date_obj.astimezone(tz=TZ_UTC)
+            date_obj = date_obj.astimezone(tz=TZ_UTC)
         except ValueError as err:
             msg = "Cannot deserialize to rfc datetime object."
             raise_with_traceback(DeserializationError, msg, err)
