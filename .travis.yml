@@ -10,9 +10,7 @@ _test: &_test
     - bash <(curl -s https://codecov.io/bash) -e TOXENV -f $TRAVIS_BUILD_DIR/coverage.xml
 _autorest_install: &_autorest_install
   before_install:
-  - git clone --recursive https://github.com/Azure/autorest.python.git
-  - sudo apt-get install libunwind8-dev
-  - nvm install 8
+  - git clone https://github.com/Azure/autorest.python.git --branch autorestv3 --single-branch
   - pushd autorest.python
   - npm install # Install test server pre-requisites
   - popd
