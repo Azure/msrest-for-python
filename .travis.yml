@@ -11,6 +11,7 @@ _test: &_test
 _autorest_install: &_autorest_install
   before_install:
   - git clone https://github.com/Azure/autorest.python.git --branch autorestv3 --single-branch
+  - nvm install 10
   - pushd autorest.python
   - npm install # Install test server pre-requisites
   - popd
