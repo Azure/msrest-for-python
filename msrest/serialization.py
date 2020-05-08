@@ -1838,7 +1838,7 @@ class Deserializer(object):
             parsed_date = email.utils.parsedate_tz(attr)
             date_obj = datetime.datetime(
                 *parsed_date[:6],
-                tzinfo=_FixedOffset(parsed_date[9]/60)
+                tzinfo=_FixedOffset((parsed_date[9] or 0)/60)
             )
             if not date_obj.tzinfo:
                 date_obj = date_obj.astimezone(tz=TZ_UTC)
