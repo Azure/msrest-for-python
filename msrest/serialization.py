@@ -336,8 +336,8 @@ class Model(object):
         """
         deserializer = Deserializer(cls._infer_class_models())
         deserializer.key_extractors = [
-            rest_key_case_insensitive_extractor,
             attribute_key_case_insensitive_extractor,
+            rest_key_case_insensitive_extractor,
             last_rest_key_case_insensitive_extractor
         ] if key_extractors is None else key_extractors
         return deserializer(cls.__name__, data, content_type=content_type)
@@ -1160,11 +1160,21 @@ def rest_key_case_insensitive_extractor(attr, attr_desc, data):
         return attribute_key_case_insensitive_extractor(key, None, working_data)
 
 def last_rest_key_extractor(attr, attr_desc, data):
+    """Extract the attribute in "data" based on the last part of the JSON path key.
+    """
+    direct_attr_extract = attribute_key_extractor(attr, attr_desc, data)
+    if direct_attr_extract:
+        return direct_attr_extract
+
     key = attr_desc['key']
     dict_keys = _FLATTEN.split(key)
     return attribute_key_extractor(dict_keys[-1], None, data)
 
 def last_rest_key_case_insensitive_extractor(attr, attr_desc, data):
+    """Extract the attribute in "data" based on the last part of the JSON path key.
+
+    This is the case insensitive version of "last_rest_key_extractor"
+    """
     key = attr_desc['key']
     dict_keys = _FLATTEN.split(key)
     return attribute_key_case_insensitive_extractor(dict_keys[-1], None, data)
@@ -1259,8 +1269,8 @@ def xml_key_extractor(attr, attr_desc, data):
 class Deserializer(object):
     """Response object model deserializer.
 
-    :param dict classes: Class type dictionary for deserializing
-     complex types.
+    :param dict classes: Class type dictionary for deserializing complex types.
+    :ivar list key_extractors: Ordered list of extractors to be used by this deserializer.
     """
 
     basic_types = {str: 'str', int: 'int', bool: 'bool', float: 'float'}
@@ -1375,7 +1385,15 @@ class Deserializer(object):
                     found_value = key_extractor(attr, attr_desc, data)
                     if found_value is not None:
                         if raw_value is not None and raw_value != found_value:
-                            raise KeyError('Use twice the key: "{}"'.format(attr))
+                            msg = ("Ignoring extracted value '%s' from %s for key '%s'"
+                                   " (duplicate extraction, follow extractors order)" )
+                            _LOGGER.warning(
+                                msg,
+                                found_value,
+                                key_extractor,
+                                attr
+                            )
+                            continue
                         raw_value = found_value
 
                 value = self.deserialize_data(raw_value, attr_desc['type'])

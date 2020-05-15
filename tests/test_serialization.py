@@ -1436,6 +1436,33 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.TestObj.from_dict(attr_data)
         assert_model(model_instance)
 
+    def test_twice_key_scenario(self):
+        # Te reproduce the initial bug, you need a attribute named after the last part
+        # of a flattening JSON from another attribute (here type)
+        # https://github.com/Azure/azure-sdk-for-python/issues/11422
+        # Issue happend where searching for "type2", since we found a match in both "type2" and "type" keys
+
+        class LocalModel(Model):
+            _attribute_map = {
+                'id': {'key': 'id', 'type': 'int'},
+                'type': {'key': 'type_dont_matter_not_used', 'type': 'str'},
+                'type2': {'key': 'properties.type', 'type': 'str'},
+            }
+
+            def __init__(self, **kwargs):
+                super(LocalModel, self).__init__(**kwargs)
+
+        raw = {
+            'id': 42,
+            'type': "type",
+            'type2': "type2"
+        }
+
+        m = LocalModel.from_dict(raw)
+        assert m.id == 42
+        assert m.type == "type"
+        assert m.type2 == "type2"
+
     def test_array_deserialize(self):
         result = self.d('[str]', ["a","b"])
         assert result == ['a','b']
