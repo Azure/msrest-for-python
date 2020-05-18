@@ -1530,13 +1530,21 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEqual(3, obj.attr_c)
         self.assertEqual(4, obj.attr_d)
 
-        with self.assertRaises(DeserializationError):
-            obj = TestKeyTypeObj.from_dict({
-                "attr_b": 1,
-                "id": 2,
-                "keyc": 3,
-                "keyd": 4
-            })
+        # This one used to raise an exception, but after https://github.com/Azure/msrest-for-python/pull/204
+        # we decide to accept it with log warning
+
+        obj = TestKeyTypeObj.from_dict({
+            "attr_a": 1,
+            "attr_b": 12, # Conflict with "id"
+            "id": 14, # Conflict with "attr_b"
+            "keyc": 3,
+            "keyd": 4
+        })
+
+        self.assertEqual(1, obj.attr_a)
+        self.assertEqual(12, obj.attr_b)  # from_dict will prioritize attribute syntax
+        self.assertEqual(3, obj.attr_c)
+        self.assertEqual(4, obj.attr_d)
 
     def test_basic_deserialization(self):
         class TestObj(Model):
