@@ -20,6 +20,15 @@ To install:
 Release History
 ---------------
 
+2020-05-18 Version 0.6.14
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix "from_dict" in some complex flattening scenario  #204
+- Fix RFC date parsing if machine locale is not English  #201
+
+
 2020-04-07 Version 0.6.13
 +++++++++++++++++++++++++
 
