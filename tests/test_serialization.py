@@ -1436,6 +1436,33 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.TestObj.from_dict(attr_data)
         assert_model(model_instance)
 
+    def test_twice_key_scenario(self):
+        # Te reproduce the initial bug, you need a attribute named after the last part
+        # of a flattening JSON from another attribute (here type)
+        # https://github.com/Azure/azure-sdk-for-python/issues/11422
+        # Issue happend where searching for "type2", since we found a match in both "type2" and "type" keys
+
+        class LocalModel(Model):
+            _attribute_map = {
+                'id': {'key': 'id', 'type': 'int'},
+                'type': {'key': 'type_dont_matter_not_used', 'type': 'str'},
+                'type2': {'key': 'properties.type', 'type': 'str'},
+            }
+
+            def __init__(self, **kwargs):
+                super(LocalModel, self).__init__(**kwargs)
+
+        raw = {
+            'id': 42,
+            'type': "type",
+            'type2': "type2"
+        }
+
+        m = LocalModel.from_dict(raw)
+        assert m.id == 42
+        assert m.type == "type"
+        assert m.type2 == "type2"
+
     def test_array_deserialize(self):
         result = self.d('[str]', ["a","b"])
         assert result == ['a','b']
@@ -1503,13 +1530,21 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEqual(3, obj.attr_c)
         self.assertEqual(4, obj.attr_d)
 
-        with self.assertRaises(DeserializationError):
-            obj = TestKeyTypeObj.from_dict({
-                "attr_b": 1,
-                "id": 2,
-                "keyc": 3,
-                "keyd": 4
-            })
+        # This one used to raise an exception, but after https://github.com/Azure/msrest-for-python/pull/204
+        # we decide to accept it with log warning
+
+        obj = TestKeyTypeObj.from_dict({
+            "attr_a": 1,
+            "attr_b": 12, # Conflict with "id"
+            "id": 14, # Conflict with "attr_b"
+            "keyc": 3,
+            "keyd": 4
+        })
+
+        self.assertEqual(1, obj.attr_a)
+        self.assertEqual(12, obj.attr_b)  # from_dict will prioritize attribute syntax
+        self.assertEqual(3, obj.attr_c)
+        self.assertEqual(4, obj.attr_d)
 
     def test_basic_deserialization(self):
         class TestObj(Model):
