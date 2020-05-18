@@ -1162,10 +1162,6 @@ def rest_key_case_insensitive_extractor(attr, attr_desc, data):
 def last_rest_key_extractor(attr, attr_desc, data):
     """Extract the attribute in "data" based on the last part of the JSON path key.
     """
-    direct_attr_extract = attribute_key_extractor(attr, attr_desc, data)
-    if direct_attr_extract:
-        return direct_attr_extract
-
     key = attr_desc['key']
     dict_keys = _FLATTEN.split(key)
     return attribute_key_extractor(dict_keys[-1], None, data)
