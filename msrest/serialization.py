@@ -1198,29 +1198,29 @@ def xml_key_extractor(attr, attr_desc, data):
 
     xml_desc = attr_desc.get('xml', {})
     xml_name = xml_desc.get('name', attr_desc['key'])
-    xml_ns = xml_desc.get('ns', None)
 
     # If it's an attribute, that's simple
     if xml_desc.get("attr", False):
         return data.get(xml_name)
 
+    # Look for a children
+    is_iter_type = attr_desc['type'].startswith("[")
+    is_wrapped = xml_desc.get("wrapped", False)
+    internal_type = attr_desc.get("internalType", None)
+    internal_type_xml_map = getattr(internal_type, "_xml_map", {})
+
     # Integrate namespace if necessary
+    xml_ns = xml_desc.get('ns', internal_type_xml_map.get("ns", None))
     if xml_ns:
         ns = {'prefix': xml_ns}
         xml_name = "prefix:"+xml_name
     else:
         ns = {} # And keep same xml_name
 
-    # Look for a children
-    is_iter_type = attr_desc['type'].startswith("[")
-    is_wrapped = xml_desc.get("wrapped", False)
-    internal_type = attr_desc.get("internalType", None)
-
     # Scenario where I take the local name:
     # - Wrapped node
     # - Internal type is an enum (considered basic types)
     # - Internal type has no XML/Name node
-    internal_type_xml_map = getattr(internal_type, "_xml_map", {})
     if is_wrapped or (internal_type and (issubclass(internal_type, Enum) or 'name' not in internal_type_xml_map)):
         children = data.findall(xml_name, ns)
     # If internal type has a local name and it's not a list, I use that name
