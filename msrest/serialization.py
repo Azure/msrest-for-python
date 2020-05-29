@@ -1188,6 +1188,24 @@ def attribute_key_case_insensitive_extractor(attr, _, data):
 
     return data.get(found_key)
 
+def _extract_name_from_internal_type(internal_type):
+    """Given an internal type XML description, extract correct XML name with namespace.
+
+    :param dict internal_type: An model type
+    :rtype: tuple
+    :returns: A tuple XML name + namespace dict
+    """
+    internal_type_xml_map = getattr(internal_type, "_xml_map", {})
+    xml_name = internal_type_xml_map.get('name', internal_type.__name__)
+    xml_ns = internal_type_xml_map.get("ns", None)
+    if xml_ns:
+        ns = {'prefix': xml_ns}
+        xml_name = "prefix:"+xml_name
+    else:
+        ns = {} # And keep same xml_name
+    return xml_name, ns
+
+
 def xml_key_extractor(attr, attr_desc, data):
     if isinstance(data, dict):
         return None
@@ -1225,14 +1243,12 @@ def xml_key_extractor(attr, attr_desc, data):
         children = data.findall(xml_name, ns)
     # If internal type has a local name and it's not a list, I use that name
     elif not is_iter_type and internal_type and 'name' in internal_type_xml_map:
-        xml_name = internal_type_xml_map["name"]
-        ns = internal_type_xml_map.get("ns", None)
+        xml_name, ns = _extract_name_from_internal_type(internal_type)
         children = data.findall(xml_name, ns)
     # That's an array
     else:
         if internal_type: # Complex type, ignore itemsName and use the complex type name
-            items_name = internal_type_xml_map.get('name', internal_type.__name__)
-            ns = internal_type_xml_map.get("ns", None)
+            items_name, ns = _extract_name_from_internal_type(internal_type)
         else:
             items_name = xml_desc.get("itemsName", xml_name)
         children = data.findall(items_name, ns)
