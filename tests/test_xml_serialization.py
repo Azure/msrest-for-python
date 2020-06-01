@@ -478,11 +478,11 @@ class TestXmlDeserialization:
                 <author>
                     <name>lmazuel</name>
                 </author>
-                <AuthorizationRules xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">
-                    <AuthorizationRule>
-                        <KeyName>testpolicy</KeyName>
-                    </AuthorizationRule>
-                </AuthorizationRules>
+                <AuthorizationRules xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">
+                    <AuthorizationRule>
+                        <KeyName>testpolicy</KeyName>
+                    </AuthorizationRule>
+                </AuthorizationRules>
             </entry>"""
 
         class XmlRoot(Model):
