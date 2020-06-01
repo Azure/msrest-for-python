@@ -471,6 +471,39 @@ class TestXmlDeserialization:
 
         assert result.age == 37
 
+    def test_complex_namespace(self):
+        """Test recursive namespace."""
+        basic_xml = """<?xml version="1.0"?>
+            <entry xmlns="http://www.w3.org/2005/Atom">
+                <author>
+                    <name>lmazuel</name>
+                </author>
+            </entry>"""
+
+        class XmlRoot(Model):
+            _attribute_map = {
+                'author': {'key': 'author', 'type': 'QueueDescriptionResponseAuthor'},
+            }
+            _xml_map = {
+                'name': 'entry', 'ns': 'http://www.w3.org/2005/Atom'
+            }
+
+        class QueueDescriptionResponseAuthor(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml': {'ns': 'http://www.w3.org/2005/Atom'}},
+            }
+            _xml_map = {
+                'ns': 'http://www.w3.org/2005/Atom'
+            }
+
+        s = Deserializer({
+            "XmlRoot": XmlRoot,
+            "QueueDescriptionResponseAuthor": QueueDescriptionResponseAuthor,
+        })
+        result = s(XmlRoot, basic_xml, "application/xml")
+
+        assert result.author.name == "lmazuel"
+
 
 class TestXmlSerialization:
 
