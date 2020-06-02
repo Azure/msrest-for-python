@@ -79,26 +79,32 @@ class UTC(datetime.tzinfo):
         """No daylight saving for UTC."""
         return datetime.timedelta(hours=1)
 
-class _FixedOffset(datetime.tzinfo):
-    """Fixed offset in minutes east from UTC.
-    Copy/pasted from Python doc
-    :param int offset: offset in minutes
-    """
+try:
+    from datetime import timezone as _FixedOffset
+except ImportError:  # Python 2.7
+    class _FixedOffset(datetime.tzinfo):  # type: ignore
+        """Fixed offset in minutes east from UTC.
+        Copy/pasted from Python doc
+        :param datetime.timedelta offset: offset in timedelta format
+        """
 
-    def __init__(self, offset):
-        self.__offset = datetime.timedelta(minutes=offset)
+        def __init__(self, offset):
+            self.__offset = offset
 
-    def utcoffset(self, dt):
-        return self.__offset
+        def utcoffset(self, dt):
+            return self.__offset
 
-    def tzname(self, dt):
-        return str(self.__offset.total_seconds()/3600)
+        def tzname(self, dt):
+            return str(self.__offset.total_seconds()/3600)
 
-    def __repr__(self):
-        return "<FixedOffset {}>".format(self.tzname(None))
+        def __repr__(self):
+            return "<FixedOffset {}>".format(self.tzname(None))
 
-    def dst(self, dt):
-        return datetime.timedelta(0)
+        def dst(self, dt):
+            return datetime.timedelta(0)
+
+        def __getinitargs__(self):
+            return (self.__offset,)
 
 try:
     from datetime import timezone
@@ -1868,7 +1874,7 @@ class Deserializer(object):
             parsed_date = email.utils.parsedate_tz(attr)
             date_obj = datetime.datetime(
                 *parsed_date[:6],
-                tzinfo=_FixedOffset((parsed_date[9] or 0)/60)
+                tzinfo=_FixedOffset(datetime.timedelta(minutes=(parsed_date[9] or 0)/60))
             )
             if not date_obj.tzinfo:
                 date_obj = date_obj.astimezone(tz=TZ_UTC)
