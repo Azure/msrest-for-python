@@ -471,6 +471,56 @@ class TestXmlDeserialization:
 
         assert result.age == 37
 
+    def test_complex_namespace(self):
+        """Test recursive namespace."""
+        basic_xml = """<?xml version="1.0"?>
+            <entry xmlns="http://www.w3.org/2005/Atom">
+                <author>
+                    <name>lmazuel</name>
+                </author>
+                <AuthorizationRules xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">
+                    <AuthorizationRule>
+                        <KeyName>testpolicy</KeyName>
+                    </AuthorizationRule>
+                </AuthorizationRules>
+            </entry>"""
+
+        class XmlRoot(Model):
+            _attribute_map = {
+                'author': {'key': 'author', 'type': 'QueueDescriptionResponseAuthor'},
+                'authorization_rules': {'key': 'AuthorizationRules', 'type': '[AuthorizationRule]', 'xml': {'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect', 'wrapped': True, 'itemsNs': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'}},
+            }
+            _xml_map = {
+                'name': 'entry', 'ns': 'http://www.w3.org/2005/Atom'
+            }
+
+        class QueueDescriptionResponseAuthor(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml': {'ns': 'http://www.w3.org/2005/Atom'}},
+            }
+            _xml_map = {
+                'ns': 'http://www.w3.org/2005/Atom'
+            }
+
+        class AuthorizationRule(Model):
+            _attribute_map = {
+                'key_name': {'key': 'KeyName', 'type': 'str', 'xml': {'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'}},
+            }
+            _xml_map = {
+                'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'
+            }
+
+
+        s = Deserializer({
+            "XmlRoot": XmlRoot,
+            "QueueDescriptionResponseAuthor": QueueDescriptionResponseAuthor,
+            "AuthorizationRule": AuthorizationRule,
+        })
+        result = s(XmlRoot, basic_xml, "application/xml")
+
+        assert result.author.name == "lmazuel"
+        assert result.authorization_rules[0].key_name == "testpolicy"
+
 
 class TestXmlSerialization:
 
