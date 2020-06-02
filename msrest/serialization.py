@@ -85,7 +85,7 @@ except ImportError:  # Python 2.7
     class _FixedOffset(datetime.tzinfo):
         """Fixed offset in minutes east from UTC.
         Copy/pasted from Python doc
-        :param int offset: offset in minutes
+        :param datetime.timedelta offset: offset in timedelta format
         """
 
         def __init__(self, offset):
