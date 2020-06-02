@@ -82,7 +82,7 @@ class UTC(datetime.tzinfo):
 try:
     from datetime import timezone as _FixedOffset
 except ImportError:  # Python 2.7
-    class _FixedOffset(datetime.tzinfo):
+    class _FixedOffset(datetime.tzinfo):  # type: ignore
         """Fixed offset in minutes east from UTC.
         Copy/pasted from Python doc
         :param datetime.timedelta offset: offset in timedelta format
