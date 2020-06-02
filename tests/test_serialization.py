@@ -29,6 +29,7 @@ import sys
 import json
 import isodate
 import logging
+import pickle
 from enum import Enum
 from datetime import datetime, timedelta, date, time
 import unittest
@@ -2057,6 +2058,20 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEqual(utc.tm_min, 12)
         self.assertEqual(utc.tm_sec, 8)
         self.assertEqual(a.microsecond, 0)
+
+    def test_rfc_pickable(self):
+        """Check datetime created by RFC parser are pickable.
+
+        See https://github.com/Azure/msrest-for-python/issues/205
+        """
+
+        datetime_rfc = "Mon, 25 May 2020 11:00:00 GMT"
+        datetime1 = Deserializer.deserialize_rfc(datetime_rfc)
+
+        pickled = pickle.dumps(datetime1)
+        datetime2 = pickle.loads(pickled)
+
+        assert datetime1 == datetime2
 
     def test_polymorphic_deserialization(self):
 
