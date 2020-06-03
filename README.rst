@@ -20,6 +20,17 @@ To install:
 Release History
 ---------------
 
+2020-06-04 Version 0.6.15
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix RFC regression introduced in 0.6.14 (RFC parse date are no longer pickable)  #208
+- Fix XML parsing with namespaces  #206
+
+Thanks to ivanst0 for the contribution
+
+
 2020-05-18 Version 0.6.14
 +++++++++++++++++++++++++
 
