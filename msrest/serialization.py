@@ -519,7 +519,12 @@ class Serializer(object):
                     if is_xml_model_serialization:
                         xml_desc = attr_desc.get('xml', {})
                         xml_name = xml_desc.get('name', attr_desc['key'])
+                        xml_prefix = xml_desc.get('prefix', None)
+                        xml_ns = xml_desc.get('ns', None)
                         if xml_desc.get("attr", False):
+                            if xml_ns:
+                                ET.register_namespace(xml_prefix, xml_ns)
+                                xml_name = "{{{}}}{}".format(xml_ns, xml_name)
                             serialized.set(xml_name, new_attr)
                             continue
                         if isinstance(new_attr, list):
@@ -537,8 +542,8 @@ class Serializer(object):
                             # Integrate namespace if necessary
                             local_node = _create_xml_node(
                                 xml_name,
-                                xml_desc.get('prefix', None),
-                                xml_desc.get('ns', None)
+                                xml_prefix,
+                                xml_ns
                             )
                             local_node.text = unicode_str(new_attr)
                             serialized.append(local_node)
