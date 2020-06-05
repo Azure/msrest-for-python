@@ -474,12 +474,12 @@ class TestXmlDeserialization:
     def test_complex_namespace(self):
         """Test recursive namespace."""
         basic_xml = """<?xml version="1.0"?>
-            <entry xmlns="http://www.w3.org/2005/Atom">
+            <entry xmlns="http://www.w3.org/2005/Atom" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
                 <author>
                     <name>lmazuel</name>
                 </author>
                 <AuthorizationRules xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">
-                    <AuthorizationRule>
+                    <AuthorizationRule i:type="SharedAccessAuthorizationRule">
                         <KeyName>testpolicy</KeyName>
                     </AuthorizationRule>
                 </AuthorizationRules>
@@ -504,6 +504,7 @@ class TestXmlDeserialization:
 
         class AuthorizationRule(Model):
             _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'attr': True, 'prefix': 'i', 'ns': 'http://www.w3.org/2001/XMLSchema-instance'}},
                 'key_name': {'key': 'KeyName', 'type': 'str', 'xml': {'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'}},
             }
             _xml_map = {
@@ -520,6 +521,7 @@ class TestXmlDeserialization:
 
         assert result.author.name == "lmazuel"
         assert result.authorization_rules[0].key_name == "testpolicy"
+        assert result.authorization_rules[0].type == "SharedAccessAuthorizationRule"
 
 
 class TestXmlSerialization:
