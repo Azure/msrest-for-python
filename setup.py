@@ -53,6 +53,7 @@ setup(
         "isodate>=0.6.0",
         "certifi>=2017.4.17",
     ],
+    include_package_data=True,
     package_data={
         'pytyped': ['py.typed'],
     },
