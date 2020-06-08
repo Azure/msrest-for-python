@@ -53,6 +53,10 @@ setup(
         "isodate>=0.6.0",
         "certifi>=2017.4.17",
     ],
+    include_package_data=True,
+    package_data={
+        'pytyped': ['py.typed'],
+    },
     extras_require={
         ":python_version<'3.4'": ['enum34>=1.0.4'],
         ":python_version<'3.5'": ['typing'],
