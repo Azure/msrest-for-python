@@ -20,6 +20,18 @@ To install:
 Release History
 ---------------
 
+2020-XX-XX Version 0.6.16
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix XML parsing with namespaces and attributes  #209
+
+**Features**
+
+- Add py.typed for mypy support
+
+
 2020-06-04 Version 0.6.15
 +++++++++++++++++++++++++
 

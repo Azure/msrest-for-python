@@ -474,21 +474,25 @@ class TestXmlDeserialization:
     def test_complex_namespace(self):
         """Test recursive namespace."""
         basic_xml = """<?xml version="1.0"?>
-            <entry xmlns="http://www.w3.org/2005/Atom">
+            <entry xmlns="http://www.w3.org/2005/Atom" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
                 <author>
                     <name>lmazuel</name>
                 </author>
                 <AuthorizationRules xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">
-                    <AuthorizationRule>
+                    <AuthorizationRule i:type="SharedAccessAuthorizationRule">
                         <KeyName>testpolicy</KeyName>
                     </AuthorizationRule>
                 </AuthorizationRules>
+                <CountDetails xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">
+                    <d2p1:ActiveMessageCount xmlns:d2p1="http://schemas.microsoft.com/netservices/2011/06/servicebus">12</d2p1:ActiveMessageCount>
+                </CountDetails>
             </entry>"""
 
         class XmlRoot(Model):
             _attribute_map = {
                 'author': {'key': 'author', 'type': 'QueueDescriptionResponseAuthor'},
                 'authorization_rules': {'key': 'AuthorizationRules', 'type': '[AuthorizationRule]', 'xml': {'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect', 'wrapped': True, 'itemsNs': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'}},
+                'message_count_details': {'key': 'MessageCountDetails', 'type': 'MessageCountDetails'},
             }
             _xml_map = {
                 'name': 'entry', 'ns': 'http://www.w3.org/2005/Atom'
@@ -504,10 +508,19 @@ class TestXmlDeserialization:
 
         class AuthorizationRule(Model):
             _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'attr': True, 'prefix': 'i', 'ns': 'http://www.w3.org/2001/XMLSchema-instance'}},
                 'key_name': {'key': 'KeyName', 'type': 'str', 'xml': {'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'}},
             }
             _xml_map = {
                 'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'
+            }
+
+        class MessageCountDetails(Model):
+            _attribute_map = {
+                'active_message_count': {'key': 'ActiveMessageCount', 'type': 'int', 'xml': {'prefix': 'd2p1', 'ns': 'http://schemas.microsoft.com/netservices/2011/06/servicebus'}},
+            }
+            _xml_map = {
+                'name': 'CountDetails', 'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'
             }
 
 
@@ -515,11 +528,14 @@ class TestXmlDeserialization:
             "XmlRoot": XmlRoot,
             "QueueDescriptionResponseAuthor": QueueDescriptionResponseAuthor,
             "AuthorizationRule": AuthorizationRule,
+            "MessageCountDetails": MessageCountDetails,
         })
         result = s(XmlRoot, basic_xml, "application/xml")
 
         assert result.author.name == "lmazuel"
         assert result.authorization_rules[0].key_name == "testpolicy"
+        assert result.authorization_rules[0].type == "SharedAccessAuthorizationRule"
+        assert result.message_count_details.active_message_count == 12
 
 
 class TestXmlSerialization:
@@ -1408,5 +1424,64 @@ class TestXmlSerialization:
 
         s = Serializer({"XmlModel": XmlModel})
         rawxml = s.body(mymodel, 'XmlModel', is_xml=True)
+
+        assert_xml_equals(rawxml, basic_xml)
+
+    @pytest.mark.skipif(sys.version_info < (3,6),
+                        reason="Unstable before python3.6 for some reasons")
+    def test_complex_namespace(self):
+        """Test recursive namespace."""
+        basic_xml = ET.fromstring("""<?xml version="1.0"?>
+            <entry xmlns="http://www.w3.org/2005/Atom" xmlns:i="http://www.w3.org/2001/XMLSchema-instance">
+                <author>
+                    <name>lmazuel</name>
+                </author>
+                <AuthorizationRules xmlns="http://schemas.microsoft.com/netservices/2010/10/servicebus/connect">
+                    <AuthorizationRule i:type="SharedAccessAuthorizationRule">
+                        <KeyName>testpolicy</KeyName>
+                    </AuthorizationRule>
+                </AuthorizationRules>
+            </entry>""")
+
+        class XmlRoot(Model):
+            _attribute_map = {
+                'author': {'key': 'author', 'type': 'QueueDescriptionResponseAuthor'},
+                'authorization_rules': {'key': 'AuthorizationRules', 'type': '[AuthorizationRule]', 'xml': {'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect', 'wrapped': True, 'itemsNs': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'}},
+            }
+            _xml_map = {
+                'name': 'entry', 'ns': 'http://www.w3.org/2005/Atom'
+            }
+
+        class QueueDescriptionResponseAuthor(Model):
+            _attribute_map = {
+                'name': {'key': 'name', 'type': 'str', 'xml': {'ns': 'http://www.w3.org/2005/Atom'}},
+            }
+            _xml_map = {
+                'ns': 'http://www.w3.org/2005/Atom'
+            }
+
+        class AuthorizationRule(Model):
+            _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'attr': True, 'prefix': 'i', 'ns': 'http://www.w3.org/2001/XMLSchema-instance'}},
+                'key_name': {'key': 'KeyName', 'type': 'str', 'xml': {'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'}},
+            }
+            _xml_map = {
+                'ns': 'http://schemas.microsoft.com/netservices/2010/10/servicebus/connect'
+            }
+
+        mymodel = XmlRoot(
+            author = QueueDescriptionResponseAuthor(name = "lmazuel"),
+            authorization_rules = [AuthorizationRule(
+                type="SharedAccessAuthorizationRule",
+                key_name="testpolicy"
+            )]
+        )
+
+        s = Serializer({
+            "XmlRoot": XmlRoot,
+            "QueueDescriptionResponseAuthor": QueueDescriptionResponseAuthor,
+            "AuthorizationRule": AuthorizationRule,
+        })
+        rawxml = s.body(mymodel, 'XmlModel')
 
         assert_xml_equals(rawxml, basic_xml)
