@@ -574,7 +574,6 @@ class TestXmlDeserialization:
 
             def __init__(
                 self,
-                *,
                 correlation_id = None,
                 **kwargs
             ):
