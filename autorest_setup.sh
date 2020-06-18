@@ -1,0 +1,1 @@
+pushd autorest.python/test/vanilla/ && pip install -r requirements.txt && popd
