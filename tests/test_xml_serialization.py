@@ -579,7 +579,7 @@ class TestXmlDeserialization:
                 **kwargs
             ):
                 super(CorrelationFilter, self).__init__(**kwargs)
-                self.type: str = 'CorrelationFilter'
+                self.type = 'CorrelationFilter'
                 self.correlation_id = correlation_id
 
         class SqlFilter(RuleFilter):
