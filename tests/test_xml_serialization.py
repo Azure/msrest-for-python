@@ -537,6 +537,72 @@ class TestXmlDeserialization:
         assert result.authorization_rules[0].type == "SharedAccessAuthorizationRule"
         assert result.message_count_details.active_message_count == 12
 
+    def test_polymorphic_deserialization(self):
+
+        basic_xml = """<?xml version="1.0"?>
+            <entry xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+                <Filter xsi:type="CorrelationFilter">
+                    <CorrelationId>12</CorrelationId>
+                </Filter>
+            </entry>"""
+
+        class XmlRoot(Model):
+            _attribute_map = {
+                'filter': {'key': 'Filter', 'type': 'RuleFilter'},
+            }
+            _xml_map = {
+                'name': 'entry'
+            }
+
+        class RuleFilter(Model):
+            _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'attr': True, 'prefix': 'xsi', 'ns': 'http://www.w3.org/2001/XMLSchema-instance'}},
+            }
+
+            _subtype_map = {
+                'type': {'CorrelationFilter': 'CorrelationFilter', 'SqlFilter': 'SqlFilter'}
+            }
+            _xml_map = {
+                'name': 'Filter'
+            }
+
+        class CorrelationFilter(RuleFilter):
+            _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'attr': True, 'prefix': 'xsi', 'ns': 'http://www.w3.org/2001/XMLSchema-instance'}},
+                'correlation_id': {'key': 'CorrelationId', 'type': 'int'},
+            }
+
+            def __init__(
+                self,
+                correlation_id = None,
+                **kwargs
+            ):
+                super(CorrelationFilter, self).__init__(**kwargs)
+                self.type = 'CorrelationFilter'
+                self.correlation_id = correlation_id
+
+        class SqlFilter(RuleFilter):
+            _attribute_map = {
+                'type': {'key': 'type', 'type': 'str', 'xml': {'attr': True, 'prefix': 'xsi', 'ns': 'http://www.w3.org/2001/XMLSchema-instance'}},
+            }
+
+            def __init__(
+                self,
+                **kwargs
+            ):
+                pytest.fail("Don't instantiate me")
+
+        s = Deserializer({
+            "XmlRoot": XmlRoot,
+            "RuleFilter": RuleFilter,
+            "SqlFilter": SqlFilter,
+            "CorrelationFilter": CorrelationFilter,
+        })
+        result = s(XmlRoot, basic_xml, "application/xml")
+
+        assert isinstance(result.filter, CorrelationFilter)
+        assert result.filter.correlation_id == 12
+
 
 class TestXmlSerialization:
 
