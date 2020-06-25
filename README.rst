@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2020-06-25 Version 0.6.17
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix XML and discriminator  #214
+
+
 2020-06-09 Version 0.6.16
 +++++++++++++++++++++++++
 
