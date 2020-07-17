@@ -102,6 +102,26 @@ class TestXmlDeserialization:
 
         assert result.language == u"français"
 
+    def test_basic_text(self):
+        """Test a XML with unicode."""
+        basic_xml = u"""<?xml version="1.0" encoding="utf-8"?>
+            <Data language="english">I am text</Data>"""
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'language': {'key': 'language', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
+                'content': {'key': 'content', 'type': 'str', 'xml':{'text': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        s = Deserializer({"XmlModel": XmlModel})
+        result = s(XmlModel, basic_xml, "application/xml")
+
+        assert result.language == "english"
+        assert result.content == "I am text"
+
     def test_add_prop(self):
         """Test addProp as a dict.
         """
@@ -752,6 +772,31 @@ class TestXmlSerialization:
         rawxml = s.body(mymodel, 'XmlModel')
 
         assert_xml_equals(rawxml, basic_xml)
+
+    def test_basic_text(self):
+        """Test a XML with unicode."""
+        basic_xml = ET.fromstring("""<?xml version="1.0" encoding="utf-8"?>
+            <Data language="english">I am text</Data>""")
+
+        class XmlModel(Model):
+            _attribute_map = {
+                'language': {'key': 'language', 'type': 'str', 'xml':{'name': 'language', 'attr': True}},
+                'content': {'key': 'content', 'type': 'str', 'xml':{'text': True}},
+            }
+            _xml_map = {
+                'name': 'Data'
+            }
+
+        mymodel = XmlModel(
+            language="english",
+            content="I am text"
+        )
+
+        s = Serializer({"XmlModel": XmlModel})
+        rawxml = s.body(mymodel, 'XmlModel')
+
+        assert_xml_equals(rawxml, basic_xml)
+
 
     def test_direct_array(self):
         """Test an ultra basic XML."""

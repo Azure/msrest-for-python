@@ -534,6 +534,9 @@ class Serializer(object):
                                 xml_name = "{{{}}}{}".format(xml_ns, xml_name)
                             serialized.set(xml_name, new_attr)
                             continue
+                        if xml_desc.get("text", False):
+                            serialized.text = new_attr
+                            continue
                         if isinstance(new_attr, list):
                             serialized.extend(new_attr)
                         elif isinstance(new_attr, ET.Element):
@@ -1246,6 +1249,10 @@ def xml_key_extractor(attr, attr_desc, data):
     # If it's an attribute, that's simple
     if xml_desc.get("attr", False):
         return data.get(xml_name)
+
+    # If it's x-ms-text, that's simple too
+    if xml_desc.get("text", False):
+        return data.text
 
     # Scenario where I take the local name:
     # - Wrapped node
