@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2020-07-27 Version 0.6.18
++++++++++++++++++++++++++
+
+**Features**
+
+- Add support for attributes/text in the same XML node  #218
+
+
 2020-06-25 Version 0.6.17
 +++++++++++++++++++++++++
 
