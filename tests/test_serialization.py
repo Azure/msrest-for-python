@@ -312,6 +312,28 @@ class TestRuntimeSerialized(unittest.TestCase):
         assert s.query("filter", [',', ',', ','], "[str]", div=",") == "%2C,%2C,%2C"
         assert s.query("filter", [',', ',', ','], "[str]", div="|", skip_quote=True) == ",|,|,"
 
+    def test_serialize_custom_model(self):
+
+        class CustomSample(Model):
+            _validation = {
+                    'a': {'required': True},
+            }
+
+            _attribute_map = {
+                'a': {'key': 'a', 'type': 'str'},
+            }
+
+            def __init__(self, a):
+                self.a = a
+
+        s = Serializer()
+        model = CustomSample("helloworld")
+        serialized = s._serialize(model)
+
+        assert serialized is not None
+        assert isinstance(serialized, dict)
+        assert serialized['a'] == "helloworld"
+
     def test_serialize_direct_model(self):
         testobj = self.TestObj()
         testobj.attr_a = "myid"
