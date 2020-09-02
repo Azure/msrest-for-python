@@ -953,7 +953,7 @@ class Serializer(object):
             return self.serialize_long(attr)
 
         # If it's a model or I know this dependency, serialize as a Model
-        elif obj_type in self.dependencies.values() or isinstance(obj_type, Model):
+        elif obj_type in self.dependencies.values() or isinstance(attr, Model):
             return self._serialize(attr)
 
         if obj_type == dict:
