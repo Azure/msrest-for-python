@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2020-09-XX Version 0.6.19
++++++++++++++++++++++++++
+
+**Bugfixes**
+
+- Fix serialization of random Model object  #220
+
+
 2020-07-27 Version 0.6.18
 +++++++++++++++++++++++++
 
