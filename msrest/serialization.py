@@ -951,6 +951,8 @@ class Serializer(object):
             return self.serialize_basic(attr, self.basic_types[obj_type], **kwargs)
         if obj_type is _long_type:
             return self.serialize_long(attr)
+        if obj_type is unicode_str:
+            return self.serialize_unicode(attr)
 
         # If it's a model or I know this dependency, serialize as a Model
         elif obj_type in self.dependencies.values() or isinstance(attr, Model):

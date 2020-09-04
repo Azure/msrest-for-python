@@ -26,6 +26,7 @@ Release History
 **Bugfixes**
 
 - Fix serialization of random Model object  #220
+- Fix serialization of unicode string in Py2 and object mode #221
 
 
 2020-07-27 Version 0.6.18

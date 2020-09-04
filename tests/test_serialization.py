@@ -1366,6 +1366,8 @@ class TestRuntimeSerialized(unittest.TestCase):
         except NameError:
             long_type = int
 
+        s = Serializer()
+        assert s.serialize_data(long_type(1), 'object') == long_type(1)
 
         class TestModel(Model):
             _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
@@ -1374,6 +1376,23 @@ class TestRuntimeSerialized(unittest.TestCase):
         serialized = m.serialize()
         assert serialized == {
             'data': {'id': long_type(1)}
+        }
+
+    def test_unicode_as_type_object(self):
+        """Test irrelevant on Python 3. But still doing it to test regresssion.
+            https://github.com/Azure/msrest-for-python/issue/221
+        """
+
+        s = Serializer()
+        assert s.serialize_data(u"\ua015", 'object') == u"\ua015"
+
+        class TestModel(Model):
+            _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
+
+        m = TestModel(data = {'id': u"\ua015"})
+        serialized = m.serialize()
+        assert serialized == {
+            'data': {'id': u"\ua015"}
         }
 
     def test_json_with_xml_map(self):
