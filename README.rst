@@ -20,7 +20,7 @@ To install:
 Release History
 ---------------
 
-2020-09-XX Version 0.6.19
+2020-09-08 Version 0.6.19
 +++++++++++++++++++++++++
 
 **Bugfixes**
