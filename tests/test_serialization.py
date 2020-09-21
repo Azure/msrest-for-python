@@ -1395,6 +1395,27 @@ class TestRuntimeSerialized(unittest.TestCase):
             'data': {'id': u"\ua015"}
         }
 
+    def test_datetime_types_as_type_object(self):
+        """https://github.com/Azure/msrest-for-python/issues/223
+        """
+
+        class TestModel(Model):
+            _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
+
+        m = TestModel(data = {
+            'datetime': isodate.parse_datetime('2012-02-24T00:53:52.780Z'),
+            'date': date(2019,5,1),
+            'time': time(11,12,13),
+            'timedelta': timedelta(56)
+        })
+        serialized = m.serialize()
+        assert serialized['data'] == {
+            'datetime': '2012-02-24T00:53:52.780Z',
+            'date': '2019-05-01',
+            'time': '11:12:13',
+            'timedelta': 'P56D'
+        }
+
     def test_json_with_xml_map(self):
         basic_json = {'age': 37, 'country': 'france'}
 
