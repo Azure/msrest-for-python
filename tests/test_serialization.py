@@ -25,6 +25,7 @@
 #
 #--------------------------------------------------------------------------
 
+from decimal import Decimal
 import sys
 import json
 import isodate
@@ -1414,6 +1415,21 @@ class TestRuntimeSerialized(unittest.TestCase):
             'date': '2019-05-01',
             'time': '11:12:13',
             'timedelta': 'P56D'
+        }
+
+    def test_decimal_types_as_type_object(self):
+        """https://github.com/Azure/msrest-for-python/issues/223
+        """
+
+        class TestModel(Model):
+            _attribute_map = {'data': {'key': 'data', 'type': 'object'}}
+
+        m = TestModel(data = {
+            'decimal': Decimal('1.1'),
+        })
+        serialized = m.serialize()
+        assert serialized['data'] == {
+            'decimal': 1.1
         }
 
     def test_json_with_xml_map(self):
