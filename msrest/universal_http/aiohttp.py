@@ -26,6 +26,7 @@
 from typing import Any, Callable, AsyncIterator, Optional
 
 import aiohttp
+from multidict import CIMultiDict
 
 from . import AsyncHTTPSender, ClientRequest, AsyncClientResponse
 
@@ -69,7 +70,7 @@ class AioHttpClientResponse(AsyncClientResponse):
         super(AioHttpClientResponse, self).__init__(request, aiohttp_response)
         # https://aiohttp.readthedocs.io/en/stable/client_reference.html#aiohttp.ClientResponse
         self.status_code = aiohttp_response.status
-        self.headers = aiohttp_response.headers
+        self.headers = CIMultiDict(aiohttp_response.headers)
         self.reason = aiohttp_response.reason
         self._body = None
 
