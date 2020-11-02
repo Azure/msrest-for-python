@@ -10,4 +10,5 @@ mypy;python_full_version>="3.5.2"
 pylint
 aiohttp;python_full_version>="3.5.2"
 # async in msrest was experimental, we won't update
-trio==0.16.0;python_full_version>="3.5.2" 
+trio==0.14.0;python_version == '3.5'
+trio==0.16.0;python_version >= '3.6'
