@@ -40,7 +40,7 @@ except ImportError:
     from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 
-from typing import TYPE_CHECKING, Generic, TypeVar, cast, IO, List, Union, Any, Mapping, Dict, Optional, Tuple, Callable, Iterator  # pylint: disable=unused-import
+from typing import TYPE_CHECKING, Generic, TypeVar, cast, IO, List, Union, Any, Mapping, Dict, Optional, Tuple, Callable, Iterator, MutableMapping  # pylint: disable=unused-import
 
 HTTPResponseType = TypeVar("HTTPResponseType", bound='HTTPClientResponse')
 
@@ -325,7 +325,7 @@ class HTTPClientResponse(object):
         self.request = request
         self.internal_response = internal_response
         self.status_code = None  # type: Optional[int]
-        self.headers = {}  # type: Dict[str, str]
+        self.headers = {}  # type: MutableMapping[str, str]
         self.reason = None  # type: Optional[str]
 
     def body(self):
