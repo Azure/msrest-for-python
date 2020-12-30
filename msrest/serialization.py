@@ -953,6 +953,16 @@ class Serializer(object):
             return self.serialize_long(attr)
         if obj_type is unicode_str:
             return self.serialize_unicode(attr)
+        if obj_type is datetime.datetime:
+            return self.serialize_iso(attr)
+        if obj_type is datetime.date:
+            return self.serialize_date(attr)
+        if obj_type is datetime.time:
+            return self.serialize_time(attr)
+        if obj_type is datetime.timedelta:
+            return self.serialize_duration(attr)
+        if obj_type is decimal.Decimal:
+            return self.serialize_decimal(attr)
 
         # If it's a model or I know this dependency, serialize as a Model
         elif obj_type in self.dependencies.values() or isinstance(attr, Model):
