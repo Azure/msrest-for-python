@@ -1495,10 +1495,10 @@ class Deserializer(object):
 
         :param str target_obj: The target object type to deserialize to.
         :param str/dict data: The response data to deseralize.
+        :param str content_type: Swagger "produces" if available.
         """
         try:
-            data = self._unpack_content(response_data, content_type)
-            return self(target_obj, data)
+            return self(target_obj, data, content_type=content_type)
         except:
             _LOGGER.warning(
                 "Ran into a deserialization error. Ignoring since this is failsafe deserialization"

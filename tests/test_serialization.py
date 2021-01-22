@@ -2543,7 +2543,8 @@ class TestRuntimeDeserialized(unittest.TestCase):
         with pytest.raises(DeserializationError):
             self.d(Error, json.dumps(''), 'text/html')
 
-        self.d.failsafe_deserialize(Error, json.dumps(''), 'text/html')
+        deserialized = self.d.failsafe_deserialize(Error, json.dumps(''), 'text/html')
+        assert deserialized is None
 
 class TestModelInstanceEquality(unittest.TestCase):
 
