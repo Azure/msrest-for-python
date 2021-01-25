@@ -20,12 +20,13 @@ To install:
 Release History
 ---------------
 
-2021-01-22 Version 0.6.20
+2021-01-25 Version 0.6.20
 +++++++++++++++++++++++++
 
 **Features**
 
 - Add `failsafe_deserialize` method to the `Deserializer` object. #232
+- Serialize `datetime`, `date`, `time`, `timedelta` and `Decimal` correctly when serializing `object` . #224
 
 2020-09-08 Version 0.6.19
 +++++++++++++++++++++++++
