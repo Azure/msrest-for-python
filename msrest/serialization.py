@@ -1486,6 +1486,26 @@ class Deserializer(object):
             pass  # Target is not a Model, no classify
         return target, target.__class__.__name__
 
+    def failsafe_deserialize(self, target_obj, response_data, content_type=None):
+        """Ignores any errors encountered in deserialization,
+        and falls back to not deserializing the object. Recommended
+        for use in error deserialization, as we want to return the
+        HttpResponseError to users, and not have them deal with
+        a deserialization error.
+
+        :param str target_obj: The target object type to deserialize to.
+        :param str/dict data: The response data to deseralize.
+        :param str content_type: Swagger "produces" if available.
+        """
+        try:
+            return self(target_obj, data, content_type=content_type)
+        except:
+            _LOGGER.warning(
+                "Ran into a deserialization error. Ignoring since this is failsafe deserialization",
+				exc_info=True
+            )
+            return None
+
     @staticmethod
     def _unpack_content(raw_data, content_type=None):
         """Extract the correct structure for deserialization.

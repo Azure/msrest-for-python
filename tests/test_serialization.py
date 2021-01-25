@@ -2533,6 +2533,19 @@ class TestRuntimeDeserialized(unittest.TestCase):
         m = TestModel.deserialize({'data': {'id': long_type(1)}})
         assert m.data['id'] == long_type(1)
 
+    def test_failsafe_deserialization(self):
+        class Error(Model):
+
+            def __init__(self, **kwargs):
+                self.status = kwargs.pop("status")
+                self.message = kwargs.pop("message")
+
+        with pytest.raises(DeserializationError):
+            self.d(Error, json.dumps(''), 'text/html')
+
+        deserialized = self.d.failsafe_deserialize(Error, json.dumps(''), 'text/html')
+        assert deserialized is None
+
 class TestModelInstanceEquality(unittest.TestCase):
 
     def test_model_instance_equality(self):
