@@ -25,9 +25,7 @@ Release History
 
 **Features**
 
-- Add `failsafe_deserialize` method to the `Deserializer` object. When called, ignores any deserialization errors thrown,
-and returns `None`. Recommended when deserializing error models, as in the case of an incorrect error model, we still want
-to return the `HttpResponseError` to the user (without a `model`), instead of throwing a `DeserializationError`.  #232
+- Add `failsafe_deserialize` method to the `Deserializer` object. #232
 
 2020-09-08 Version 0.6.19
 +++++++++++++++++++++++++
