@@ -2555,9 +2555,10 @@ class TestRuntimeDeserialized(unittest.TestCase):
         assert deserialized is None
 
         # should not fail
-        error = {"properties": {"status": 400, "message": "should deserialize"}}
+        error = {"status": 400, "message": "should deserialize"}
         deserialized = self.d.failsafe_deserialize(Error, json.dumps(error), 'application/json')
-        assert deserialized
+        assert deserialized.status == 400
+        assert deserialized.message == "should deserialize"
 
 class TestModelInstanceEquality(unittest.TestCase):
 
