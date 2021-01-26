@@ -2536,15 +2536,28 @@ class TestRuntimeDeserialized(unittest.TestCase):
     def test_failsafe_deserialization(self):
         class Error(Model):
 
+            _attribute_map = {
+                "status": {"key": "status", "type": "int"},
+                "message": {"key": "message", "type": "str"},
+            }
+
             def __init__(self, **kwargs):
-                self.status = kwargs.pop("status")
-                self.message = kwargs.pop("message")
+                super(Error, self).__init__(**kwargs)
+                self.status = kwargs.get("status", None)
+                self.message = kwargs.get("message", None)
+
 
         with pytest.raises(DeserializationError):
             self.d(Error, json.dumps(''), 'text/html')
 
+        # should fail
         deserialized = self.d.failsafe_deserialize(Error, json.dumps(''), 'text/html')
         assert deserialized is None
+
+        # should not fail
+        error = {"properties": {"status": 400, "message": "should deserialize"}}
+        deserialized = self.d.failsafe_deserialize(Error, json.dumps(error), 'application/json')
+        assert deserialized
 
 class TestModelInstanceEquality(unittest.TestCase):
 

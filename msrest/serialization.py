@@ -1486,7 +1486,7 @@ class Deserializer(object):
             pass  # Target is not a Model, no classify
         return target, target.__class__.__name__
 
-    def failsafe_deserialize(self, target_obj, response_data, content_type=None):
+    def failsafe_deserialize(self, target_obj, data, content_type=None):
         """Ignores any errors encountered in deserialization,
         and falls back to not deserializing the object. Recommended
         for use in error deserialization, as we want to return the
