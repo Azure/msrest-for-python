@@ -25,7 +25,7 @@ Release History
 
 **Bug Fixes**
 
-- Fixes `failsafe_deserialize`. **Please bump your version to 0.6.21** #232
+- Fixes `failsafe_deserialize` introduced in `0.6.20` #232
 
 2021-01-25 Version 0.6.20
 +++++++++++++++++++++++++
