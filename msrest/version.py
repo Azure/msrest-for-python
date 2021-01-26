@@ -25,4 +25,4 @@
 # --------------------------------------------------------------------------
 
 #: version of this package. Use msrest.__version__ instead
-msrest_version = "0.6.20"
+msrest_version = "0.6.21"

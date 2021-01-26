@@ -20,6 +20,13 @@ To install:
 Release History
 ---------------
 
+2021-01-26 Version 0.6.21
++++++++++++++++++++++++++
+
+**Bug Fixes**
+
+- Fixes `failsafe_deserialize` introduced in `0.6.20` #232
+
 2021-01-25 Version 0.6.20
 +++++++++++++++++++++++++
 
