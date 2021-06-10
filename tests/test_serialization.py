@@ -418,6 +418,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         # Assert not necessary, should not raise exception
         self.s.validate("simplestring", "StringForLog", pattern="^[a-z]+$")
         self.s.validate(u"UTF8ééééé", "StringForLog", pattern=r"^[\w]+$")
+        self.s.validate("begin middle end", "StringForLog", pattern="middle")
 
     def test_model_validate(self):
 
