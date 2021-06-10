@@ -438,7 +438,7 @@ class Serializer(object):
         "maximum_ex": lambda x, y: x >= y,
         "min_items": lambda x, y: len(x) < y,
         "max_items": lambda x, y: len(x) > y,
-        "pattern": lambda x, y: not re.match(y, x, re.UNICODE),
+        "pattern": lambda x, y: not re.search(y, x, re.UNICODE),
         "unique": lambda x, y: len(x) != len(set(x)),
         "multiple": lambda x, y: x % y != 0
         }
