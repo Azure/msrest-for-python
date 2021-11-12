@@ -172,7 +172,7 @@ class LROPoller(object):
         return self._polling_method.status()
 
     def result(self, timeout=None):
-        # type: (Optional[int]) -> Model
+        # type: (Optional[float]) -> Model
         """Return the result of the long running operation, or
         the result available after the specified timeout.
 
@@ -184,12 +184,12 @@ class LROPoller(object):
         return self._polling_method.resource()
 
     def wait(self, timeout=None):
-        # type: (Optional[int]) -> None
+        # type: (Optional[float]) -> None
         """Wait on the long running operation for a specified length
         of time. You can check if this call as ended with timeout with the
         "done()" method.
 
-        :param int timeout: Period of time to wait for the long running
+        :param float timeout: Period of time to wait for the long running
          operation to complete (in seconds).
         :raises CloudError: Server problem with the query.
         """
