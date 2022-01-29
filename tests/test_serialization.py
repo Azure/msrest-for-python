@@ -1358,7 +1358,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         self.assertEqual(serialized, expected_message)
 
     def test_long_as_type_object(self):
-        """Test irrelevant on Python 3. But still doing it to test regresssion.
+        """Test irrelevant on Python 3. But still doing it to test regression.
             https://github.com/Azure/msrest-for-python/pull/121
         """
 
@@ -1380,7 +1380,7 @@ class TestRuntimeSerialized(unittest.TestCase):
         }
 
     def test_unicode_as_type_object(self):
-        """Test irrelevant on Python 3. But still doing it to test regresssion.
+        """Test irrelevant on Python 3. But still doing it to test regression.
             https://github.com/Azure/msrest-for-python/issue/221
         """
 
@@ -1516,10 +1516,10 @@ class TestRuntimeDeserialized(unittest.TestCase):
         assert_model(model_instance)
 
     def test_twice_key_scenario(self):
-        # Te reproduce the initial bug, you need a attribute named after the last part
+        # To reproduce the initial bug, you need a attribute named after the last part
         # of a flattening JSON from another attribute (here type)
         # https://github.com/Azure/azure-sdk-for-python/issues/11422
-        # Issue happend where searching for "type2", since we found a match in both "type2" and "type" keys
+        # Issue happened where searching for "type2", since we found a match in both "type2" and "type" keys
 
         class LocalModel(Model):
             _attribute_map = {
@@ -2517,7 +2517,7 @@ class TestRuntimeDeserialized(unittest.TestCase):
         self.assertEqual(obj.abc, TestEnum.val)
 
     def test_long_as_type_object(self):
-        """Test irrelevant on Python 3. But still doing it to test regresssion.
+        """Test irrelevant on Python 3. But still doing it to test regression.
             https://github.com/Azure/msrest-for-python/pull/121
         """
 
