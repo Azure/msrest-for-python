@@ -115,7 +115,7 @@ Thanks to ivanst0 for the contribution
 
 - XML mode can now be enabled even if the given Model has no XML metadata  #184
 - Add Kerberos Authentication  #186
-- Improve error message if expected type is dictionnary and something else is provided  #188
+- Improve error message if expected type is dictionary and something else is provided  #188
 
 **Bugfixes**
 
@@ -212,7 +212,7 @@ Thanks to eduardomourar for the contribution
 
 **Bugfixes**
 
-- Remove unecessary verbose "warnings" log #126
+- Remove unnecessary verbose "warnings" log #126
 
 2018-10-02 Version 0.6.0
 ++++++++++++++++++++++++
@@ -311,7 +311,7 @@ Thanks to dharmab for the contribution
 **Disclaimer**
 
 This released is designed to be backward compatible with 0.4.x, but there is too many internal refactoring
-and new features to continue with 0.4.x versionning
+and new features to continue with 0.4.x versioning
 
 **Features**
 
@@ -484,13 +484,13 @@ This make Authentication classes more consistent:
 - OAuthTokenAuthentication is now a subclass of BasicTokenAuthentication (was Authentication)
 - BasicTokenAuthentication has now a "set_token" methods that does nothing.
 
-This allows test like "isintance(o, BasicTokenAuthentication)" to be guaranted that the following attributes exists:
+This allows test like "isintance(o, BasicTokenAuthentication)" to be guaranteed that the following attributes exists:
 
 - token
 - set_token()
 - signed_session()
 
-This means for users of "msrestazure", that they are guaranted that all AD classes somehow inherits from "BasicTokenAuthentication"
+This means for users of "msrestazure", that they are guaranteed that all AD classes somehow inherits from "BasicTokenAuthentication"
 
 2017-10-05 Version 0.4.16
 +++++++++++++++++++++++++

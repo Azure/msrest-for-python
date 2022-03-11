@@ -117,7 +117,7 @@ class Paged(AsyncPagedMixin, Iterator):
         # type: () -> List[Model]
         """Force moving the cursor to the next azure call.
 
-        This method is for advanced usage, iterator protocol is prefered.
+        This method is for advanced usage, iterator protocol is preferred.
 
         :raises: StopIteration if no further page
         :return: The current page list

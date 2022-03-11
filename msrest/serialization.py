@@ -271,7 +271,7 @@ class Model(object):
     def as_dict(self, keep_readonly=True, key_transformer=attribute_transformer, **kwargs):
         """Return a dict that can be JSONify using json.dump.
 
-        Advanced usage might optionaly use a callback as parameter:
+        Advanced usage might optionally use a callback as parameter:
 
         .. code::python
 
@@ -1710,7 +1710,7 @@ class Deserializer(object):
             raise TypeError(error + str(obj_type))
 
     def deserialize_basic(self, attr, data_type):
-        """Deserialize baisc builtin data type from string.
+        """Deserialize basic builtin data type from string.
         Will attempt to convert to str, int, float and bool.
         This function will also accept '1', '0', 'true' and 'false' as
         valid bool values.
