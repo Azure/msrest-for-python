@@ -42,6 +42,7 @@ from requests import Response
 from msrest.serialization import Model, last_restapi_key_transformer, full_restapi_key_transformer, rest_key_extractor
 from msrest import Serializer, Deserializer
 from msrest.exceptions import SerializationError, DeserializationError, ValidationError
+from azure.core.exceptions import SerializationError as AzureCoreSerializationError, DeserializationError as AzureCoreDeserializationError
 
 from . import storage_models
 
@@ -2578,6 +2579,12 @@ class TestModelInstanceEquality(unittest.TestCase):
         animal3 = Animal('a1')
         self.assertTrue(animal1!=animal2)
         self.assertTrue(animal1==animal3)
+
+class TestAzureCoreExceptions(unittest.TestCase):
+
+    def test_azure_core_exceptions(self):
+        self.assertEqual(SerializationError, AzureCoreSerializationError)
+        self.assertEqual(DeserializationError, AzureCoreDeserializationError)
 
 if __name__ == '__main__':
     unittest.main()

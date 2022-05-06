@@ -45,6 +45,14 @@ jobs:
       env: TOXENV=py38
       <<: *_test
     - stage: Test
+      python: 3.9
+      env: TOXENV=py39
+      <<: *_test
+    - stage: Test
+      python: 3.10
+      env: TOXENV=py310
+      <<: *_test
+    - stage: Test
       python: 2.7
       env: TOXENV=py27-autorest
       <<: *_autorest_install
@@ -69,6 +77,16 @@ jobs:
       env: TOXENV=py38-autorest
       <<: *_autorest_install
       <<: *_test
+    - stage: Test
+      python: 3.9
+      env: TOXENV=py39-autorest
+      <<: *_autorest_install
+      <<: *_test
+    - stage: Test
+      python: 3.10
+      env: TOXENV=py310-autorest
+      <<: *_autorest_install
+      <<: *_test
 
   allow_failures:
     - env: TOXENV=py27-autorest
@@ -76,6 +94,8 @@ jobs:
     - env: TOXENV=py36-autorest
     - env: TOXENV=py37-autorest
     - env: TOXENV=py38-autorest
+    - env: TOXENV=py39-autorest
+    - env: TOXENV=py310-autorest
 deploy:
   provider: pypi
   user: Laurent.Mazuel

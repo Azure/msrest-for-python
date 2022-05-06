@@ -161,7 +161,7 @@ try:
 
         async def __anext__(self):
             try:
-                chunk = await trio.run_sync_in_worker_thread(
+                chunk = await trio.to_thread.run_sync(
                     _msrest_next,
                     self.iter_content_func,
                 )
@@ -209,7 +209,7 @@ try:
             session = kwargs.pop('session', self.session)
 
             trio_limiter = kwargs.get("trio_limiter", None)
-            future = trio.run_sync_in_worker_thread(
+            future = trio.to_thread.run_sync(
                 functools.partial(
                     session.request,
                     request.method,
