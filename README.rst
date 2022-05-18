@@ -20,6 +20,14 @@ To install:
 Release History
 ---------------
 
+2022-05-05 Version 0.7.0
++++++++++++++++++++++++++
+
+**Features**
+
+- Add `azure-core` as installation requirement #247 
+- Replace `SerializationError` and `DeserializationError` in `msrest.exceptions` with those in `azure.core` #247
+
 2021-01-26 Version 0.6.21
 +++++++++++++++++++++++++
 

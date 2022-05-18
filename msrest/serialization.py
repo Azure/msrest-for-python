@@ -569,7 +569,9 @@ class Serializer(object):
                                 _serialized.update(_new_attr)
                             _new_attr = _new_attr[k]
                             _serialized = _serialized[k]
-                except ValueError:
+                except ValueError as err:
+                    if isinstance(err, SerializationError):
+                        raise err
                     continue
 
         except (AttributeError, KeyError, TypeError) as err:
@@ -776,6 +778,8 @@ class Serializer(object):
                     data, data_type[1:-1], **kwargs)
 
         except (ValueError, TypeError) as err:
+            if (isinstance(err, SerializationError)):
+                raise err   # don't rewrap as SerializationError
             msg = "Unable to serialize value: {!r} as type: {!r}."
             raise_with_traceback(
                 SerializationError, msg.format(data, data_type), err)
@@ -858,7 +862,9 @@ class Serializer(object):
         for d in data:
             try:
                 serialized.append(self.serialize_data(d, iter_type, **kwargs))
-            except ValueError:
+            except ValueError as err:
+                if isinstance(err, SerializationError):
+                    raise err
                 serialized.append(None)
 
         if div:
@@ -914,7 +920,9 @@ class Serializer(object):
             try:
                 serialized[self.serialize_unicode(key)] = self.serialize_data(
                     value, dict_type, **kwargs)
-            except ValueError:
+            except ValueError as err:
+                if isinstance(err, SerializationError):
+                    raise err
                 serialized[self.serialize_unicode(key)] = None
 
         if 'xml' in serialization_ctxt:

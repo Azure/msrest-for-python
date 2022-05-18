@@ -11,4 +11,5 @@ pylint
 aiohttp;python_full_version>="3.5.2"
 # async in msrest was experimental, we won't update
 trio==0.14.0;python_version == '3.5'
-trio==0.16.0;python_version >= '3.6'
+trio==0.16.0;python_version >= '3.6' and python_version < '3.10'
+trio==0.20.0;python_version >= '3.10'

@@ -28,7 +28,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='msrest',
-    version='0.6.21',
+    version='0.7.0',
     author='Microsoft Corporation',
     packages=find_packages(exclude=["tests", "tests.*"]),
     url=("https://github.com/Azure/msrest-for-python"),
@@ -53,6 +53,7 @@ setup(
         "requests_oauthlib>=0.5.0",
         "isodate>=0.6.0",
         "certifi>=2017.4.17",
+        "azure-core>=1.24.0",
     ],
     include_package_data=True,
     package_data={
