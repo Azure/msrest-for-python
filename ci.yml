@@ -26,6 +26,14 @@ jobs:
           OSName: "Linux"
           OSVmImage: "MMSUbuntu20.04"
           PythonVersion: "3.8"
+        Windows_Python39:
+          OSName: "Windows"
+          OSVmImage: "MMS2019"
+          PythonVersion: "3.9"
+        Linux_Python310:
+          OSName: "Linux"
+          OSVmImage: "MMSUbuntu20.04"
+          PythonVersion: "3.10"
 
     pool:
       name: azsdk-pool-mms-ubuntu-2004-general
