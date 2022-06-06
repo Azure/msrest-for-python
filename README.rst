@@ -25,8 +25,14 @@ Release History
 
 **Features**
 
-- Add `azure-core` as installation requirement #247 
+- Add `azure-core` as installation requirement #247
 - Replace `SerializationError` and `DeserializationError` in `msrest.exceptions` with those in `azure.core` #247
+
+**Bugfixes**
+
+- Typing annotation in LROPoller (thanks to akx)  #242
+
+Thanks to kianmeng for typo fixes in the documentation.
 
 2021-01-26 Version 0.6.21
 +++++++++++++++++++++++++
