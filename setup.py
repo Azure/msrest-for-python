@@ -38,8 +38,7 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3 :: Only',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
@@ -48,6 +47,7 @@ setup(
         'Programming Language :: Python :: 3.10',
         'License :: OSI Approved :: MIT License',
         'Topic :: Software Development'],
+    python_requires=">=3.6",
     install_requires=[
         "requests~=2.16",
         "requests_oauthlib>=0.5.0",
@@ -60,8 +60,6 @@ setup(
         'pytyped': ['py.typed'],
     },
     extras_require={
-        ":python_version<'3.4'": ['enum34>=1.0.4'],
-        ":python_version<'3.5'": ['typing'],
         "async:python_version>='3.5'": [
             'aiohttp>=3.0',
             'aiodns'
