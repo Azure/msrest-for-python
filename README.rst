@@ -7,6 +7,17 @@ AutoRest: Python Client Runtime
 .. image:: https://codecov.io/gh/azure/msrest-for-python/branch/master/graph/badge.svg
  :target: https://codecov.io/gh/azure/msrest-for-python
 
+Disclaimer
+----------
+
+*This package is deprecated and no longer receives updates*
+
+- The authentication part of this package has been moved to `azure-identity <https://pypi.org/project/azure-identity/>`_
+- The serialization part of this package is now vendored inside SDKs themselves
+- The other parts of this library are covered by `azure-core <https://pypi.org/project/azure-core/>`_
+
+As such, we will no longer accept PR and fix issues on this project, and this repo will be soon archived.
+
 Installation
 ------------
 
