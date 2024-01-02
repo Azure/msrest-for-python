@@ -338,18 +338,22 @@ class ClientRetryPolicy(object):
     Container for retry policy object.
     """
 
-    safe_codes = [i for i in range(500) if i != 408] + [501, 505]
+    total_retries = 6
+
+    # By precaution, disable retry for all 2XX, 3XX and 4XX, except:
+    # - 408 Request Timeout, API calls are mostly idempotent
+    # - 429 Too Many Requests, reducing the end-user cognitive load of retrying manually
+    unsafe_codes = [i for i in range(500) if i not in [408, 429]] + [501, 505]
 
     def __init__(self):
         self.policy = Retry()
-        self.policy.total = 3
-        self.policy.connect = 3
-        self.policy.read = 3
+        self.policy.total = self.total_retries
+        self.policy.connect = self.total_retries
+        self.policy.read = self.total_retries
         self.policy.backoff_factor = 0.8
         self.policy.BACKOFF_MAX = 90
 
-        retry_codes = [i for i in range(999) if i not in self.safe_codes]
-        self.policy.status_forcelist = retry_codes
+        self.policy.status_forcelist = [i for i in range(999) if i not in self.unsafe_codes]
         self.policy.method_whitelist = ['HEAD', 'TRACE', 'GET', 'PUT',
                                         'OPTIONS', 'DELETE', 'POST', 'PATCH']
 
