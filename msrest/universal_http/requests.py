@@ -339,6 +339,7 @@ class ClientRetryPolicy(object):
     """
 
     safe_codes = [i for i in range(500) if i != 408] + [501, 505]
+    _safe_codes_set = set(safe_codes)
 
     def __init__(self):
         self.policy = Retry()
@@ -348,7 +349,7 @@ class ClientRetryPolicy(object):
         self.policy.backoff_factor = 0.8
         self.policy.BACKOFF_MAX = 90
 
-        retry_codes = [i for i in range(999) if i not in self.safe_codes]
+        retry_codes = [i for i in range(999) if i not in self._safe_codes_set]
         self.policy.status_forcelist = retry_codes
         self.policy.method_whitelist = ['HEAD', 'TRACE', 'GET', 'PUT',
                                         'OPTIONS', 'DELETE', 'POST', 'PATCH']
