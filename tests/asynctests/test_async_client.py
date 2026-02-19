@@ -85,7 +85,6 @@ class TestServiceClient(object):
 
         request = ClientRequest('GET', '/')
         await client.async_send(request, stream=False)
-        session.request.call_count = 0
         session.request.assert_called_with(
             'GET',
             '/',
@@ -99,6 +98,7 @@ class TestServiceClient(object):
             timeout=100,
             verify=True
         )
+        session.request.reset_mock()
         assert session.resolve_redirects.is_msrest_patched
 
         request = client.get('/', headers={'id':'1234'}, content={'Test':'Data'})
@@ -121,7 +121,7 @@ class TestServiceClient(object):
             verify=True
         )
         assert session.request.call_count == 1
-        session.request.call_count = 0
+        session.request.reset_mock()
         assert session.resolve_redirects.is_msrest_patched
 
         request = client.get('/', headers={'id':'1234'}, content={'Test':'Data'})
@@ -146,14 +146,14 @@ class TestServiceClient(object):
             verify=True
         )
         assert session.request.call_count == 1
-        session.request.call_count = 0
+        session.request.reset_mock()
         assert session.resolve_redirects.is_msrest_patched
 
         session.request.side_effect = oauth2.rfc6749.errors.InvalidGrantError("test")
         with pytest.raises(TokenExpiredError):
             await client.async_send(request, headers={'id':'1234'}, content={'Test':'Data'}, test='value')
         assert session.request.call_count == 2
-        session.request.call_count = 0
+        session.request.reset_mock()
 
         session.request.side_effect = ValueError("test")
         with pytest.raises(ValueError):
